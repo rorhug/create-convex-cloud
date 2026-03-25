@@ -1,234 +1,407 @@
 "use client";
 
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import Link from "next/link";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { type ReactNode, useState } from "react";
 
 export default function Home() {
-  return (
-    <>
-      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md p-4 border-b border-slate-200 dark:border-slate-700 flex flex-row justify-between items-center shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-3">
-            <Image src="/convex.svg" alt="Convex Logo" width={32} height={32} />
-            <div className="w-px h-8 bg-slate-300 dark:bg-slate-600"></div>
-            <Image
-              src="/nextjs-icon-light-background.svg"
-              alt="Next.js Logo"
-              width={32}
-              height={32}
-              className="dark:hidden"
-            />
-            <Image
-              src="/nextjs-icon-dark-background.svg"
-              alt="Next.js Logo"
-              width={32}
-              height={32}
-              className="hidden dark:block"
-            />
-          </div>
-          <h1 className="font-semibold text-slate-800 dark:text-slate-200">
-            Convex + Next.js + Convex Auth
-          </h1>
-        </div>
-        <SignOutButton />
-      </header>
-      <main className="p-8 flex flex-col gap-8">
-        <Content />
-      </main>
-    </>
-  );
-}
+  const viewer = useQuery(api.viewer.getViewer);
 
-function SignOutButton() {
-  const { isAuthenticated } = useConvexAuth();
-  const { signOut } = useAuthActions();
-  const router = useRouter();
-  return (
-    <>
-      {isAuthenticated && (
-        <button
-          className="bg-slate-600 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
-          onClick={() =>
-            void signOut().then(() => {
-              router.push("/signin");
-            })
-          }
-        >
-          Sign out
-        </button>
-      )}
-    </>
-  );
-}
-
-function Content() {
-  const { viewer, numbers } =
-    useQuery(api.myFunctions.listNumbers, {
-      count: 10,
-    }) ?? {};
-  const addNumber = useMutation(api.myFunctions.addNumber);
-
-  if (viewer === undefined || numbers === undefined) {
+  if (viewer === undefined) {
     return (
-      <div className="mx-auto">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
-          <div
-            className="w-2 h-2 bg-slate-500 rounded-full animate-bounce"
-            style={{ animationDelay: "0.1s" }}
-          ></div>
-          <div
-            className="w-2 h-2 bg-slate-600 rounded-full animate-bounce"
-            style={{ animationDelay: "0.2s" }}
-          ></div>
-          <p className="ml-2 text-slate-600 dark:text-slate-400">Loading...</p>
+      <main className="min-h-screen bg-slate-950 text-slate-50 p-8">
+        <div className="mx-auto max-w-3xl rounded-3xl border border-slate-800 bg-slate-900 p-8">
+          <p className="text-sm text-slate-400">Loading your workspace...</p>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4 max-w-lg mx-auto">
-      <div>
-        <h2 className="font-bold text-xl text-slate-800 dark:text-slate-200">
-          Welcome {viewer ?? "Anonymous"}!
-        </h2>
-        <p className="text-slate-600 dark:text-slate-400 mt-2">
-          You are signed into a demo application using Convex Auth.
-        </p>
-        <p className="text-slate-600 dark:text-slate-400 mt-1">
-          This app can generate random numbers and store them in your Convex
-          database.
-        </p>
+    <main className="min-h-screen bg-slate-950 text-slate-50">
+      <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 p-6 md:p-10">
+        <header className="flex flex-col gap-4 rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl shadow-slate-950/40 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-2">
+            <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
+              Create Convex Cloud
+            </p>
+            <h1 className="text-3xl font-semibold text-white">
+              Connect GitHub, Vercel, and Convex
+            </h1>
+            <p className="max-w-2xl text-sm text-slate-300">
+              Finish the three onboarding steps below, then head to{" "}
+              <code>/apps</code> to create apps in Convex.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {viewer.onboarding.canAccessApps && (
+              <Link
+                href="/apps"
+                className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200"
+              >
+                Open apps
+              </Link>
+            )}
+            <SignOutButton />
+          </div>
+        </header>
+
+        <Content viewer={viewer} />
       </div>
+    </main>
+  );
+}
 
-      <div className="h-px bg-slate-200 dark:bg-slate-700"></div>
+function SignOutButton() {
+  const { signOut } = useAuthActions();
+  return (
+    <button
+      className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800"
+      onClick={() => {
+        void signOut();
+      }}
+    >
+      Sign out
+    </button>
+  );
+}
 
-      <div className="flex flex-col gap-4">
-        <h2 className="font-semibold text-xl text-slate-800 dark:text-slate-200">
-          Number generator
-        </h2>
-        <p className="text-slate-600 dark:text-slate-400 text-sm">
-          Click the button below to generate a new number. The data is persisted
-          in the Convex cloud database - open this page in another window and
-          see the data sync automatically!
-        </p>
-        <button
-          className="bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 text-white text-sm font-medium px-6 py-3 rounded-lg cursor-pointer transition-all duration-200 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-          onClick={() => {
-            void addNumber({ value: Math.floor(Math.random() * 10) });
-          }}
+function Content({
+  viewer,
+}: {
+  viewer: {
+    user: {
+      name: string | null;
+      email: string | null;
+      image: string | null;
+    };
+    vercel: {
+      name: string | null;
+      email: string | null;
+      username: string | null;
+      avatarUrl: string | null;
+    } | null;
+    convex: {
+      teamId: string;
+      tokenPreview: string;
+    } | null;
+    onboarding: {
+      hasGitHubConnection: boolean;
+      hasVercelConnection: boolean;
+      hasConvexTeamAccessToken: boolean;
+      canAccessApps: boolean;
+    };
+  };
+}) {
+  const { signIn } = useAuthActions();
+  const verifyConvexToken = useAction(api.viewer.verifyConvexTeamAccessToken);
+  const saveConvexToken = useMutation(api.viewer.saveConvexTeamAccessToken);
+  const [token, setToken] = useState("");
+  const [verified, setVerified] = useState<{
+    teamId: string;
+    projectCount: number;
+    verifiedToken: string;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"vercel" | "verify" | "save" | null>(null);
+
+  async function handleVerifyToken() {
+    setBusy("verify");
+    setError(null);
+    try {
+      const trimmedToken = token.trim();
+      const result = await verifyConvexToken({ token: trimmedToken });
+      setVerified({
+        teamId: result.teamId,
+        projectCount: result.projectCount,
+        verifiedToken: trimmedToken,
+      });
+    } catch (verifyError) {
+      setVerified(null);
+      setError(
+        verifyError instanceof Error
+          ? verifyError.message
+          : "Could not verify the Convex token",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleSaveToken() {
+    if (verified === null || verified.verifiedToken !== token.trim()) {
+      setError("Verify the current token before saving it");
+      return;
+    }
+
+    setBusy("save");
+    setError(null);
+    try {
+      await saveConvexToken({
+        token: verified.verifiedToken,
+        teamId: verified.teamId,
+      });
+      setToken("");
+      setVerified(null);
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Could not save the Convex token",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleConnectVercel() {
+    setBusy("vercel");
+    setError(null);
+    try {
+      const result = await signIn("vercel", { redirectTo: "/" });
+      if (result.redirect) {
+        window.location.href = result.redirect.toString();
+        return;
+      }
+      setBusy(null);
+    } catch (connectError) {
+      setError(
+        connectError instanceof Error
+          ? connectError.message
+          : "Could not connect the Vercel account",
+      );
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+      <section className="space-y-6 rounded-3xl border border-slate-800 bg-slate-900 p-6">
+        <div className="space-y-2">
+          <p className="text-sm text-slate-400">
+            Signed in as {viewer.user.email ?? viewer.user.name ?? "GitHub user"}
+          </p>
+          <h2 className="text-2xl font-semibold text-white">
+            Onboarding checklist
+          </h2>
+        </div>
+
+        {error && <Banner tone="error">{error}</Banner>}
+
+        <StepCard
+          step="1"
+          title="GitHub login"
+          complete={viewer.onboarding.hasGitHubConnection}
         >
-          + Generate random number
-        </button>
-        <div className="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl p-4 shadow-sm">
-          <p className="font-semibold text-slate-800 dark:text-slate-200 mb-2">
-            Newest Numbers
+          <p className="text-sm text-slate-300">
+            GitHub is the only enabled sign-in method for this app.
           </p>
-          <p className="text-slate-700 dark:text-slate-300 font-mono text-lg">
-            {numbers?.length === 0
-              ? "Click the button to generate a number!"
-              : (numbers?.join(", ") ?? "...")}
-          </p>
+        </StepCard>
+
+        <StepCard
+          step="2"
+          title="Connect your Vercel account"
+          complete={viewer.onboarding.hasVercelConnection}
+        >
+          {viewer.vercel ? (
+            <div className="space-y-2 text-sm text-slate-300">
+              <p>
+                Connected as{" "}
+                <span className="font-medium text-white">
+                  {viewer.vercel.username ?? viewer.vercel.email ?? "Vercel user"}
+                </span>
+              </p>
+              {viewer.vercel.name && <p>Name: {viewer.vercel.name}</p>}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-slate-300">
+                After GitHub login, connect Vercel so this account is linked to a
+                Vercel user.
+              </p>
+              <button
+                type="button"
+                className="inline-flex rounded-xl bg-slate-200 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-white"
+                disabled={busy !== null}
+                onClick={() => {
+                  void handleConnectVercel();
+                }}
+              >
+                {busy === "vercel" ? "Redirecting to Vercel..." : "Connect Vercel"}
+              </button>
+            </div>
+          )}
+        </StepCard>
+
+        <StepCard
+          step="3"
+          title="Save a Convex team access token"
+          complete={viewer.onboarding.hasConvexTeamAccessToken}
+        >
+          {viewer.convex ? (
+            <div className="space-y-2 text-sm text-slate-300">
+              <p>
+                Saved for team <span className="font-medium text-white">{viewer.convex.teamId}</span>
+              </p>
+              <p>Stored token: {viewer.convex.tokenPreview}</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-slate-300">
+                Paste a Convex team access token. We verify it against the
+                Management API before letting you save it.
+              </p>
+              <textarea
+                value={token}
+                onChange={(event) => {
+                  setToken(event.target.value);
+                  setVerified(null);
+                  setError(null);
+                }}
+                rows={5}
+                className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
+                placeholder="Paste Convex team access token"
+              />
+              {verified && (
+                <Banner tone="success">
+                  Token verified for team {verified.teamId}. Convex returned{" "}
+                  {verified.projectCount} project
+                  {verified.projectCount === 1 ? "" : "s"}.
+                </Banner>
+              )}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                  disabled={busy !== null || token.trim().length === 0}
+                  onClick={() => {
+                    void handleVerifyToken();
+                  }}
+                >
+                  {busy === "verify" ? "Verifying..." : "Verify token"}
+                </button>
+                <button
+                  className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"
+                  disabled={
+                    busy !== null ||
+                    verified === null ||
+                    verified.verifiedToken !== token.trim()
+                  }
+                  onClick={() => {
+                    void handleSaveToken();
+                  }}
+                >
+                  {busy === "save" ? "Saving..." : "Save token"}
+                </button>
+              </div>
+            </div>
+          )}
+        </StepCard>
+      </section>
+
+      <aside className="space-y-6 rounded-3xl border border-slate-800 bg-slate-900 p-6">
+        <div className="space-y-3">
+          <h2 className="text-xl font-semibold text-white">Status</h2>
+          <StatusRow
+            label="GitHub"
+            value={viewer.onboarding.hasGitHubConnection ? "Connected" : "Missing"}
+          />
+          <StatusRow
+            label="Vercel"
+            value={viewer.onboarding.hasVercelConnection ? "Connected" : "Missing"}
+          />
+          <StatusRow
+            label="Convex team token"
+            value={
+              viewer.onboarding.hasConvexTeamAccessToken ? "Saved" : "Missing"
+            }
+          />
         </div>
-      </div>
 
-      <div className="h-px bg-slate-200 dark:bg-slate-700"></div>
-
-      <div className="flex flex-col gap-4">
-        <h2 className="font-semibold text-xl text-slate-800 dark:text-slate-200">
-          Making changes
-        </h2>
-        <p className="text-slate-600 dark:text-slate-400 text-sm">
-          Edit{" "}
-          <code className="text-sm font-semibold font-mono bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600">
-            convex/myFunctions.ts
-          </code>{" "}
-          to change the backend.
-        </p>
-        <p className="text-slate-600 dark:text-slate-400 text-sm">
-          Edit{" "}
-          <code className="text-sm font-semibold font-mono bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600">
-            app/page.tsx
-          </code>{" "}
-          to change the frontend.
-        </p>
-        <p className="text-slate-600 dark:text-slate-400 text-sm">
-          See the{" "}
+        <div className="rounded-2xl border border-slate-800 bg-slate-950 p-5">
+          <h3 className="text-lg font-medium text-white">Apps access</h3>
+          <p className="mt-2 text-sm text-slate-300">
+            {viewer.onboarding.canAccessApps
+              ? "Everything is connected. You can create apps now."
+              : "Finish Vercel and Convex setup before /apps is unlocked."}
+          </p>
           <Link
-            href="/server"
-            className="text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 font-medium underline decoration-2 underline-offset-2 transition-colors"
+            href="/apps"
+            className={`mt-4 inline-flex rounded-xl px-4 py-2 text-sm font-medium transition ${
+              viewer.onboarding.canAccessApps
+                ? "bg-white text-slate-950 hover:bg-slate-200"
+                : "pointer-events-none bg-slate-800 text-slate-500"
+            }`}
           >
-            /server route
-          </Link>{" "}
-          for an example of loading data in a server component
-        </p>
-      </div>
-
-      <div className="h-px bg-slate-200 dark:bg-slate-700"></div>
-
-      <div className="flex flex-col gap-4">
-        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">
-          Useful resources
-        </h2>
-        <div className="flex gap-4">
-          <div className="flex flex-col gap-4 w-1/2">
-            <ResourceCard
-              title="Convex docs"
-              description="Read comprehensive documentation for all Convex features."
-              href="https://docs.convex.dev/home"
-            />
-            <ResourceCard
-              title="Stack articles"
-              description="Learn about best practices, use cases, and more from a growing
-            collection of articles, videos, and walkthroughs."
-              href="https://stack.convex.dev"
-            />
-          </div>
-          <div className="flex flex-col gap-4 w-1/2">
-            <ResourceCard
-              title="Templates"
-              description="Browse our collection of templates to get started quickly."
-              href="https://www.convex.dev/templates"
-            />
-            <ResourceCard
-              title="Discord"
-              description="Join our developer community to ask questions, trade tips & tricks,
-            and show off your projects."
-              href="https://www.convex.dev/community"
-            />
-          </div>
+            Go to /apps
+          </Link>
         </div>
-      </div>
+      </aside>
     </div>
   );
 }
 
-function ResourceCard({
+function StepCard({
+  step,
   title,
-  description,
-  href,
+  complete,
+  children,
 }: {
+  step: string;
   title: string;
-  description: string;
-  href: string;
+  complete: boolean;
+  children: ReactNode;
 }) {
   return (
-    <a
-      href={href}
-      className="flex flex-col gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 p-5 rounded-xl h-36 overflow-auto border border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.02] group cursor-pointer"
-      target="_blank"
+    <div className="rounded-2xl border border-slate-800 bg-slate-950 p-5">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+            Step {step}
+          </p>
+          <h3 className="mt-1 text-lg font-medium text-white">{title}</h3>
+        </div>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-medium ${
+            complete
+              ? "bg-emerald-500/15 text-emerald-300"
+              : "bg-amber-500/15 text-amber-300"
+          }`}
+        >
+          {complete ? "Complete" : "Required"}
+        </span>
+      </div>
+      <div className="mt-4">{children}</div>
+    </div>
+  );
+}
+
+function Banner({
+  tone,
+  children,
+}: {
+  tone: "success" | "error";
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border px-4 py-3 text-sm ${
+        tone === "success"
+          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+          : "border-rose-500/30 bg-rose-500/10 text-rose-200"
+      }`}
     >
-      <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">
-        {title} →
-      </h3>
-      <p className="text-xs text-slate-600 dark:text-slate-400">
-        {description}
-      </p>
-    </a>
+      {children}
+    </div>
+  );
+}
+
+function StatusRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm">
+      <span className="text-slate-400">{label}</span>
+      <span className="font-medium text-white">{value}</span>
+    </div>
   );
 }

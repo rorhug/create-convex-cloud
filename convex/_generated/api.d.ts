@@ -8,9 +8,13 @@
  * @module
  */
 
+import type * as apps from "../apps.js";
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
-import type * as myFunctions from "../myFunctions.js";
+import type * as lib_auth from "../lib/auth.js";
+import type * as lib_onboarding from "../lib/onboarding.js";
+import type * as providers_vercel from "../providers/vercel.js";
+import type * as viewer from "../viewer.js";
 
 import type {
   ApiFromModules,
@@ -19,9 +23,13 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  apps: typeof apps;
   auth: typeof auth;
   http: typeof http;
-  myFunctions: typeof myFunctions;
+  "lib/auth": typeof lib_auth;
+  "lib/onboarding": typeof lib_onboarding;
+  "providers/vercel": typeof providers_vercel;
+  viewer: typeof viewer;
 }>;
 
 /**
