@@ -93,10 +93,13 @@ export const runDeleteAppWorkflow = internalAction({
           if (convexToken) {
             try {
               const response = await fetch(
-                `${CONVEX_API_BASE}/v1/projects/${convexProject.projectId}`,
+                `${CONVEX_API_BASE}/v1/projects/${convexProject.projectId}/delete`,
                 {
-                  method: "DELETE",
-                  headers: { Authorization: `Bearer ${convexToken.token}` },
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${convexToken.token}`,
+                    "Content-Type": "application/json",
+                  },
                 },
               );
               if (!response.ok) {
@@ -159,11 +162,25 @@ export const runDeleteAppWorkflow = internalAction({
         }
       }
 
-      // All done - delete DB records
-      await ctx.runMutation(internal.apps.internalDeleteApp, {
-        id: args.appId,
-        userId: args.userId,
-      });
+      // Check if any step had an error
+      const steps: any[] = await ctx.runQuery(
+        internal.apps.getAppStepsInternal,
+        { appId: args.appId },
+      );
+      const hasError = steps.some((s: any) => s.status === "error");
+
+      if (hasError) {
+        await ctx.runMutation(internal.apps.internalUpdateAppStatus, {
+          id: args.appId,
+          status: "error",
+        });
+      } else {
+        // All done - delete DB records
+        await ctx.runMutation(internal.apps.internalDeleteApp, {
+          id: args.appId,
+          userId: args.userId,
+        });
+      }
     } catch (error) {
       console.error("Delete workflow failed:", error);
       await ctx.runMutation(internal.apps.internalUpdateAppStatus, {

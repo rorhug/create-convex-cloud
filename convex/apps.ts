@@ -149,6 +149,19 @@ export const getAppSteps = query({
   },
 });
 
+export const getAppDeploymentUrl = query({
+  args: { appId: v.id("apps") },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args) => {
+    await requireCurrentUser(ctx);
+    const vercelProject = await ctx.db
+      .query("vercelProjects")
+      .withIndex("by_app", (q) => q.eq("appId", args.appId))
+      .first();
+    return vercelProject?.deploymentUrl ?? null;
+  },
+});
+
 // Internal mutations used by workflows
 export const internalGetApp = internalQuery({
   args: { id: v.id("apps") },
@@ -182,6 +195,18 @@ export const internalUpdateAppStatus = internalMutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.id, { status: args.status });
     return null;
+  },
+});
+
+export const getAppStepsInternal = internalQuery({
+  args: { appId: v.id("apps") },
+  returns: v.array(v.object({ step: v.string(), status: v.string() })),
+  handler: async (ctx, args) => {
+    const steps = await ctx.db
+      .query("appSteps")
+      .withIndex("by_app", (q) => q.eq("appId", args.appId))
+      .collect();
+    return steps.map((s) => ({ step: s.step, status: s.status }));
   },
 });
 

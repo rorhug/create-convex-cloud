@@ -18,6 +18,15 @@ export const initSteps = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    // Clear any existing steps for this app first
+    const existing = await ctx.db
+      .query("appSteps")
+      .withIndex("by_app", (q) => q.eq("appId", args.appId))
+      .collect();
+    for (const s of existing) {
+      await ctx.db.delete(s._id);
+    }
+
     for (const step of args.steps) {
       await ctx.db.insert("appSteps", {
         appId: args.appId,
@@ -81,16 +90,33 @@ export const createApp = workflow.define({
     ]);
 
     // Step 3: Create Vercel project (depends on both previous steps)
-    await step.runAction(
+    const vercelResult = await step.runAction(
       internal.workflows.createApp.stepCreateVercelProject,
       {
         appId: args.appId,
         repoFullName: githubResult.repoFullName,
         prodDeployKey: convexResult.prodDeployKey,
         previewDeployKey: convexResult.previewDeployKey,
+        jwtPrivateKey: convexResult.jwtPrivateKey,
+        jwks: convexResult.jwks,
       },
       { name: "createVercelProject", retry: true },
     );
+
+    // Step 4: Wait for deployment to finish
+    if (vercelResult.deploymentId) {
+      await step.runAction(
+        internal.workflows.createApp.stepWaitForDeployment,
+        {
+          appId: args.appId,
+          deploymentId: vercelResult.deploymentId,
+          vercelToken: vercelResult.vercelToken,
+          teamId: vercelResult.teamId,
+          deploymentUrl: vercelResult.deploymentUrl,
+        },
+        { name: "waitForDeployment" },
+      );
+    }
 
     // Mark app as ready
     await step.runMutation(internal.apps.internalUpdateAppStatus, {
@@ -213,6 +239,7 @@ export const insertVercelProject = internalMutation({
     projectId: v.string(),
     projectName: v.string(),
     teamId: v.optional(v.string()),
+    deploymentUrl: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -221,6 +248,7 @@ export const insertVercelProject = internalMutation({
       projectId: args.projectId,
       projectName: args.projectName,
       teamId: args.teamId,
+      deploymentUrl: args.deploymentUrl,
     });
     return null;
   },

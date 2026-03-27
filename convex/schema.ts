@@ -5,6 +5,7 @@ import { authTables } from "@convex-dev/auth/server";
 export default defineSchema({
   ...authTables,
   users: defineTable({
+    // Standard auth fields (required because overriding authTables.users)
     name: v.optional(v.union(v.string(), v.null())),
     image: v.optional(v.union(v.string(), v.null())),
     email: v.optional(v.union(v.string(), v.null())),
@@ -12,7 +13,7 @@ export default defineSchema({
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
-    // GitHub OAuth fields
+    // GitHub OAuth fields (custom)
     githubAccessToken: v.optional(v.string()),
     githubUsername: v.optional(v.string()),
   }).index("email", ["email"]),
@@ -75,5 +76,6 @@ export default defineSchema({
     projectId: v.string(),
     projectName: v.string(),
     teamId: v.optional(v.string()),
+    deploymentUrl: v.optional(v.string()),
   }).index("by_app", ["appId"]),
 });

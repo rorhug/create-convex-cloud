@@ -82,6 +82,21 @@ function StepIcon({ status }: { status: string }) {
   }
 }
 
+function DeploymentUrl({ appId }: { appId: Id<"apps"> }) {
+  const url = useQuery(api.apps.getAppDeploymentUrl, { appId });
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-1 inline-block text-xs text-blue-400 hover:text-blue-300 hover:underline"
+    >
+      {url}
+    </a>
+  );
+}
+
 function StepProgress({ appId }: { appId: Id<"apps"> }) {
   const steps = useQuery(api.apps.getAppSteps, { appId });
 
@@ -275,7 +290,9 @@ function AppsManager() {
                     Delete
                   </button>
                 </div>
-                {app.status !== "ready" && (
+                {app.status === "ready" ? (
+                  <DeploymentUrl appId={app._id} />
+                ) : (
                   <StepProgress appId={app._id} />
                 )}
               </div>
