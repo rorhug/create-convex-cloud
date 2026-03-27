@@ -1,11 +1,23 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { requireCurrentUser } from "./lib/auth";
-import { createAppForUser, listAppsForUser } from "./lib/onboarding";
+import {
+  action,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
+import { internal } from "./_generated/api";
+import { requireCurrentUser, requireCurrentUserId } from "./lib/auth";
+import {
+  createAppForUser,
+  deleteAppForUser,
+  listAppsForUser,
+} from "./lib/onboarding";
 
 const appValidator = v.object({
   _id: v.id("apps"),
   name: v.string(),
+  status: v.string(),
   createdAt: v.number(),
 });
 
@@ -14,12 +26,12 @@ export const listApps = query({
   returns: v.array(appValidator),
   handler: async (ctx) => {
     const user = await requireCurrentUser(ctx);
-    ensureAppsUnlocked(user);
 
     const apps = await listAppsForUser(ctx, user._id);
     return apps.map((app) => ({
       _id: app._id,
       name: app.name,
+      status: app.status,
       createdAt: app.createdAt,
     }));
   },
@@ -32,20 +44,155 @@ export const createApp = mutation({
   returns: v.id("apps"),
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
-    ensureAppsUnlocked(user);
-    return await createAppForUser(ctx, user._id, args.name);
+
+    // Check tokens exist
+    const vercelToken = await ctx.db
+      .query("vercelTokens")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+    if (!vercelToken) {
+      throw new Error("Connect your Vercel account before creating apps");
+    }
+
+    const convexToken = await ctx.db
+      .query("convexTokens")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+    if (!convexToken) {
+      throw new Error("Connect your Convex account before creating apps");
+    }
+
+    if (!user.githubAccessToken) {
+      throw new Error(
+        "GitHub access token not available. Please sign out and sign in again.",
+      );
+    }
+
+    const appId = await createAppForUser(ctx, user._id, args.name);
+
+    // Schedule the creation workflow
+    await ctx.scheduler.runAfter(
+      0,
+      internal.workflows.createApp.runCreateAppWorkflow,
+      { appId },
+    );
+
+    return appId;
   },
 });
 
-function ensureAppsUnlocked(user: {
-  vercelUserId?: string;
-  convexTeamAccessToken?: string;
-  convexTeamId?: string;
-}) {
-  if (!user.vercelUserId) {
-    throw new Error("Connect your Vercel account before using apps");
-  }
-  if (!user.convexTeamAccessToken || !user.convexTeamId) {
-    throw new Error("Save a Convex team access token before using apps");
-  }
-}
+export const deleteApp = action({
+  args: {
+    id: v.id("apps"),
+    deleteGithubRepo: v.boolean(),
+    deleteConvexProject: v.boolean(),
+    deleteVercelProject: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await requireCurrentUserId(ctx);
+
+    // Verify ownership
+    const app = await ctx.runQuery(internal.apps.internalGetApp, {
+      id: args.id,
+    });
+    if (!app) {
+      throw new Error("App not found");
+    }
+    if (app.ownerId !== userId) {
+      throw new Error("You do not own this app");
+    }
+
+    // Set status to deleting
+    await ctx.runMutation(internal.apps.internalUpdateAppStatus, {
+      id: args.id,
+      status: "deleting",
+    });
+
+    // Schedule the delete workflow
+    await ctx.scheduler.runAfter(
+      0,
+      internal.workflows.deleteApp.runDeleteAppWorkflow,
+      {
+        appId: args.id,
+        userId,
+        deleteGithubRepo: args.deleteGithubRepo,
+        deleteConvexProject: args.deleteConvexProject,
+        deleteVercelProject: args.deleteVercelProject,
+      },
+    );
+
+    return null;
+  },
+});
+
+const stepValidator = v.object({
+  step: v.string(),
+  status: v.string(),
+  message: v.union(v.string(), v.null()),
+});
+
+export const getAppSteps = query({
+  args: { appId: v.id("apps") },
+  returns: v.array(stepValidator),
+  handler: async (ctx, args) => {
+    await requireCurrentUser(ctx);
+    const steps = await ctx.db
+      .query("appSteps")
+      .withIndex("by_app", (q) => q.eq("appId", args.appId))
+      .collect();
+    return steps.map((s) => ({
+      step: s.step,
+      status: s.status,
+      message: s.message ?? null,
+    }));
+  },
+});
+
+// Internal mutations used by workflows
+export const internalGetApp = internalQuery({
+  args: { id: v.id("apps") },
+  returns: v.union(
+    v.object({
+      _id: v.id("apps"),
+      ownerId: v.id("users"),
+      name: v.string(),
+      status: v.string(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const app = await ctx.db.get(args.id);
+    if (!app) return null;
+    return {
+      _id: app._id,
+      ownerId: app.ownerId,
+      name: app.name,
+      status: app.status,
+    };
+  },
+});
+
+export const internalUpdateAppStatus = internalMutation({
+  args: {
+    id: v.id("apps"),
+    status: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { status: args.status });
+    return null;
+  },
+});
+
+export const internalDeleteApp = internalMutation({
+  args: {
+    id: v.id("apps"),
+    userId: v.id("users"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await deleteAppForUser(ctx, args.userId, args.id);
+    return null;
+  },
+});

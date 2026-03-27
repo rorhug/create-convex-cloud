@@ -32,7 +32,7 @@ export default function Home() {
             </h1>
             <p className="max-w-2xl text-sm text-slate-300">
               Finish the three onboarding steps below, then head to{" "}
-              <code>/apps</code> to create apps in Convex.
+              <code>/apps</code> to create apps.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -68,58 +68,101 @@ function SignOutButton() {
   );
 }
 
-function Content({
-  viewer,
-}: {
-  viewer: {
-    user: {
-      name: string | null;
-      email: string | null;
-      image: string | null;
-    };
-    vercel: {
-      name: string | null;
-      email: string | null;
-      username: string | null;
-      avatarUrl: string | null;
-    } | null;
-    convex: {
-      teamId: string;
-      tokenPreview: string;
-    } | null;
-    onboarding: {
-      hasGitHubConnection: boolean;
-      hasVercelConnection: boolean;
-      hasConvexTeamAccessToken: boolean;
-      canAccessApps: boolean;
-    };
+type ViewerState = {
+  user: {
+    name: string | null;
+    email: string | null;
+    image: string | null;
+    githubUsername: string | null;
   };
-}) {
-  const { signIn } = useAuthActions();
-  const verifyConvexToken = useAction(api.viewer.verifyConvexTeamAccessToken);
-  const saveConvexToken = useMutation(api.viewer.saveConvexTeamAccessToken);
-  const [token, setToken] = useState("");
-  const [verified, setVerified] = useState<{
+  vercel: {
+    teams: Array<{ id: string; name: string; slug: string }>;
+    tokenPreview: string;
+  } | null;
+  convex: {
     teamId: string;
-    projectCount: number;
-    verifiedToken: string;
+    tokenPreview: string;
+  } | null;
+  onboarding: {
+    hasGitHubConnection: boolean;
+    hasVercelConnection: boolean;
+    hasConvexToken: boolean;
+    canAccessApps: boolean;
+  };
+};
+
+function Content({ viewer }: { viewer: ViewerState }) {
+  const { signIn } = useAuthActions();
+  const verifyVercelToken = useAction(api.vercel.verifyVercelToken);
+  const saveVercelToken = useMutation(api.vercel.saveVercelToken);
+  const verifyConvexToken = useAction(api.convexToken.verifyConvexToken);
+  const saveConvexToken = useMutation(api.convexToken.saveConvexToken);
+
+  const [vercelToken, setVercelToken] = useState("");
+  const [vercelTeams, setVercelTeams] = useState<
+    Array<{ id: string; name: string; slug: string }> | null
+  >(null);
+  const [convexTokenInput, setConvexTokenInput] = useState("");
+  const [convexTeamInfo, setConvexTeamInfo] = useState<{
+    teamId: string;
+    teamName: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"vercel" | "verify" | "save" | null>(null);
+  const [busy, setBusy] = useState<
+    "github" | "vercel-verify" | "vercel-save" | "convex-verify" | "convex-save" | null
+  >(null);
 
-  async function handleVerifyToken() {
-    setBusy("verify");
+  async function handleVerifyVercelToken() {
+    setBusy("vercel-verify");
     setError(null);
     try {
-      const trimmedToken = token.trim();
-      const result = await verifyConvexToken({ token: trimmedToken });
-      setVerified({
-        teamId: result.teamId,
-        projectCount: result.projectCount,
-        verifiedToken: trimmedToken,
-      });
+      const result = await verifyVercelToken({ token: vercelToken.trim() });
+      setVercelTeams(result.teams);
     } catch (verifyError) {
-      setVerified(null);
+      setVercelTeams(null);
+      setError(
+        verifyError instanceof Error
+          ? verifyError.message
+          : "Could not verify the Vercel token",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleSaveVercelToken() {
+    if (!vercelTeams) {
+      setError("Verify the token first");
+      return;
+    }
+    setBusy("vercel-save");
+    setError(null);
+    try {
+      await saveVercelToken({
+        token: vercelToken.trim(),
+        teams: vercelTeams,
+      });
+      setVercelToken("");
+      setVercelTeams(null);
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Could not save the Vercel token",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleVerifyConvexToken() {
+    setBusy("convex-verify");
+    setError(null);
+    try {
+      const result = await verifyConvexToken({ token: convexTokenInput.trim() });
+      setConvexTeamInfo(result);
+    } catch (verifyError) {
+      setConvexTeamInfo(null);
       setError(
         verifyError instanceof Error
           ? verifyError.message
@@ -130,21 +173,20 @@ function Content({
     }
   }
 
-  async function handleSaveToken() {
-    if (verified === null || verified.verifiedToken !== token.trim()) {
-      setError("Verify the current token before saving it");
+  async function handleSaveConvexToken() {
+    if (!convexTeamInfo) {
+      setError("Verify the token first");
       return;
     }
-
-    setBusy("save");
+    setBusy("convex-save");
     setError(null);
     try {
       await saveConvexToken({
-        token: verified.verifiedToken,
-        teamId: verified.teamId,
+        token: convexTokenInput.trim(),
+        teamId: convexTeamInfo.teamId,
       });
-      setToken("");
-      setVerified(null);
+      setConvexTokenInput("");
+      setConvexTeamInfo(null);
     } catch (saveError) {
       setError(
         saveError instanceof Error
@@ -156,32 +198,16 @@ function Content({
     }
   }
 
-  async function handleConnectVercel() {
-    setBusy("vercel");
-    setError(null);
-    try {
-      const result = await signIn("vercel", { redirectTo: "/" });
-      if (result.redirect) {
-        window.location.href = result.redirect.toString();
-        return;
-      }
-      setBusy(null);
-    } catch (connectError) {
-      setError(
-        connectError instanceof Error
-          ? connectError.message
-          : "Could not connect the Vercel account",
-      );
-      setBusy(null);
-    }
-  }
-
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
       <section className="space-y-6 rounded-3xl border border-slate-800 bg-slate-900 p-6">
         <div className="space-y-2">
           <p className="text-sm text-slate-400">
-            Signed in as {viewer.user.email ?? viewer.user.name ?? "GitHub user"}
+            Signed in as{" "}
+            {viewer.user.githubUsername ??
+              viewer.user.email ??
+              viewer.user.name ??
+              "GitHub user"}
           </p>
           <h2 className="text-2xl font-semibold text-white">
             Onboarding checklist
@@ -190,109 +216,190 @@ function Content({
 
         {error && <Banner tone="error">{error}</Banner>}
 
+        {/* Step 1: GitHub */}
         <StepCard
           step="1"
           title="GitHub login"
           complete={viewer.onboarding.hasGitHubConnection}
         >
-          <p className="text-sm text-slate-300">
-            GitHub is the only enabled sign-in method for this app.
-          </p>
-        </StepCard>
-
-        <StepCard
-          step="2"
-          title="Connect your Vercel account"
-          complete={viewer.onboarding.hasVercelConnection}
-        >
-          {viewer.vercel ? (
-            <div className="space-y-2 text-sm text-slate-300">
-              <p>
-                Connected as{" "}
-                <span className="font-medium text-white">
-                  {viewer.vercel.username ?? viewer.vercel.email ?? "Vercel user"}
-                </span>
-              </p>
-              {viewer.vercel.name && <p>Name: {viewer.vercel.name}</p>}
-            </div>
+          {viewer.onboarding.hasGitHubConnection ? (
+            <p className="text-sm text-slate-300">
+              Connected as {viewer.user.githubUsername ?? viewer.user.name ?? "GitHub user"}. Repo access granted.
+            </p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <p className="text-sm text-slate-300">
-                After GitHub login, connect Vercel so this account is linked to a
-                Vercel user.
+                Sign in with GitHub to grant repo access.
               </p>
               <button
-                type="button"
-                className="inline-flex rounded-xl bg-slate-200 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-white"
+                className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
                 disabled={busy !== null}
                 onClick={() => {
-                  void handleConnectVercel();
+                  void (async () => {
+                    setBusy("github");
+                    setError(null);
+                    try {
+                      const result = await signIn("github", { redirectTo: "/" });
+                      if (result.redirect) {
+                        window.location.href = result.redirect.toString();
+                      }
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : "Could not connect GitHub");
+                    } finally {
+                      setBusy(null);
+                    }
+                  })();
                 }}
               >
-                {busy === "vercel" ? "Redirecting to Vercel..." : "Connect Vercel"}
+                Connect GitHub
               </button>
             </div>
           )}
         </StepCard>
 
+        {/* Step 2: Vercel token paste */}
         <StepCard
-          step="3"
-          title="Save a Convex team access token"
-          complete={viewer.onboarding.hasConvexTeamAccessToken}
+          step="2"
+          title="Vercel access token"
+          complete={viewer.onboarding.hasVercelConnection}
         >
-          {viewer.convex ? (
+          {viewer.vercel ? (
             <div className="space-y-2 text-sm text-slate-300">
               <p>
-                Saved for team <span className="font-medium text-white">{viewer.convex.teamId}</span>
+                Token saved: <span className="font-medium text-white">{viewer.vercel.tokenPreview}</span>
               </p>
-              <p>Stored token: {viewer.convex.tokenPreview}</p>
+              <p>
+                Teams:{" "}
+                <span className="font-medium text-white">
+                  {viewer.vercel.teams.map((t) => t.name).join(", ")}
+                </span>
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-slate-300">
-                Paste a Convex team access token. We verify it against the
-                Management API before letting you save it.
+                Create a token at{" "}
+                <a
+                  href="https://vercel.com/account/settings/tokens"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 underline hover:text-blue-300"
+                >
+                  vercel.com/account/settings/tokens
+                </a>{" "}
+                and paste it below.
               </p>
-              <textarea
-                value={token}
+              <input
+                type="password"
+                value={vercelToken}
                 onChange={(event) => {
-                  setToken(event.target.value);
-                  setVerified(null);
+                  setVercelToken(event.target.value);
+                  setVercelTeams(null);
                   setError(null);
                 }}
-                rows={5}
                 className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
-                placeholder="Paste Convex team access token"
+                placeholder="Paste Vercel access token"
               />
-              {verified && (
+              {vercelTeams && (
                 <Banner tone="success">
-                  Token verified for team {verified.teamId}. Convex returned{" "}
-                  {verified.projectCount} project
-                  {verified.projectCount === 1 ? "" : "s"}.
+                  Token verified. Found {vercelTeams.length} team
+                  {vercelTeams.length === 1 ? "" : "s"}:{" "}
+                  {vercelTeams.map((t) => t.name).join(", ")}
                 </Banner>
               )}
               <div className="flex flex-wrap gap-3">
                 <button
                   className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-                  disabled={busy !== null || token.trim().length === 0}
+                  disabled={busy !== null || vercelToken.trim().length === 0}
                   onClick={() => {
-                    void handleVerifyToken();
+                    void handleVerifyVercelToken();
                   }}
                 >
-                  {busy === "verify" ? "Verifying..." : "Verify token"}
+                  {busy === "vercel-verify" ? "Verifying..." : "Verify token"}
                 </button>
                 <button
                   className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"
-                  disabled={
-                    busy !== null ||
-                    verified === null ||
-                    verified.verifiedToken !== token.trim()
-                  }
+                  disabled={busy !== null || vercelTeams === null}
                   onClick={() => {
-                    void handleSaveToken();
+                    void handleSaveVercelToken();
                   }}
                 >
-                  {busy === "save" ? "Saving..." : "Save token"}
+                  {busy === "vercel-save" ? "Saving..." : "Save token"}
+                </button>
+              </div>
+            </div>
+          )}
+        </StepCard>
+
+        {/* Step 3: Convex token paste */}
+        <StepCard
+          step="3"
+          title="Convex team access token"
+          complete={viewer.onboarding.hasConvexToken}
+        >
+          {viewer.convex ? (
+            <div className="space-y-2 text-sm text-slate-300">
+              <p>
+                Token saved:{" "}
+                <span className="font-medium text-white">
+                  {viewer.convex.tokenPreview}
+                </span>
+              </p>
+              <p>
+                Team:{" "}
+                <span className="font-medium text-white">
+                  {viewer.convex.teamId}
+                </span>
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-slate-300">
+                Create a team token at{" "}
+                <a
+                  href="https://dashboard.convex.dev"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white underline"
+                >
+                  dashboard.convex.dev
+                </a>{" "}
+                → Settings → Team Access Tokens, and paste it below.
+              </p>
+              <input
+                type="password"
+                value={convexTokenInput}
+                onChange={(event) => {
+                  setConvexTokenInput(event.target.value);
+                  setConvexTeamInfo(null);
+                  setError(null);
+                }}
+                placeholder="Paste Convex team access token"
+                className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
+              />
+              {convexTeamInfo && (
+                <Banner tone="success">
+                  Token verified. Team: {convexTeamInfo.teamName} ({convexTeamInfo.teamId})
+                </Banner>
+              )}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                  disabled={busy !== null || convexTokenInput.trim().length === 0}
+                  onClick={() => {
+                    void handleVerifyConvexToken();
+                  }}
+                >
+                  {busy === "convex-verify" ? "Verifying..." : "Verify token"}
+                </button>
+                <button
+                  className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"
+                  disabled={busy !== null || convexTeamInfo === null}
+                  onClick={() => {
+                    void handleSaveConvexToken();
+                  }}
+                >
+                  {busy === "convex-save" ? "Saving..." : "Save token"}
                 </button>
               </div>
             </div>
@@ -305,17 +412,19 @@ function Content({
           <h2 className="text-xl font-semibold text-white">Status</h2>
           <StatusRow
             label="GitHub"
-            value={viewer.onboarding.hasGitHubConnection ? "Connected" : "Missing"}
+            value={
+              viewer.onboarding.hasGitHubConnection ? "Connected" : "Missing"
+            }
           />
           <StatusRow
             label="Vercel"
-            value={viewer.onboarding.hasVercelConnection ? "Connected" : "Missing"}
+            value={
+              viewer.onboarding.hasVercelConnection ? "Connected" : "Missing"
+            }
           />
           <StatusRow
-            label="Convex team token"
-            value={
-              viewer.onboarding.hasConvexTeamAccessToken ? "Saved" : "Missing"
-            }
+            label="Convex"
+            value={viewer.onboarding.hasConvexToken ? "Connected" : "Missing"}
           />
         </div>
 
@@ -324,7 +433,7 @@ function Content({
           <p className="mt-2 text-sm text-slate-300">
             {viewer.onboarding.canAccessApps
               ? "Everything is connected. You can create apps now."
-              : "Finish Vercel and Convex setup before /apps is unlocked."}
+              : "Finish all three steps before /apps is unlocked."}
           </p>
           <Link
             href="/apps"

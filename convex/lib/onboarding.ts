@@ -1,37 +1,46 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
-export function getViewerState(user: Doc<"users">) {
-  const hasVercelConnection = Boolean(user.vercelUserId);
-  const hasConvexTeamAccessToken = Boolean(
-    user.convexTeamAccessToken && user.convexTeamId,
-  );
+export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
+  const hasGitHubConnection = Boolean(user.githubAccessToken);
+
+  const vercelToken = await ctx.db
+    .query("vercelTokens")
+    .withIndex("by_user", (q) => q.eq("userId", user._id))
+    .first();
+  const hasVercelConnection = vercelToken !== null;
+
+  const convexToken = await ctx.db
+    .query("convexTokens")
+    .withIndex("by_user", (q) => q.eq("userId", user._id))
+    .first();
+  const hasConvexToken = convexToken !== null;
 
   return {
     user: {
       name: user.name ?? null,
       email: user.email ?? null,
       image: user.image ?? null,
+      githubUsername: user.githubUsername ?? null,
     },
     vercel: hasVercelConnection
       ? {
-          name: user.vercelName ?? null,
-          email: user.vercelEmail ?? null,
-          username: user.vercelUsername ?? null,
-          avatarUrl: user.vercelAvatarUrl ?? null,
+          teams: vercelToken.teams,
+          tokenPreview: maskSecret(vercelToken.token),
         }
       : null,
-    convex: hasConvexTeamAccessToken
+    convex: hasConvexToken
       ? {
-          teamId: user.convexTeamId ?? "",
-          tokenPreview: maskSecret(user.convexTeamAccessToken ?? ""),
+          teamId: convexToken.teamId,
+          tokenPreview: maskSecret(convexToken.token),
         }
       : null,
     onboarding: {
-      hasGitHubConnection: true,
+      hasGitHubConnection,
       hasVercelConnection,
-      hasConvexTeamAccessToken,
-      canAccessApps: hasVercelConnection && hasConvexTeamAccessToken,
+      hasConvexToken,
+      canAccessApps:
+        hasGitHubConnection && hasVercelConnection && hasConvexToken,
     },
   };
 }
@@ -52,6 +61,7 @@ export async function createAppForUser(
   return await ctx.db.insert("apps", {
     ownerId: userId,
     name: trimmedName,
+    status: "creating",
     createdAt: Date.now(),
   });
 }
@@ -62,6 +72,50 @@ export async function listAppsForUser(ctx: QueryCtx, userId: Id<"users">) {
     .withIndex("by_owner", (q) => q.eq("ownerId", userId))
     .order("desc")
     .collect();
+}
+
+export async function deleteAppForUser(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  appId: Id<"apps">,
+) {
+  const app = await ctx.db.get(appId);
+  if (!app) {
+    throw new Error("App not found");
+  }
+  if (app.ownerId !== userId) {
+    throw new Error("You do not own this app");
+  }
+
+  // Delete associated resources
+  const githubRepo = await ctx.db
+    .query("githubRepos")
+    .withIndex("by_app", (q) => q.eq("appId", appId))
+    .first();
+  if (githubRepo) await ctx.db.delete(githubRepo._id);
+
+  const convexProject = await ctx.db
+    .query("convexProjects")
+    .withIndex("by_app", (q) => q.eq("appId", appId))
+    .first();
+  if (convexProject) await ctx.db.delete(convexProject._id);
+
+  const vercelProject = await ctx.db
+    .query("vercelProjects")
+    .withIndex("by_app", (q) => q.eq("appId", appId))
+    .first();
+  if (vercelProject) await ctx.db.delete(vercelProject._id);
+
+  // Delete step records
+  const steps = await ctx.db
+    .query("appSteps")
+    .withIndex("by_app", (q) => q.eq("appId", appId))
+    .collect();
+  for (const step of steps) {
+    await ctx.db.delete(step._id);
+  }
+
+  await ctx.db.delete(appId);
 }
 
 function maskSecret(value: string) {

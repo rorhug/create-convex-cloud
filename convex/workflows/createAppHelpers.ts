@@ -1,0 +1,227 @@
+import { WorkflowManager } from "@convex-dev/workflow";
+import { components, internal } from "../_generated/api";
+import { internalQuery, internalMutation } from "../_generated/server";
+import { v } from "convex/values";
+
+const workflow = new WorkflowManager(components.workflow, {
+  workpoolOptions: {
+    retryActionsByDefault: false,
+  },
+});
+
+// --- Step tracking mutations ---
+
+export const initSteps = internalMutation({
+  args: {
+    appId: v.id("apps"),
+    steps: v.array(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    for (const step of args.steps) {
+      await ctx.db.insert("appSteps", {
+        appId: args.appId,
+        step,
+        status: "pending",
+      });
+    }
+    return null;
+  },
+});
+
+export const updateStep = internalMutation({
+  args: {
+    appId: v.id("apps"),
+    step: v.string(),
+    status: v.string(),
+    message: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("appSteps")
+      .withIndex("by_app", (q) => q.eq("appId", args.appId))
+      .filter((q) => q.eq(q.field("step"), args.step))
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        status: args.status,
+        message: args.message,
+      });
+    }
+    return null;
+  },
+});
+
+// --- Workflow definition (must be in non-node file since it's a mutation) ---
+
+export const createApp = workflow.define({
+  args: {
+    appId: v.id("apps"),
+  },
+  handler: async (step, args): Promise<void> => {
+    // Initialize step records
+    await step.runMutation(
+      internal.workflows.createAppHelpers.initSteps,
+      { appId: args.appId, steps: ["github", "convex", "vercel"] },
+    );
+
+    // Steps 1 & 2 in parallel: GitHub repo + Convex project
+    const [githubResult, convexResult] = await Promise.all([
+      step.runAction(
+        internal.workflows.createApp.stepCreateGithubRepo,
+        { appId: args.appId },
+        { name: "createGithubRepo", retry: true },
+      ),
+      step.runAction(
+        internal.workflows.createApp.stepCreateConvexProject,
+        { appId: args.appId },
+        { name: "createConvexProject", retry: true },
+      ),
+    ]);
+
+    // Step 3: Create Vercel project (depends on both previous steps)
+    await step.runAction(
+      internal.workflows.createApp.stepCreateVercelProject,
+      {
+        appId: args.appId,
+        repoFullName: githubResult.repoFullName,
+        prodDeployKey: convexResult.prodDeployKey,
+        previewDeployKey: convexResult.previewDeployKey,
+      },
+      { name: "createVercelProject", retry: true },
+    );
+
+    // Mark app as ready
+    await step.runMutation(internal.apps.internalUpdateAppStatus, {
+      id: args.appId,
+      status: "ready",
+    });
+  },
+});
+
+// --- Data queries ---
+
+export const getUser = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.union(
+    v.object({
+      githubAccessToken: v.union(v.string(), v.null()),
+      githubUsername: v.union(v.string(), v.null()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) return null;
+    return {
+      githubAccessToken: user.githubAccessToken ?? null,
+      githubUsername: user.githubUsername ?? null,
+    };
+  },
+});
+
+export const getConvexToken = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.union(
+    v.object({
+      token: v.string(),
+      teamId: v.string(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const tokenDoc = await ctx.db
+      .query("convexTokens")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    if (!tokenDoc) return null;
+    return { token: tokenDoc.token, teamId: tokenDoc.teamId };
+  },
+});
+
+export const getVercelToken = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.union(
+    v.object({
+      token: v.string(),
+      teams: v.array(
+        v.object({
+          id: v.string(),
+          name: v.string(),
+          slug: v.string(),
+        }),
+      ),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const tokenDoc = await ctx.db
+      .query("vercelTokens")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    if (!tokenDoc) return null;
+    return { token: tokenDoc.token, teams: tokenDoc.teams };
+  },
+});
+
+// --- Resource insert mutations ---
+
+export const insertGithubRepo = internalMutation({
+  args: {
+    appId: v.id("apps"),
+    repoFullName: v.string(),
+    repoUrl: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.insert("githubRepos", {
+      appId: args.appId,
+      repoFullName: args.repoFullName,
+      repoUrl: args.repoUrl,
+    });
+    return null;
+  },
+});
+
+export const insertConvexProject = internalMutation({
+  args: {
+    appId: v.id("apps"),
+    projectId: v.string(),
+    teamId: v.string(),
+    prodDeploymentName: v.string(),
+    prodDeployKey: v.string(),
+    previewDeployKey: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.insert("convexProjects", {
+      appId: args.appId,
+      projectId: args.projectId,
+      teamId: args.teamId,
+      prodDeploymentName: args.prodDeploymentName,
+      prodDeployKey: args.prodDeployKey,
+      previewDeployKey: args.previewDeployKey,
+    });
+    return null;
+  },
+});
+
+export const insertVercelProject = internalMutation({
+  args: {
+    appId: v.id("apps"),
+    projectId: v.string(),
+    projectName: v.string(),
+    teamId: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.insert("vercelProjects", {
+      appId: args.appId,
+      projectId: args.projectId,
+      projectName: args.projectName,
+      teamId: args.teamId,
+    });
+    return null;
+  },
+});

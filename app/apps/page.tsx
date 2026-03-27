@@ -1,9 +1,20 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
 import { useState } from "react";
+import type { Id } from "@/convex/_generated/dataModel";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 
 export default function AppsPage() {
   const viewer = useQuery(api.viewer.getViewer);
@@ -29,8 +40,7 @@ export default function AppsPage() {
             Finish onboarding first
           </h1>
           <p className="mt-3 text-sm text-slate-300">
-            You need a connected Vercel account and a saved Convex team access
-            token before creating apps.
+            Connect GitHub, Vercel, and Convex before creating apps.
           </p>
           <Link
             href="/"
@@ -46,12 +56,135 @@ export default function AppsPage() {
   return <AppsManager />;
 }
 
+const STATUS_COLORS: Record<string, string> = {
+  creating: "bg-blue-500/15 text-blue-300",
+  ready: "bg-emerald-500/15 text-emerald-300",
+  deleting: "bg-amber-500/15 text-amber-300",
+  error: "bg-rose-500/15 text-rose-300",
+};
+
+const STEP_LABELS: Record<string, string> = {
+  github: "GitHub repo",
+  convex: "Convex project",
+  vercel: "Vercel deployment",
+};
+
+function StepIcon({ status }: { status: string }) {
+  switch (status) {
+    case "done":
+      return <span className="text-emerald-400">&#10003;</span>;
+    case "running":
+      return <span className="text-blue-400 animate-pulse">&#9679;</span>;
+    case "error":
+      return <span className="text-rose-400">&#10007;</span>;
+    default:
+      return <span className="text-slate-600">&#9675;</span>;
+  }
+}
+
+function StepProgress({ appId }: { appId: Id<"apps"> }) {
+  const steps = useQuery(api.apps.getAppSteps, { appId });
+
+  if (!steps || steps.length === 0) return null;
+
+  return (
+    <div className="mt-2 space-y-1">
+      {steps.map((s) => (
+        <div key={s.step} className="flex items-start gap-2 text-xs">
+          <StepIcon status={s.status} />
+          <span
+            className={
+              s.status === "error"
+                ? "text-rose-300"
+                : s.status === "done"
+                  ? "text-slate-400"
+                  : s.status === "running"
+                    ? "text-blue-300"
+                    : "text-slate-600"
+            }
+          >
+            {STEP_LABELS[s.step] ?? s.step}
+            {s.message ? ` — ${s.message}` : ""}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function AppsManager() {
   const apps = useQuery(api.apps.listApps);
   const createApp = useMutation(api.apps.createApp);
+  const deleteApp = useAction(api.apps.deleteApp);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Delete dialog state
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: Id<"apps">;
+    name: string;
+  } | null>(null);
+  const [confirmChecked, setConfirmChecked] = useState(false);
+  const [deleteGithub, setDeleteGithub] = useState(true);
+  const [deleteConvex, setDeleteConvex] = useState(true);
+  const [deleteVercel, setDeleteVercel] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  function openDeleteDialog(id: Id<"apps">, appName: string) {
+    setDeleteTarget({ id, name: appName });
+    setConfirmChecked(false);
+    setDeleteGithub(true);
+    setDeleteConvex(true);
+    setDeleteVercel(true);
+    setIsDeleting(false);
+    setDeleteError(null);
+  }
+
+  function closeDeleteDialog() {
+    if (!isDeleting) {
+      setDeleteTarget(null);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteApp({
+        id: deleteTarget.id,
+        deleteGithubRepo: deleteGithub,
+        deleteConvexProject: deleteConvex,
+        deleteVercelProject: deleteVercel,
+      });
+      setDeleteTarget(null);
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Could not delete the app",
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  async function handleCreate() {
+    setIsCreating(true);
+    setError(null);
+    try {
+      await createApp({ name });
+      setName("");
+    } catch (createError) {
+      setError(
+        createError instanceof Error
+          ? createError.message
+          : "Could not create the app",
+      );
+    } finally {
+      setIsCreating(false);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 p-8 text-slate-50">
@@ -65,7 +198,7 @@ function AppsManager() {
               Create an app
             </h1>
             <p className="mt-2 text-sm text-slate-300">
-              This creates a document in the Convex <code>apps</code> table.
+              Creates a GitHub repo, Convex project, and Vercel deployment.
             </p>
           </div>
           <Link
@@ -88,7 +221,7 @@ function AppsManager() {
                   setName(event.target.value);
                   setError(null);
                 }}
-                placeholder="My app"
+                placeholder="my-demo-app"
                 className="flex-1 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
               />
               <button
@@ -125,29 +258,127 @@ function AppsManager() {
                 key={app._id}
                 className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3"
               >
-                <p className="font-medium text-white">{app.name}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <p className="font-medium text-white">{app.name}</p>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[app.status] ?? "bg-slate-500/15 text-slate-300"}`}
+                    >
+                      {app.status}
+                    </span>
+                  </div>
+                  <button
+                    disabled={app.status === "deleting"}
+                    onClick={() => openDeleteDialog(app._id, app.name)}
+                    className="rounded-xl px-3 py-1.5 text-sm text-rose-400 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
+                </div>
+                {app.status !== "ready" && (
+                  <StepProgress appId={app._id} />
+                )}
               </div>
             ))}
           </div>
         </section>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) closeDeleteDialog();
+        }}
+      >
+        <DialogContent className="bg-slate-900 text-slate-50 border-slate-700">
+          <DialogHeader>
+            <DialogTitle>
+              Delete &ldquo;{deleteTarget?.name}&rdquo;
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              This will permanently delete the app and its resources.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <Checkbox
+                checked={confirmChecked}
+                onCheckedChange={(checked) =>
+                  setConfirmChecked(checked === true)
+                }
+              />
+              <span className="text-sm font-medium text-slate-200">
+                I am sure I want to delete everything
+              </span>
+            </label>
+
+            {confirmChecked && (
+              <div className="space-y-3 rounded-xl border border-slate-700 bg-slate-950 p-4">
+                <p className="text-xs uppercase tracking-widest text-slate-500">
+                  Resources to delete
+                </p>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <Checkbox
+                    checked={deleteGithub}
+                    onCheckedChange={(checked) =>
+                      setDeleteGithub(checked === true)
+                    }
+                  />
+                  <span className="text-sm text-slate-300">Git repo</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <Checkbox
+                    checked={deleteConvex}
+                    onCheckedChange={(checked) =>
+                      setDeleteConvex(checked === true)
+                    }
+                  />
+                  <span className="text-sm text-slate-300">Convex project</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <Checkbox
+                    checked={deleteVercel}
+                    onCheckedChange={(checked) =>
+                      setDeleteVercel(checked === true)
+                    }
+                  />
+                  <span className="text-sm text-slate-300">
+                    Vercel project
+                  </span>
+                </label>
+              </div>
+            )}
+
+            {deleteError && (
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                {deleteError}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={closeDeleteDialog}
+              disabled={isDeleting}
+              className="border-slate-700 text-slate-300 hover:bg-slate-800"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!confirmChecked || isDeleting}
+              onClick={() => {
+                void handleDelete();
+              }}
+            >
+              {isDeleting ? "Deleting..." : "Confirm delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
-
-  async function handleCreate() {
-    setIsCreating(true);
-    setError(null);
-    try {
-      await createApp({ name });
-      setName("");
-    } catch (createError) {
-      setError(
-        createError instanceof Error
-          ? createError.message
-          : "Could not create the app",
-      );
-    } finally {
-      setIsCreating(false);
-    }
-  }
 }
