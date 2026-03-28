@@ -6,11 +6,12 @@
 set_convex_env() {
   local name="$1"
   local value="$2"
+  local assignment="${name}=${value}"
 
   if [ "$VERCEL_TARGET_ENV" = "preview" ]; then
-    npx convex env set --preview-name "$VERCEL_GIT_COMMIT_REF" "$name" "$value"
+    npx convex env set --preview-name "$VERCEL_GIT_COMMIT_REF" "$assignment"
   else
-    npx convex env set "$name" "$value"
+    npx convex env set "$assignment"
   fi
 }
 
