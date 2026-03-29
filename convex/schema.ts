@@ -16,6 +16,8 @@ export default defineSchema({
     // GitHub OAuth fields (custom)
     githubAccessToken: v.optional(v.string()),
     githubUsername: v.optional(v.string()),
+    convexAccessToken: v.optional(v.string()),
+    convexTeamId: v.optional(v.string()),
   }).index("email", ["email"]),
 
   // Vercel personal access token (pasted by user)
@@ -31,7 +33,7 @@ export default defineSchema({
     ),
   }).index("by_user", ["userId"]),
 
-  // Convex team access token (pasted by user)
+  // Convex OAuth team-scoped application token
   convexTokens: defineTable({
     userId: v.id("users"),
     token: v.string(),

@@ -1,15 +1,15 @@
 "use node";
 
-import { internalAction } from "../_generated/server";
+import { createManagementClient } from "@convex-dev/platform";
+import { Id } from "../_generated/dataModel";
+import { ActionCtx, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { Octokit } from "octokit";
 
-const CONVEX_API_BASE = "https://api.convex.dev";
-
 async function setStep(
-  ctx: any,
-  appId: any,
+  ctx: ActionCtx,
+  appId: Id<"apps">,
   step: string,
   status: string,
   message?: string,
@@ -20,6 +20,20 @@ async function setStep(
     status,
     message,
   });
+}
+
+function formatPlatformError(response: Response, error: unknown) {
+  if (typeof error === "string") {
+    return error;
+  }
+  if (error && typeof error === "object") {
+    return JSON.stringify(error);
+  }
+  return response.statusText || `Request failed with status ${response.status}`;
+}
+
+function isFiniteNumber(value: number) {
+  return Number.isFinite(value);
 }
 
 export const runDeleteAppWorkflow = internalAction({
@@ -47,12 +61,12 @@ export const runDeleteAppWorkflow = internalAction({
       // Delete GitHub repo
       if (args.deleteGithubRepo) {
         await setStep(ctx, args.appId, "github", "running", "Deleting GitHub repo...");
-        const githubRepo: any = await ctx.runQuery(
+        const githubRepo = await ctx.runQuery(
           internal.workflows.deleteAppHelpers.getGithubRepo,
           { appId: args.appId },
         );
         if (githubRepo) {
-          const user: any = await ctx.runQuery(
+          const user = await ctx.runQuery(
             internal.workflows.createAppHelpers.getUser,
             { userId: args.userId },
           );
@@ -81,30 +95,42 @@ export const runDeleteAppWorkflow = internalAction({
       // Delete Convex project
       if (args.deleteConvexProject) {
         await setStep(ctx, args.appId, "convex", "running", "Deleting Convex project...");
-        const convexProject: any = await ctx.runQuery(
+        const convexProject = await ctx.runQuery(
           internal.workflows.deleteAppHelpers.getConvexProject,
           { appId: args.appId },
         );
         if (convexProject) {
-          const convexToken: any = await ctx.runQuery(
+          const convexToken = await ctx.runQuery(
             internal.workflows.createAppHelpers.getConvexToken,
             { userId: args.userId },
           );
           if (convexToken) {
             try {
-              const response = await fetch(
-                `${CONVEX_API_BASE}/v1/projects/${convexProject.projectId}/delete`,
+              const projectId = Number(convexProject.projectId);
+              if (!isFiniteNumber(projectId)) {
+                throw new Error(`Invalid Convex project ID: ${convexProject.projectId}`);
+              }
+
+              const convexPlatform = createManagementClient(convexToken.token);
+              const deleteProjectResult = await convexPlatform.POST(
+                "/projects/{project_id}/delete",
                 {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${convexToken.token}`,
-                    "Content-Type": "application/json",
-                  },
+                  params: { path: { project_id: projectId } },
                 },
               );
-              if (!response.ok) {
-                const text = await response.text();
-                await setStep(ctx, args.appId, "convex", "error", `API error: ${text}`);
+              if (!deleteProjectResult.response.ok) {
+                const platformError =
+                  "error" in deleteProjectResult ? deleteProjectResult.error : undefined;
+                await setStep(
+                  ctx,
+                  args.appId,
+                  "convex",
+                  "error",
+                  `API error: ${formatPlatformError(
+                    deleteProjectResult.response,
+                    platformError,
+                  )}`,
+                );
               } else {
                 await setStep(ctx, args.appId, "convex", "done", "Deleted Convex project");
               }
@@ -123,12 +149,12 @@ export const runDeleteAppWorkflow = internalAction({
       // Delete Vercel project
       if (args.deleteVercelProject) {
         await setStep(ctx, args.appId, "vercel", "running", "Deleting Vercel project...");
-        const vercelProject: any = await ctx.runQuery(
+        const vercelProject = await ctx.runQuery(
           internal.workflows.deleteAppHelpers.getVercelProject,
           { appId: args.appId },
         );
         if (vercelProject) {
-          const vercelToken: any = await ctx.runQuery(
+          const vercelToken = await ctx.runQuery(
             internal.workflows.createAppHelpers.getVercelToken,
             { userId: args.userId },
           );
@@ -163,11 +189,11 @@ export const runDeleteAppWorkflow = internalAction({
       }
 
       // Check if any step had an error
-      const steps: any[] = await ctx.runQuery(
+      const steps = await ctx.runQuery(
         internal.apps.getAppStepsInternal,
         { appId: args.appId },
       );
-      const hasError = steps.some((s: any) => s.status === "error");
+      const hasError = steps.some((s) => s.status === "error");
 
       if (hasError) {
         await ctx.runMutation(internal.apps.internalUpdateAppStatus, {

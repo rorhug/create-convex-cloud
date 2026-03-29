@@ -22,13 +22,10 @@ export const stepCreateGithubRepo = internalAction({
   handler: async (ctx, args): Promise<{ repoFullName: string; repoUrl: string }> => {
     await setStep(ctx, args.appId, "github", "running", "Creating GitHub repo...");
 
-    const app: any = await ctx.runQuery(internal.apps.internalGetApp, { id: args.appId });
+    const app = await ctx.runQuery(internal.apps.internalGetApp, { id: args.appId });
     if (!app) throw new Error("App not found");
 
-    const user: any = await ctx.runQuery(
-      internal.workflows.createAppHelpers.getUser,
-      { userId: app.ownerId },
-    );
+    const user = await ctx.runQuery(internal.workflows.createAppHelpers.getUser, { userId: app.ownerId });
     if (!user?.githubAccessToken) {
       await setStep(ctx, args.appId, "github", "error", "GitHub access token not found");
       throw new Error("GitHub access token not found for user");
@@ -44,51 +41,39 @@ export const stepCreateGithubRepo = internalAction({
       //    GitHub's 5000 req/hour authenticated rate limit.
       await setStep(ctx, args.appId, "github", "running", "Fetching template from get-convex/templates...");
 
-      const upstreamTreeRes: any = await octokit.request(
-        "GET /repos/{owner}/{repo}/git/trees/{tree_sha}",
-        {
-          owner: TEMPLATE_SOURCE_OWNER,
-          repo: TEMPLATE_SOURCE_REPO,
-          tree_sha: "main",
-          recursive: "1",
-          headers: { "X-GitHub-Api-Version": "2022-11-28" },
-        },
-      );
+      const upstreamTreeRes = await octokit.request("GET /repos/{owner}/{repo}/git/trees/{tree_sha}", {
+        owner: TEMPLATE_SOURCE_OWNER,
+        repo: TEMPLATE_SOURCE_REPO,
+        tree_sha: "main",
+        recursive: "1",
+        headers: { "X-GitHub-Api-Version": "2022-11-28" },
+      });
 
       // Keep only blob entries (no directories) under the template folder,
       // minus files we explicitly skip (e.g. package-lock.json).
       const prefix = `${DEFAULT_TEMPLATE_FOLDER}/`;
-      const upstreamEntries: Array<{ path: string; sha: string; mode: string }> =
-        (upstreamTreeRes.data.tree as any[])
-          .filter(
-            (e: any) =>
-              e.type === "blob" &&
-              e.path?.startsWith(prefix) &&
-              !TEMPLATE_SKIP_FILES.has(e.path.slice(prefix.length)),
-          )
-          .map((e: any) => ({
-            path: e.path.slice(prefix.length), // strip "template-nextjs-convexauth/"
-            sha: e.sha as string,
-            mode: e.mode as string,
-          }));
+      const upstreamEntries: Array<{ path: string; sha: string; mode: string }> = upstreamTreeRes.data.tree
+        .filter((e) => e.type === "blob" && e.path?.startsWith(prefix) && !TEMPLATE_SKIP_FILES.has(e.path.slice(prefix.length)))
+        .map((e) => ({
+          path: e.path.slice(prefix.length), // strip "template-nextjs-convexauth/"
+          sha: e.sha as string,
+          mode: e.mode as string,
+        }));
 
       // 2. Fetch all blob contents in parallel from the upstream repo.
       await setStep(ctx, args.appId, "github", "running", "Downloading template files...");
 
       const upstreamFiles = await Promise.all(
         upstreamEntries.map(async (entry) => {
-          const blobRes: any = await octokit.request(
-            "GET /repos/{owner}/{repo}/git/blobs/{file_sha}",
-            {
-              owner: TEMPLATE_SOURCE_OWNER,
-              repo: TEMPLATE_SOURCE_REPO,
-              file_sha: entry.sha,
-              headers: { "X-GitHub-Api-Version": "2022-11-28" },
-            },
-          );
+          const blobRes = await octokit.request("GET /repos/{owner}/{repo}/git/blobs/{file_sha}", {
+            owner: TEMPLATE_SOURCE_OWNER,
+            repo: TEMPLATE_SOURCE_REPO,
+            file_sha: entry.sha,
+            headers: { "X-GitHub-Api-Version": "2022-11-28" },
+          });
           return {
             path: entry.path,
-            content: blobRes.data.content as string,   // base64-encoded
+            content: blobRes.data.content as string, // base64-encoded
             encoding: blobRes.data.encoding as string, // "base64"
             executable: entry.mode === "100755",
           };
@@ -112,7 +97,7 @@ export const stepCreateGithubRepo = internalAction({
       //    so blob/tree/commit API calls don't fail with "empty repository").
       await setStep(ctx, args.appId, "github", "running", "Creating GitHub repo...");
 
-      const createRepoRes: any = await octokit.request("POST /user/repos", {
+      const createRepoRes = await octokit.request("POST /user/repos", {
         name: app.name,
         description: "Created by create-convex-cloud",
         private: false,
@@ -130,16 +115,13 @@ export const stepCreateGithubRepo = internalAction({
 
       const blobShas: string[] = await Promise.all(
         allFiles.map(async (file) => {
-          const blobRes: any = await octokit.request(
-            "POST /repos/{owner}/{repo}/git/blobs",
-            {
-              owner,
-              repo: app.name,
-              content: file.content,
-              encoding: file.encoding,
-              headers: { "X-GitHub-Api-Version": "2022-11-28" },
-            },
-          );
+          const blobRes = await octokit.request("POST /repos/{owner}/{repo}/git/blobs", {
+            owner,
+            repo: app.name,
+            content: file.content,
+            encoding: file.encoding,
+            headers: { "X-GitHub-Api-Version": "2022-11-28" },
+          });
           return blobRes.data.sha as string;
         }),
       );
@@ -154,30 +136,24 @@ export const stepCreateGithubRepo = internalAction({
         sha: blobShas[i],
       }));
 
-      const treeRes: any = await octokit.request(
-        "POST /repos/{owner}/{repo}/git/trees",
-        {
-          owner,
-          repo: app.name,
-          tree,
-          headers: { "X-GitHub-Api-Version": "2022-11-28" },
-        },
-      );
+      const treeRes = await octokit.request("POST /repos/{owner}/{repo}/git/trees", {
+        owner,
+        repo: app.name,
+        tree,
+        headers: { "X-GitHub-Api-Version": "2022-11-28" },
+      });
       const treeSha: string = treeRes.data.sha;
 
       // 7. Create an orphan commit (no parents) so history has exactly one
       //    clean "Initial commit" instead of two (auto_init + ours).
-      const commitRes: any = await octokit.request(
-        "POST /repos/{owner}/{repo}/git/commits",
-        {
-          owner,
-          repo: app.name,
-          message: "Initial commit",
-          tree: treeSha,
-          parents: [],
-          headers: { "X-GitHub-Api-Version": "2022-11-28" },
-        },
-      );
+      const commitRes = await octokit.request("POST /repos/{owner}/{repo}/git/commits", {
+        owner,
+        repo: app.name,
+        message: "Initial commit",
+        tree: treeSha,
+        parents: [],
+        headers: { "X-GitHub-Api-Version": "2022-11-28" },
+      });
       const commitSha: string = commitRes.data.sha;
 
       // 8. Force-update the default branch to our orphan commit.
@@ -190,10 +166,7 @@ export const stepCreateGithubRepo = internalAction({
         headers: { "X-GitHub-Api-Version": "2022-11-28" },
       });
 
-      await ctx.runMutation(
-        internal.workflows.createAppHelpers.insertGithubRepo,
-        { appId: args.appId, repoFullName, repoUrl },
-      );
+      await ctx.runMutation(internal.workflows.createAppHelpers.insertGithubRepo, { appId: args.appId, repoFullName, repoUrl });
 
       await setStep(ctx, args.appId, "github", "done", `Created ${repoFullName}`);
       return { repoFullName, repoUrl };

@@ -95,21 +95,14 @@ function Content({ viewer }: { viewer: ViewerState }) {
   const { signIn } = useAuthActions();
   const verifyVercelToken = useAction(api.vercel.verifyVercelToken);
   const saveVercelToken = useMutation(api.vercel.saveVercelToken);
-  const verifyConvexToken = useAction(api.convexToken.verifyConvexToken);
-  const saveConvexToken = useMutation(api.convexToken.saveConvexToken);
 
   const [vercelToken, setVercelToken] = useState("");
   const [vercelTeams, setVercelTeams] = useState<
     Array<{ id: string; name: string; slug: string }> | null
   >(null);
-  const [convexTokenInput, setConvexTokenInput] = useState("");
-  const [convexTeamInfo, setConvexTeamInfo] = useState<{
-    teamId: string;
-    teamName: string;
-  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<
-    "github" | "vercel-verify" | "vercel-save" | "convex-verify" | "convex-save" | null
+    "github" | "vercel-verify" | "vercel-save" | "convex" | null
   >(null);
 
   async function handleVerifyVercelToken() {
@@ -149,49 +142,6 @@ function Content({ viewer }: { viewer: ViewerState }) {
         saveError instanceof Error
           ? saveError.message
           : "Could not save the Vercel token",
-      );
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function handleVerifyConvexToken() {
-    setBusy("convex-verify");
-    setError(null);
-    try {
-      const result = await verifyConvexToken({ token: convexTokenInput.trim() });
-      setConvexTeamInfo(result);
-    } catch (verifyError) {
-      setConvexTeamInfo(null);
-      setError(
-        verifyError instanceof Error
-          ? verifyError.message
-          : "Could not verify the Convex token",
-      );
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function handleSaveConvexToken() {
-    if (!convexTeamInfo) {
-      setError("Verify the token first");
-      return;
-    }
-    setBusy("convex-save");
-    setError(null);
-    try {
-      await saveConvexToken({
-        token: convexTokenInput.trim(),
-        teamId: convexTeamInfo.teamId,
-      });
-      setConvexTokenInput("");
-      setConvexTeamInfo(null);
-    } catch (saveError) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "Could not save the Convex token",
       );
     } finally {
       setBusy(null);
@@ -331,19 +281,16 @@ function Content({ viewer }: { viewer: ViewerState }) {
           )}
         </StepCard>
 
-        {/* Step 3: Convex token paste */}
+        {/* Step 3: Convex OAuth */}
         <StepCard
           step="3"
-          title="Convex team access token"
+          title="Convex team login"
           complete={viewer.onboarding.hasConvexToken}
         >
           {viewer.convex ? (
             <div className="space-y-2 text-sm text-slate-300">
               <p>
-                Token saved:{" "}
-                <span className="font-medium text-white">
-                  {viewer.convex.tokenPreview}
-                </span>
+                Connected with Convex OAuth.
               </p>
               <p>
                 Team:{" "}
@@ -351,57 +298,41 @@ function Content({ viewer }: { viewer: ViewerState }) {
                   {viewer.convex.teamId}
                 </span>
               </p>
+              <p>
+                Token preview:{" "}
+                <span className="font-medium text-white">
+                  {viewer.convex.tokenPreview}
+                </span>
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-slate-300">
-                Create a team token at{" "}
-                <a
-                  href="https://dashboard.convex.dev"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-white underline"
-                >
-                  dashboard.convex.dev
-                </a>{" "}
-                → Settings → Team Access Tokens, and paste it below.
+                Sign in with Convex to authorize access to a team. We will store the
+                resulting team-scoped application token for app creation workflows.
               </p>
-              <input
-                type="password"
-                value={convexTokenInput}
-                onChange={(event) => {
-                  setConvexTokenInput(event.target.value);
-                  setConvexTeamInfo(null);
-                  setError(null);
+              <button
+                className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                disabled={busy !== null}
+                onClick={() => {
+                  void (async () => {
+                    setBusy("convex");
+                    setError(null);
+                    try {
+                      const result = await signIn("convex", { redirectTo: "/" });
+                      if (result.redirect) {
+                        window.location.href = result.redirect.toString();
+                      }
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : "Could not connect Convex");
+                    } finally {
+                      setBusy(null);
+                    }
+                  })();
                 }}
-                placeholder="Paste Convex team access token"
-                className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
-              />
-              {convexTeamInfo && (
-                <Banner tone="success">
-                  Token verified. Team: {convexTeamInfo.teamName} ({convexTeamInfo.teamId})
-                </Banner>
-              )}
-              <div className="flex flex-wrap gap-3">
-                <button
-                  className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-                  disabled={busy !== null || convexTokenInput.trim().length === 0}
-                  onClick={() => {
-                    void handleVerifyConvexToken();
-                  }}
-                >
-                  {busy === "convex-verify" ? "Verifying..." : "Verify token"}
-                </button>
-                <button
-                  className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"
-                  disabled={busy !== null || convexTeamInfo === null}
-                  onClick={() => {
-                    void handleSaveConvexToken();
-                  }}
-                >
-                  {busy === "convex-save" ? "Saving..." : "Save token"}
-                </button>
-              </div>
+              >
+                {busy === "convex" ? "Redirecting..." : "Connect Convex"}
+              </button>
             </div>
           )}
         </StepCard>

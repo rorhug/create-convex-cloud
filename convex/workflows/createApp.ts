@@ -1,9 +1,9 @@
 "use node";
 
 import { WorkflowManager } from "@convex-dev/workflow";
+import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
-import { v } from "convex/values";
 
 const workflow = new WorkflowManager(components.workflow, {
   workpoolOptions: {
@@ -20,11 +20,7 @@ export const runCreateAppWorkflow = internalAction({
   returns: v.null(),
   handler: async (ctx, args) => {
     try {
-      await workflow.start(
-        ctx,
-        internal.workflows.createAppHelpers.createApp,
-        { appId: args.appId },
-      );
+      await workflow.start(ctx, internal.workflows.createAppHelpers.createApp, { appId: args.appId });
     } catch (error) {
       console.error("Failed to start create app workflow:", error);
       await ctx.runMutation(internal.apps.internalUpdateAppStatus, {
