@@ -5,7 +5,6 @@ import { components, internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { Octokit } from "octokit";
-import { generateKeyPairSync, createPublicKey } from "crypto";
 
 const workflow = new WorkflowManager(components.workflow, {
   workpoolOptions: {
@@ -122,10 +121,8 @@ export const stepCreateConvexProject = internalAction({
     projectId: v.string(),
     prodDeployKey: v.string(),
     previewDeployKey: v.string(),
-    jwtPrivateKey: v.string(),
-    jwks: v.string(),
   }),
-  handler: async (ctx, args): Promise<{ projectId: string; prodDeployKey: string; previewDeployKey: string; jwtPrivateKey: string; jwks: string }> => {
+  handler: async (ctx, args): Promise<{ projectId: string; prodDeployKey: string; previewDeployKey: string }> => {
     await setStep(ctx, args.appId, "convex", "running", "Creating Convex project...");
 
     const app: any = await ctx.runQuery(internal.apps.internalGetApp, { id: args.appId });
@@ -197,17 +194,6 @@ export const stepCreateConvexProject = internalAction({
       const previewKeyData = (await createPreviewKeyRes.json()) as any;
       const previewDeployKey: string = previewKeyData.key ?? previewKeyData.deployKey ?? "";
 
-      // 5. Generate JWT keypair for Convex Auth
-      await setStep(ctx, args.appId, "convex", "running", "Generating JWT keys...");
-      const { privateKey, publicKey } = generateKeyPairSync("rsa", {
-        modulusLength: 2048,
-        publicKeyEncoding: { type: "spki", format: "pem" },
-        privateKeyEncoding: { type: "pkcs8", format: "pem" },
-      });
-      const jwk = createPublicKey(publicKey).export({ format: "jwk" });
-      const jwks = JSON.stringify({ keys: [{ ...jwk, use: "sig" }] });
-      const jwtPrivateKey = privateKey;
-
       // Store in DB
       await ctx.runMutation(
         internal.workflows.createAppHelpers.insertConvexProject,
@@ -222,7 +208,7 @@ export const stepCreateConvexProject = internalAction({
       );
 
       await setStep(ctx, args.appId, "convex", "done", `Created project ${projectId}`);
-      return { projectId, prodDeployKey, previewDeployKey, jwtPrivateKey, jwks };
+      return { projectId, prodDeployKey, previewDeployKey };
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error";
       await setStep(ctx, args.appId, "convex", "error", msg);
@@ -237,8 +223,6 @@ export const stepCreateVercelProject = internalAction({
     repoFullName: v.string(),
     prodDeployKey: v.string(),
     previewDeployKey: v.string(),
-    jwtPrivateKey: v.string(),
-    jwks: v.string(),
   },
   returns: v.object({
     projectId: v.string(),
@@ -271,9 +255,7 @@ export const stepCreateVercelProject = internalAction({
         ? `https://api.vercel.com/v11/projects?teamId=${teamId}`
         : "https://api.vercel.com/v11/projects";
 
-      const siteUrl = `https://${app.name}.vercel.app`;
-
-      // Build command: run Node.js setup script (sets JWT/JWKS/SITE_URL on Convex via spawnSync to avoid shell escaping), then deploy + build
+      // Build command: run setup script to sync Convex env, then deploy + build.
       const buildCommand = `node setup-convex-env.mjs && npx convex deploy --cmd 'npm run build'`;
 
       const response = await fetch(url, {
@@ -302,24 +284,6 @@ export const stepCreateVercelProject = internalAction({
               value: args.previewDeployKey,
               target: ["preview"],
               type: "encrypted",
-            },
-            {
-              key: "JWT_PRIVATE_KEY",
-              value: args.jwtPrivateKey,
-              target: ["production", "preview"],
-              type: "encrypted",
-            },
-            {
-              key: "JWKS",
-              value: args.jwks,
-              target: ["production", "preview"],
-              type: "encrypted",
-            },
-            {
-              key: "SITE_URL",
-              value: siteUrl,
-              target: ["production"],
-              type: "plain",
             },
           ],
         }),

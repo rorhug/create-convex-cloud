@@ -97,8 +97,6 @@ export const createApp = workflow.define({
         repoFullName: githubResult.repoFullName,
         prodDeployKey: convexResult.prodDeployKey,
         previewDeployKey: convexResult.previewDeployKey,
-        jwtPrivateKey: convexResult.jwtPrivateKey,
-        jwks: convexResult.jwks,
       },
       { name: "createVercelProject", retry: true },
     );
