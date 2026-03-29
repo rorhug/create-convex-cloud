@@ -69,5 +69,7 @@ ensure_site_url_env() {
   fi
 }
 
+echo "Starting set-convex-env.sh to ensure correct environment on Convex"
 ensure_site_url_env
 ensure_jwt_env
+echo "set-convex-env.sh completed"
