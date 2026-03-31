@@ -375,12 +375,12 @@ function AppsManager() {
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="bg-slate-900 border-t border-slate-700 pt-4">
             <Button
               variant="outline"
               onClick={closeDeleteDialog}
               disabled={isDeleting}
-              className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
             >
               Cancel
             </Button>
