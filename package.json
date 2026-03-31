@@ -3,13 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "embed-templates": "node scripts/embed-templates.mjs",
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
     "dev:frontend": "next dev",
     "dev:backend": "convex dev",
-    "predev": "node scripts/embed-templates.mjs && convex dev --until-success && convex dev --once --run-sh \"node setup.mjs --once\" && convex dashboard",
+    "predev": "convex dev --until-success && convex dev --once --run-sh \"node setup.mjs --once\" && convex dashboard",
     "build": "next build",
-    "prebuild": "node scripts/embed-templates.mjs",
     "start": "next start",
     "lint": "eslint . --ignore-pattern \"convex/_generated/**\""
   },

@@ -21,7 +21,6 @@ import type * as workflows_createApp from "../workflows/createApp.js";
 import type * as workflows_createAppHelpers from "../workflows/createAppHelpers.js";
 import type * as workflows_deleteApp from "../workflows/deleteApp.js";
 import type * as workflows_deleteAppHelpers from "../workflows/deleteAppHelpers.js";
-import type * as workflows_templateFiles from "../workflows/templateFiles.js";
 
 import type {
   ApiFromModules,
@@ -43,7 +42,6 @@ declare const fullApi: ApiFromModules<{
   "workflows/createAppHelpers": typeof workflows_createAppHelpers;
   "workflows/deleteApp": typeof workflows_deleteApp;
   "workflows/deleteAppHelpers": typeof workflows_deleteAppHelpers;
-  "workflows/templateFiles": typeof workflows_templateFiles;
 }>;
 
 /**

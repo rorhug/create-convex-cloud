@@ -5,7 +5,6 @@ import { components, internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { Octokit } from "octokit";
-import { TEMPLATES } from "./templateFiles";
 
 const workflow = new WorkflowManager(components.workflow, {
   workpoolOptions: {
@@ -14,7 +13,164 @@ const workflow = new WorkflowManager(components.workflow, {
 });
 
 const CONVEX_API_BASE = "https://api.convex.dev";
-const DEFAULT_TEMPLATE = "nextjs-convex-auth";
+
+// --- Template source (get-convex/templates on GitHub) ---
+
+// Owner/repo of the upstream Convex templates repository.
+const TEMPLATE_SOURCE_OWNER = "get-convex";
+const TEMPLATE_SOURCE_REPO = "templates";
+
+// Folder name inside that repo.  Change this (or make it per-app) to support
+// multiple template types in the future.
+const DEFAULT_TEMPLATE_FOLDER = "template-nextjs-convexauth";
+
+// Files from the upstream template that we do NOT want in the generated repo.
+const TEMPLATE_SKIP_FILES = new Set(["package-lock.json"]);
+
+// ---------------------------------------------------------------------------
+// Supplementary files
+// These files are injected on top of the upstream template (overriding any
+// file with the same path).  They handle automation-specific concerns that
+// the upstream template doesn't include:
+//   • vercel.json  – our build command (calls set-convex-env.sh)
+//   • set-convex-env.sh – sets SITE_URL + JWT keys on the Convex deployment
+//   • generateJwtKeys.mjs – helper called by set-convex-env.sh
+// ---------------------------------------------------------------------------
+
+const SUPPLEMENTARY_FILES: Array<{
+  path: string;
+  content: string;
+  executable: boolean;
+}> = [
+  {
+    path: "vercel.json",
+    executable: false,
+    content: JSON.stringify(
+      {
+        $schema: "https://openapi.vercel.sh/vercel.json",
+        version: 2,
+        framework: "nextjs",
+        installCommand: "npm install",
+        buildCommand:
+          "npx convex deploy --cmd 'npm run build' --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL && sh ./set-convex-env.sh",
+      },
+      null,
+      2,
+    ),
+  },
+  {
+    path: "set-convex-env.sh",
+    executable: true,
+    content: `#!/bin/bash
+
+# inspired by conversation here: https://github.com/get-convex/convex-backend/issues/123
+# and here: https://discord.com/channels/1019350475847499849/1019350478817079338/1467722898067292324
+
+set_convex_env() {
+  local name="$1"
+  local value="$2"
+  local assignment="\${name}=\${value}"
+
+  if [ "$VERCEL_TARGET_ENV" = "preview" ]; then
+    npx convex env set --preview-name "$VERCEL_GIT_COMMIT_REF" "$assignment"
+  else
+    npx convex env set "$assignment"
+  fi
+}
+
+get_convex_env() {
+  local name="$1"
+
+  if [ "$VERCEL_TARGET_ENV" = "preview" ]; then
+    npx convex env get --preview-name "$VERCEL_GIT_COMMIT_REF" "$name"
+  else
+    npx convex env get "$name"
+  fi
+}
+
+ensure_jwt_env() {
+  local current_jwks
+  local current_private_key
+  local generated_env
+
+  current_jwks="$(get_convex_env JWKS 2>/dev/null || true)"
+  if [ -n "$current_jwks" ]; then
+    echo "JWKS is already set, skipping JWT key setup"
+    return 0
+  fi
+
+  current_private_key="$(get_convex_env JWT_PRIVATE_KEY 2>/dev/null || true)"
+  if [ -n "$current_private_key" ]; then
+    echo "JWT_PRIVATE_KEY is already set without JWKS, skipping JWT key setup"
+    return 0
+  fi
+
+  echo "Generating JWT key pair for Convex env"
+  generated_env="$(node generateJwtKeys.mjs)"
+  eval "$generated_env"
+
+  echo "Setting JWT_PRIVATE_KEY on Convex"
+  set_convex_env JWT_PRIVATE_KEY "$JWT_PRIVATE_KEY"
+
+  echo "Setting JWKS on Convex"
+  set_convex_env JWKS "$JWKS"
+}
+
+ensure_site_url_env() {
+  CURRENT_SITE_URL=$(get_convex_env SITE_URL)
+  echo "SITE_URL is currently $CURRENT_SITE_URL"
+
+  if [ "$VERCEL_TARGET_ENV" = "preview" ]; then
+    NEW_SITE_URL="https://$VERCEL_BRANCH_URL"
+  else
+    NEW_SITE_URL="https://$VERCEL_PROJECT_PRODUCTION_URL"
+  fi
+
+  if [ "$CURRENT_SITE_URL" != "$NEW_SITE_URL" ]; then
+    echo "Setting SITE_URL to $NEW_SITE_URL"
+    set_convex_env SITE_URL "$NEW_SITE_URL"
+  fi
+}
+
+echo "Starting set-convex-env.sh to ensure correct environment on Convex"
+ensure_site_url_env
+ensure_jwt_env
+echo "set-convex-env.sh completed"
+`,
+  },
+  {
+    path: "generateJwtKeys.mjs",
+    executable: false,
+    content: `import { exportJWK, exportPKCS8, generateKeyPair } from "jose";
+import { pathToFileURL } from "node:url";
+
+export async function generateKeys() {
+  try {
+    const keys = await generateKeyPair("RS256");
+    const privateKey = await exportPKCS8(keys.privateKey);
+    const publicKey = await exportJWK(keys.publicKey);
+    const jwks = JSON.stringify({ keys: [{ use: "sig", ...publicKey }] });
+    return {
+      JWT_PRIVATE_KEY: \`\${privateKey.trimEnd().replace(/\\n/g, " ")}\`,
+      JWKS: jwks,
+    };
+  } catch (error) {
+    console.error(
+      "Could not generate private and public key, are you running this command using Node.js?\\n",
+      error,
+    );
+    process.exit(1);
+  }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const { JWT_PRIVATE_KEY, JWKS } = await generateKeys();
+  console.log(\`JWT_PRIVATE_KEY=\${JSON.stringify(JWT_PRIVATE_KEY)}\`);
+  console.log(\`JWKS=\${JSON.stringify(JWKS)}\`);
+}
+`,
+  },
+];
 
 // --- Entrypoint (called by scheduler) ---
 
@@ -84,9 +240,79 @@ export const stepCreateGithubRepo = internalAction({
     let repoCreated = false;
 
     try {
-      // 1. Create the repo with auto_init:true so GitHub initialises the git
-      //    object database. Without this, the blobs/trees/commits APIs return
-      //    "Git Repository is empty" because there is no git db to write into.
+      // 1. Fetch the upstream template tree from get-convex/templates.
+      //    We reuse the user's authenticated Octokit so we stay well within
+      //    GitHub's 5000 req/hour authenticated rate limit.
+      await setStep(ctx, args.appId, "github", "running", "Fetching template from get-convex/templates...");
+
+      const upstreamTreeRes: any = await octokit.request(
+        "GET /repos/{owner}/{repo}/git/trees/{tree_sha}",
+        {
+          owner: TEMPLATE_SOURCE_OWNER,
+          repo: TEMPLATE_SOURCE_REPO,
+          tree_sha: "main",
+          recursive: "1",
+          headers: { "X-GitHub-Api-Version": "2022-11-28" },
+        },
+      );
+
+      // Keep only blob entries (no directories) under the template folder,
+      // minus files we explicitly skip (e.g. package-lock.json).
+      const prefix = `${DEFAULT_TEMPLATE_FOLDER}/`;
+      const upstreamEntries: Array<{ path: string; sha: string; mode: string }> =
+        (upstreamTreeRes.data.tree as any[])
+          .filter(
+            (e: any) =>
+              e.type === "blob" &&
+              e.path?.startsWith(prefix) &&
+              !TEMPLATE_SKIP_FILES.has(e.path.slice(prefix.length)),
+          )
+          .map((e: any) => ({
+            path: e.path.slice(prefix.length), // strip "template-nextjs-convexauth/"
+            sha: e.sha as string,
+            mode: e.mode as string,
+          }));
+
+      // 2. Fetch all blob contents in parallel from the upstream repo.
+      await setStep(ctx, args.appId, "github", "running", "Downloading template files...");
+
+      const upstreamFiles = await Promise.all(
+        upstreamEntries.map(async (entry) => {
+          const blobRes: any = await octokit.request(
+            "GET /repos/{owner}/{repo}/git/blobs/{file_sha}",
+            {
+              owner: TEMPLATE_SOURCE_OWNER,
+              repo: TEMPLATE_SOURCE_REPO,
+              file_sha: entry.sha,
+              headers: { "X-GitHub-Api-Version": "2022-11-28" },
+            },
+          );
+          return {
+            path: entry.path,
+            content: blobRes.data.content as string,   // base64-encoded
+            encoding: blobRes.data.encoding as string, // "base64"
+            executable: entry.mode === "100755",
+          };
+        }),
+      );
+
+      // 3. Merge supplementary files on top (they override any upstream file
+      //    with the same path, e.g. vercel.json).
+      const supplementaryPaths = new Set(SUPPLEMENTARY_FILES.map((f) => f.path));
+      const allFiles = [
+        ...upstreamFiles.filter((f) => !supplementaryPaths.has(f.path)),
+        ...SUPPLEMENTARY_FILES.map((f) => ({
+          path: f.path,
+          content: f.content,
+          encoding: "utf-8" as const,
+          executable: f.executable,
+        })),
+      ];
+
+      // 4. Create the destination repo (auto_init:true initialises the git db
+      //    so blob/tree/commit API calls don't fail with "empty repository").
+      await setStep(ctx, args.appId, "github", "running", "Creating GitHub repo...");
+
       const createRepoRes: any = await octokit.request("POST /user/repos", {
         name: app.name,
         description: "Created by create-convex-cloud",
@@ -100,19 +326,18 @@ export const stepCreateGithubRepo = internalAction({
       const repoUrl: string = createRepoRes.data.html_url;
       const defaultBranch: string = createRepoRes.data.default_branch ?? "main";
 
-      // 2. Create git blobs for every template file (in parallel)
-      await setStep(ctx, args.appId, "github", "running", "Uploading template files...");
-      const templateFiles = TEMPLATES[DEFAULT_TEMPLATE] ?? [];
+      // 5. Upload all files as blobs to the new repo (in parallel).
+      await setStep(ctx, args.appId, "github", "running", "Uploading files...");
 
       const blobShas: string[] = await Promise.all(
-        templateFiles.map(async (file) => {
+        allFiles.map(async (file) => {
           const blobRes: any = await octokit.request(
             "POST /repos/{owner}/{repo}/git/blobs",
             {
               owner,
               repo: app.name,
               content: file.content,
-              encoding: "utf-8",
+              encoding: file.encoding,
               headers: { "X-GitHub-Api-Version": "2022-11-28" },
             },
           );
@@ -120,9 +345,10 @@ export const stepCreateGithubRepo = internalAction({
         }),
       );
 
-      // 3. Create a git tree referencing all blobs
+      // 6. Create a git tree referencing all blobs.
       await setStep(ctx, args.appId, "github", "running", "Building file tree...");
-      const tree = templateFiles.map((file, i) => ({
+
+      const tree = allFiles.map((file, i) => ({
         path: file.path,
         mode: (file.executable ? "100755" : "100644") as "100755" | "100644",
         type: "blob" as const,
@@ -140,9 +366,8 @@ export const stepCreateGithubRepo = internalAction({
       );
       const treeSha: string = treeRes.data.sha;
 
-      // 4. Create an orphan commit (no parents) with all template files.
-      //    This gives a single clean "Initial commit" in the repo history
-      //    instead of two commits (the auto_init one + ours).
+      // 7. Create an orphan commit (no parents) so history has exactly one
+      //    clean "Initial commit" instead of two (auto_init + ours).
       const commitRes: any = await octokit.request(
         "POST /repos/{owner}/{repo}/git/commits",
         {
@@ -156,8 +381,7 @@ export const stepCreateGithubRepo = internalAction({
       );
       const commitSha: string = commitRes.data.sha;
 
-      // 5. Force-update the default branch ref to point at our orphan commit,
-      //    replacing the auto_init commit so history stays clean (1 commit).
+      // 8. Force-update the default branch to our orphan commit.
       await octokit.request("PATCH /repos/{owner}/{repo}/git/refs/{ref}", {
         owner,
         repo: app.name,
