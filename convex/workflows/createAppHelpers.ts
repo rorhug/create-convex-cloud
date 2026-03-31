@@ -78,12 +78,12 @@ export const createApp = workflow.define({
     // Steps 1 & 2 in parallel: GitHub repo + Convex project
     const [githubResult, convexResult] = await Promise.all([
       step.runAction(
-        internal.workflows.createApp.stepCreateGithubRepo,
+        internal.workflows.stepGithub.stepCreateGithubRepo,
         { appId: args.appId },
         { name: "createGithubRepo", retry: true },
       ),
       step.runAction(
-        internal.workflows.createApp.stepCreateConvexProject,
+        internal.workflows.stepConvex.stepCreateConvexProject,
         { appId: args.appId },
         { name: "createConvexProject", retry: true },
       ),
@@ -91,7 +91,7 @@ export const createApp = workflow.define({
 
     // Step 3: Create Vercel project (depends on both previous steps)
     const vercelResult = await step.runAction(
-      internal.workflows.createApp.stepCreateVercelProject,
+      internal.workflows.stepVercel.stepCreateVercelProject,
       {
         appId: args.appId,
         repoFullName: githubResult.repoFullName,
@@ -104,7 +104,7 @@ export const createApp = workflow.define({
     // Step 4: Wait for deployment to finish
     if (vercelResult.deploymentId) {
       await step.runAction(
-        internal.workflows.createApp.stepWaitForDeployment,
+        internal.workflows.stepVercel.stepWaitForDeployment,
         {
           appId: args.appId,
           deploymentId: vercelResult.deploymentId,
