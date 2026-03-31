@@ -5,6 +5,7 @@ import { components, internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { Octokit } from "octokit";
+import { TEMPLATES } from "./templateFiles";
 
 const workflow = new WorkflowManager(components.workflow, {
   workpoolOptions: {
@@ -12,9 +13,8 @@ const workflow = new WorkflowManager(components.workflow, {
   },
 });
 
-const TEMPLATE_OWNER = "IonatanMocan";
-const TEMPLATE_REPO = "ccc-template";
 const CONVEX_API_BASE = "https://api.convex.dev";
+const DEFAULT_TEMPLATE = "nextjs-convex-auth";
 
 // --- Entrypoint (called by scheduler) ---
 
@@ -65,7 +65,7 @@ export const stepCreateGithubRepo = internalAction({
     repoUrl: v.string(),
   }),
   handler: async (ctx, args): Promise<{ repoFullName: string; repoUrl: string }> => {
-    await setStep(ctx, args.appId, "github", "running", "Creating GitHub repo from template...");
+    await setStep(ctx, args.appId, "github", "running", "Creating GitHub repo...");
 
     const app: any = await ctx.runQuery(internal.apps.internalGetApp, { id: args.appId });
     if (!app) throw new Error("App not found");
@@ -79,26 +79,93 @@ export const stepCreateGithubRepo = internalAction({
       throw new Error("GitHub access token not found for user");
     }
 
-    try {
-      const octokit = new Octokit({ auth: user.githubAccessToken });
+    const octokit = new Octokit({ auth: user.githubAccessToken });
+    const owner: string = user.githubUsername ?? "";
+    let repoCreated = false;
 
-      const response: any = await octokit.request(
-        "POST /repos/{template_owner}/{template_repo}/generate",
-        {
-          template_owner: TEMPLATE_OWNER,
-          template_repo: TEMPLATE_REPO,
-          name: app.name,
-          owner: user.githubUsername ?? undefined,
-          description: `Created by create-convex-cloud`,
-          private: false,
-          headers: {
-            "X-GitHub-Api-Version": "2022-11-28",
-          },
-        },
+    try {
+      // 1. Create the repo with auto_init:true so GitHub initialises the git
+      //    object database. Without this, the blobs/trees/commits APIs return
+      //    "Git Repository is empty" because there is no git db to write into.
+      const createRepoRes: any = await octokit.request("POST /user/repos", {
+        name: app.name,
+        description: "Created by create-convex-cloud",
+        private: false,
+        auto_init: true,
+        headers: { "X-GitHub-Api-Version": "2022-11-28" },
+      });
+      repoCreated = true;
+
+      const repoFullName: string = createRepoRes.data.full_name;
+      const repoUrl: string = createRepoRes.data.html_url;
+      const defaultBranch: string = createRepoRes.data.default_branch ?? "main";
+
+      // 2. Create git blobs for every template file (in parallel)
+      await setStep(ctx, args.appId, "github", "running", "Uploading template files...");
+      const templateFiles = TEMPLATES[DEFAULT_TEMPLATE] ?? [];
+
+      const blobShas: string[] = await Promise.all(
+        templateFiles.map(async (file) => {
+          const blobRes: any = await octokit.request(
+            "POST /repos/{owner}/{repo}/git/blobs",
+            {
+              owner,
+              repo: app.name,
+              content: file.content,
+              encoding: "utf-8",
+              headers: { "X-GitHub-Api-Version": "2022-11-28" },
+            },
+          );
+          return blobRes.data.sha as string;
+        }),
       );
 
-      const repoFullName: string = response.data.full_name;
-      const repoUrl: string = response.data.html_url;
+      // 3. Create a git tree referencing all blobs
+      await setStep(ctx, args.appId, "github", "running", "Building file tree...");
+      const tree = templateFiles.map((file, i) => ({
+        path: file.path,
+        mode: (file.executable ? "100755" : "100644") as "100755" | "100644",
+        type: "blob" as const,
+        sha: blobShas[i],
+      }));
+
+      const treeRes: any = await octokit.request(
+        "POST /repos/{owner}/{repo}/git/trees",
+        {
+          owner,
+          repo: app.name,
+          tree,
+          headers: { "X-GitHub-Api-Version": "2022-11-28" },
+        },
+      );
+      const treeSha: string = treeRes.data.sha;
+
+      // 4. Create an orphan commit (no parents) with all template files.
+      //    This gives a single clean "Initial commit" in the repo history
+      //    instead of two commits (the auto_init one + ours).
+      const commitRes: any = await octokit.request(
+        "POST /repos/{owner}/{repo}/git/commits",
+        {
+          owner,
+          repo: app.name,
+          message: "Initial commit",
+          tree: treeSha,
+          parents: [],
+          headers: { "X-GitHub-Api-Version": "2022-11-28" },
+        },
+      );
+      const commitSha: string = commitRes.data.sha;
+
+      // 5. Force-update the default branch ref to point at our orphan commit,
+      //    replacing the auto_init commit so history stays clean (1 commit).
+      await octokit.request("PATCH /repos/{owner}/{repo}/git/refs/{ref}", {
+        owner,
+        repo: app.name,
+        ref: `heads/${defaultBranch}`,
+        sha: commitSha,
+        force: true,
+        headers: { "X-GitHub-Api-Version": "2022-11-28" },
+      });
 
       await ctx.runMutation(
         internal.workflows.createAppHelpers.insertGithubRepo,
@@ -110,6 +177,21 @@ export const stepCreateGithubRepo = internalAction({
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error";
       await setStep(ctx, args.appId, "github", "error", msg);
+
+      // Clean up the partially-created repo so the user doesn't end up with
+      // an empty orphaned repository in their GitHub account.
+      if (repoCreated) {
+        try {
+          await octokit.request("DELETE /repos/{owner}/{repo}", {
+            owner,
+            repo: app.name,
+            headers: { "X-GitHub-Api-Version": "2022-11-28" },
+          });
+        } catch (cleanupErr) {
+          console.error("Failed to clean up repo after error:", cleanupErr);
+        }
+      }
+
       throw error;
     }
   },
@@ -256,7 +338,12 @@ export const stepCreateVercelProject = internalAction({
         : "https://api.vercel.com/v11/projects";
 
       // Build command: run setup script to sync Convex env, then deploy + build.
-      const buildCommand = `node setup-convex-env.mjs && npx convex deploy --cmd 'npm run build'`;
+      // Must match the buildCommand in templates/nextjs-convex-auth/vercel.json.
+      // --cmd-url-env-var-name injects NEXT_PUBLIC_CONVEX_URL before npm run build
+      // so Next.js knows the Convex URL at build time.
+      // set-convex-env.sh runs after the build to push JWT keys + SITE_URL to
+      // the Convex deployment (it only needs CONVEX_DEPLOY_KEY, not build-time vars).
+      const buildCommand = `npx convex deploy --cmd 'npm run build' --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL && sh ./set-convex-env.sh`;
 
       const response = await fetch(url, {
         method: "POST",
