@@ -21,6 +21,11 @@ import type * as workflows_createApp from "../workflows/createApp.js";
 import type * as workflows_createAppHelpers from "../workflows/createAppHelpers.js";
 import type * as workflows_deleteApp from "../workflows/deleteApp.js";
 import type * as workflows_deleteAppHelpers from "../workflows/deleteAppHelpers.js";
+import type * as workflows_stepConvex from "../workflows/stepConvex.js";
+import type * as workflows_stepGithub from "../workflows/stepGithub.js";
+import type * as workflows_stepUtils from "../workflows/stepUtils.js";
+import type * as workflows_stepVercel from "../workflows/stepVercel.js";
+import type * as workflows_templateConfig from "../workflows/templateConfig.js";
 
 import type {
   ApiFromModules,
@@ -42,6 +47,11 @@ declare const fullApi: ApiFromModules<{
   "workflows/createAppHelpers": typeof workflows_createAppHelpers;
   "workflows/deleteApp": typeof workflows_deleteApp;
   "workflows/deleteAppHelpers": typeof workflows_deleteAppHelpers;
+  "workflows/stepConvex": typeof workflows_stepConvex;
+  "workflows/stepGithub": typeof workflows_stepGithub;
+  "workflows/stepUtils": typeof workflows_stepUtils;
+  "workflows/stepVercel": typeof workflows_stepVercel;
+  "workflows/templateConfig": typeof workflows_templateConfig;
 }>;
 
 /**
