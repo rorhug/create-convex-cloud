@@ -126,7 +126,7 @@ export const createApp = workflow.define({
 
 // --- Data queries ---
 
-export const getUser = internalQuery({
+export const getGithubConnection = internalQuery({
   args: { userId: v.id("users") },
   returns: v.union(
     v.object({
@@ -136,11 +136,14 @@ export const getUser = internalQuery({
     v.null(),
   ),
   handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
-    if (!user) return null;
+    const githubToken = await ctx.db
+      .query("githubTokens")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .first();
+    if (!githubToken) return null;
     return {
-      githubAccessToken: user.githubAccessToken ?? null,
-      githubUsername: user.githubUsername ?? null,
+      githubAccessToken: githubToken.token,
+      githubUsername: githubToken.username ?? null,
     };
   },
 });

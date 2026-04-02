@@ -15,6 +15,7 @@ import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_onboarding from "../lib/onboarding.js";
 import type * as providers_convexPlatform from "../providers/convexPlatform.js";
+import type * as providers_github from "../providers/github.js";
 import type * as vercel from "../vercel.js";
 import type * as viewer from "../viewer.js";
 import type * as workflows_createApp from "../workflows/createApp.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/onboarding": typeof lib_onboarding;
   "providers/convexPlatform": typeof providers_convexPlatform;
+  "providers/github": typeof providers_github;
   vercel: typeof vercel;
   viewer: typeof viewer;
   "workflows/createApp": typeof workflows_createApp;

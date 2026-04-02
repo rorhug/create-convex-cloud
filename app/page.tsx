@@ -284,7 +284,7 @@ function Content({ viewer }: { viewer: ViewerState }) {
         {/* Step 3: Convex OAuth */}
         <StepCard
           step="3"
-          title="Convex team login"
+          title="Link Convex team"
           complete={viewer.onboarding.hasConvexToken}
         >
           {viewer.convex ? (
@@ -308,7 +308,7 @@ function Content({ viewer }: { viewer: ViewerState }) {
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-slate-300">
-                Sign in with Convex to authorize access to a team. We will store the
+                Link a Convex team to your existing GitHub user. We will store the
                 resulting team-scoped application token for app creation workflows.
               </p>
               <button
@@ -324,14 +324,14 @@ function Content({ viewer }: { viewer: ViewerState }) {
                         window.location.href = result.redirect.toString();
                       }
                     } catch (err) {
-                      setError(err instanceof Error ? err.message : "Could not connect Convex");
+                      setError(err instanceof Error ? err.message : "Could not link Convex");
                     } finally {
                       setBusy(null);
                     }
                   })();
                 }}
               >
-                {busy === "convex" ? "Redirecting..." : "Connect Convex"}
+                {busy === "convex" ? "Redirecting..." : "Link Convex"}
               </button>
             </div>
           )}

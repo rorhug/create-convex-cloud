@@ -62,7 +62,11 @@ export const createApp = mutation({
       throw new Error("Connect your Convex account before creating apps");
     }
 
-    if (!user.githubAccessToken) {
+    const githubToken = await ctx.db
+      .query("githubTokens")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .first();
+    if (!githubToken) {
       throw new Error(
         "GitHub access token not available. Please sign out and sign in again.",
       );

@@ -66,13 +66,15 @@ export const runDeleteAppWorkflow = internalAction({
           { appId: args.appId },
         );
         if (githubRepo) {
-          const user = await ctx.runQuery(
-            internal.workflows.createAppHelpers.getUser,
+          const githubConnection = await ctx.runQuery(
+            internal.workflows.createAppHelpers.getGithubConnection,
             { userId: args.userId },
           );
-          if (user?.githubAccessToken) {
+          if (githubConnection?.githubAccessToken) {
             try {
-              const octokit = new Octokit({ auth: user.githubAccessToken });
+              const octokit = new Octokit({
+                auth: githubConnection.githubAccessToken,
+              });
               const [owner, repo] = githubRepo.repoFullName.split("/");
               await octokit.request("DELETE /repos/{owner}/{repo}", {
                 owner,

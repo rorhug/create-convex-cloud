@@ -20,7 +20,7 @@ export default function SignIn() {
           </h1>
           <p className="text-sm text-slate-300">
             GitHub is the only login method enabled. After signing in, you will
-            connect Vercel and save a Convex team access token before creating
+            connect Vercel and link a Convex team before creating
             apps.
           </p>
         </div>

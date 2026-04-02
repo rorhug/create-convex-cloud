@@ -1,12 +1,21 @@
 import type { OAuthConfig, OAuthUserConfig } from "@auth/core/providers";
 
-export interface ConvexPlatformProfile {
+interface ConvexPlatformUserInfo {
   sub?: string;
   teamId?: number | string;
   team_id?: number | string;
   name?: string;
   [claim: string]: unknown;
 }
+
+export type ConvexPlatformProfile = {
+  convexAccessToken?: string | null;
+  convexTeamId?: string | null;
+  email?: string | null;
+  id?: string;
+  image?: string | null;
+  name?: string | null;
+};
 
 function extractTeamSlugFromToken(accessToken: string): string {
   // Token format: "team:my-team|AAAAAA=="
@@ -15,8 +24,8 @@ function extractTeamSlugFromToken(accessToken: string): string {
 }
 
 export default function ConvexPlatform(
-  config: OAuthUserConfig<ConvexPlatformProfile> = {},
-): OAuthConfig<ConvexPlatformProfile> {
+  config: OAuthUserConfig<ConvexPlatformUserInfo> = {},
+): OAuthConfig<ConvexPlatformUserInfo> {
   return {
     id: "convex",
     name: "Convex",

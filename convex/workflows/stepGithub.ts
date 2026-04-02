@@ -25,14 +25,17 @@ export const stepCreateGithubRepo = internalAction({
     const app = await ctx.runQuery(internal.apps.internalGetApp, { id: args.appId });
     if (!app) throw new Error("App not found");
 
-    const user = await ctx.runQuery(internal.workflows.createAppHelpers.getUser, { userId: app.ownerId });
-    if (!user?.githubAccessToken) {
+    const githubConnection = await ctx.runQuery(
+      internal.workflows.createAppHelpers.getGithubConnection,
+      { userId: app.ownerId },
+    );
+    if (!githubConnection?.githubAccessToken) {
       await setStep(ctx, args.appId, "github", "error", "GitHub access token not found");
       throw new Error("GitHub access token not found for user");
     }
 
-    const octokit = new Octokit({ auth: user.githubAccessToken });
-    const owner: string = user.githubUsername ?? "";
+    const octokit = new Octokit({ auth: githubConnection.githubAccessToken });
+    const owner: string = githubConnection.githubUsername ?? "";
     let repoCreated = false;
 
     try {
