@@ -1,11 +1,9 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { getGithubTokenDocForUser } from "./githubAuthAccount";
 
 export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
-  const githubToken = await ctx.db
-    .query("githubTokens")
-    .withIndex("by_user", (q) => q.eq("userId", user._id))
-    .first();
+  const githubToken = await getGithubTokenDocForUser(ctx, user._id);
   const hasGitHubConnection = githubToken !== null;
 
   const vercelToken = await ctx.db

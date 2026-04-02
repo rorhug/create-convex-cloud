@@ -5,15 +5,15 @@ import { authTables } from "@convex-dev/auth/server";
 export default defineSchema({
   ...authTables,
 
+  /** OAuth tokens; `githubUserId` matches `authAccounts.providerAccountId` for provider `github`. */
   githubTokens: defineTable({
-    userId: v.id("users"),
-    providerAccountId: v.string(),
+    githubUserId: v.string(),
     token: v.string(),
+    /** Unix ms when `token` expires; omit if provider did not send expiry (e.g. non-expiring classic token). */
+    accessTokenExpiresAt: v.optional(v.number()),
     refreshToken: v.optional(v.string()),
     username: v.optional(v.string()),
-  })
-    .index("by_user", ["userId"])
-    .index("by_provider_account", ["providerAccountId"]),
+  }).index("by_github_user_id", ["githubUserId"]),
 
   // Vercel personal access token (pasted by user)
   vercelTokens: defineTable({

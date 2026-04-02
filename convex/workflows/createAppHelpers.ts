@@ -2,6 +2,8 @@ import { WorkflowManager } from "@convex-dev/workflow";
 import { components, internal } from "../_generated/api";
 import { internalQuery, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import { getGithubTokenDocForUser } from "../lib/githubAuthAccount";
+import { githubAccessTokenNeedsRefresh } from "../lib/githubAccessToken";
 
 const workflow = new WorkflowManager(components.workflow, {
   workpoolOptions: {
@@ -131,18 +133,20 @@ export const getGithubConnection = internalQuery({
   returns: v.union(
     v.object({
       githubAccessToken: v.union(v.string(), v.null()),
+      githubAccessTokenExpiresAt: v.union(v.number(), v.null()),
+      githubAccessTokenNeedsRefresh: v.boolean(),
       githubUsername: v.union(v.string(), v.null()),
     }),
     v.null(),
   ),
   handler: async (ctx, args) => {
-    const githubToken = await ctx.db
-      .query("githubTokens")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .first();
+    const githubToken = await getGithubTokenDocForUser(ctx, args.userId);
     if (!githubToken) return null;
+    const expiresAt = githubToken.accessTokenExpiresAt;
     return {
       githubAccessToken: githubToken.token,
+      githubAccessTokenExpiresAt: expiresAt ?? null,
+      githubAccessTokenNeedsRefresh: githubAccessTokenNeedsRefresh(expiresAt),
       githubUsername: githubToken.username ?? null,
     };
   },

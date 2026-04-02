@@ -8,6 +8,8 @@ import {
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { requireCurrentUser, requireCurrentUserId } from "./lib/auth";
+import { getGithubTokenDocForUser } from "./lib/githubAuthAccount";
+import { githubAccessTokenNeedsRefresh } from "./lib/githubAccessToken";
 import {
   createAppForUser,
   deleteAppForUser,
@@ -62,13 +64,15 @@ export const createApp = mutation({
       throw new Error("Connect your Convex account before creating apps");
     }
 
-    const githubToken = await ctx.db
-      .query("githubTokens")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .first();
+    const githubToken = await getGithubTokenDocForUser(ctx, user._id);
     if (!githubToken) {
       throw new Error(
         "GitHub access token not available. Please sign out and sign in again.",
+      );
+    }
+    if (githubAccessTokenNeedsRefresh(githubToken.accessTokenExpiresAt)) {
+      throw new Error(
+        "GitHub access token expired or expiring. Sign in with GitHub again to refresh it.",
       );
     }
 

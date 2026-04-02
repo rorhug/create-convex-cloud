@@ -11,8 +11,11 @@
 import type * as apps from "../apps.js";
 import type * as auth from "../auth.js";
 import type * as convexToken from "../convexToken.js";
+import type * as githubTokens from "../githubTokens.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_githubAccessToken from "../lib/githubAccessToken.js";
+import type * as lib_githubAuthAccount from "../lib/githubAuthAccount.js";
 import type * as lib_onboarding from "../lib/onboarding.js";
 import type * as providers_convexPlatform from "../providers/convexPlatform.js";
 import type * as providers_github from "../providers/github.js";
@@ -38,8 +41,11 @@ declare const fullApi: ApiFromModules<{
   apps: typeof apps;
   auth: typeof auth;
   convexToken: typeof convexToken;
+  githubTokens: typeof githubTokens;
   http: typeof http;
   "lib/auth": typeof lib_auth;
+  "lib/githubAccessToken": typeof lib_githubAccessToken;
+  "lib/githubAuthAccount": typeof lib_githubAuthAccount;
   "lib/onboarding": typeof lib_onboarding;
   "providers/convexPlatform": typeof providers_convexPlatform;
   "providers/github": typeof providers_github;

@@ -33,6 +33,16 @@ export const stepCreateGithubRepo = internalAction({
       await setStep(ctx, args.appId, "github", "error", "GitHub access token not found");
       throw new Error("GitHub access token not found for user");
     }
+    if (githubConnection.githubAccessTokenNeedsRefresh) {
+      await setStep(
+        ctx,
+        args.appId,
+        "github",
+        "error",
+        "GitHub access token expired or expiring; refresh it before creating a repo",
+      );
+      throw new Error("GitHub access token expired or expiring; refresh the token and retry");
+    }
 
     const octokit = new Octokit({ auth: githubConnection.githubAccessToken });
     const owner: string = githubConnection.githubUsername ?? "";

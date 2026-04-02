@@ -71,6 +71,16 @@ export const runDeleteAppWorkflow = internalAction({
             { userId: args.userId },
           );
           if (githubConnection?.githubAccessToken) {
+            if (githubConnection.githubAccessTokenNeedsRefresh) {
+              await setStep(
+                ctx,
+                args.appId,
+                "github",
+                "error",
+                "GitHub access token expired or expiring; refresh it before deleting the repo",
+              );
+              throw new Error("GitHub access token expired or expiring; refresh the token and retry");
+            }
             try {
               const octokit = new Octokit({
                 auth: githubConnection.githubAccessToken,

@@ -3,6 +3,7 @@ import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import ConvexPlatform, { type ConvexPlatformProfile } from "./providers/convexPlatform";
 import GitHubProvider, { type GithubProfileWithTokens } from "./providers/github";
+import { githubTokenFieldsFromProfile, upsertGithubTokenForGithubUser } from "./githubTokens";
 
 type CreateOrUpdateUserArgs = {
   existingUserId: Id<"users"> | null;
@@ -13,37 +14,7 @@ type CreateOrUpdateUserArgs = {
 
 function getProviderAccountId(profile: GithubProfileWithTokens | ConvexPlatformProfile) {
   const providerAccountId = profile.id;
-  if (providerAccountId === undefined || providerAccountId === null) {
-    throw new Error("OAuth profile is missing an account ID");
-  }
-  return String(providerAccountId);
-}
-
-async function upsertGithubToken(ctx: MutationCtx, userId: Id<"users">, profile: GithubProfileWithTokens) {
-  const token = profile.accessToken;
-  if (typeof token !== "string" || token.length === 0) {
-    throw new Error("GitHub OAuth did not return an access token");
-  }
-
-  const providerAccountId = getProviderAccountId(profile);
-  const existingToken = await ctx.db
-    .query("githubTokens")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .first();
-
-  const tokenDoc = {
-    providerAccountId,
-    token,
-    username: profile.username,
-    userId,
-  };
-
-  if (existingToken) {
-    await ctx.db.patch(existingToken._id, tokenDoc);
-    return;
-  }
-
-  await ctx.db.insert("githubTokens", tokenDoc);
+  return providerAccountId === undefined || providerAccountId === null ? undefined : String(providerAccountId);
 }
 
 async function upsertConvexToken(ctx: MutationCtx, userId: Id<"users">, profile: ConvexPlatformProfile) {
@@ -53,14 +24,13 @@ async function upsertConvexToken(ctx: MutationCtx, userId: Id<"users">, profile:
     throw new Error("Convex OAuth did not return the expected team token");
   }
 
-  const providerAccountId = getProviderAccountId(profile);
   const existingToken = await ctx.db
     .query("convexTokens")
     .withIndex("by_user", (q) => q.eq("userId", userId))
     .first();
 
   const tokenDoc = {
-    providerAccountId,
+    providerAccountId: getProviderAccountId(profile),
     teamId,
     token,
     userId,
@@ -96,7 +66,7 @@ async function createOrUpdateGithubUser(ctx: MutationCtx, args: CreateOrUpdateUs
     await ctx.db.patch(args.existingUserId, userDoc);
   }
 
-  await upsertGithubToken(ctx, userId, profile);
+  await upsertGithubTokenForGithubUser(ctx, githubTokenFieldsFromProfile(profile));
   return userId;
 }
 
@@ -128,6 +98,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       if (args.type !== "oauth") {
         throw new Error("Only OAuth authentication is supported");
       }
+      console.log("createOrUpdateUser", args.profile);
       switch (args.provider.id) {
         case "github":
           return await createOrUpdateGithubUser(ctx, args);
