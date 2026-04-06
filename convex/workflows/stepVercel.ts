@@ -3,6 +3,7 @@
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
+import { createVercelClient } from "../lib/vercelClient";
 import { setStep } from "./stepUtils";
 
 export const stepCreateVercelProject = internalAction({
@@ -52,15 +53,10 @@ export const stepCreateVercelProject = internalAction({
       }
       const teamSlug = team.slug;
 
-      const url = `https://api.vercel.com/v11/projects?teamId=${teamId}`;
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${vercelToken.token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const client = createVercelClient(vercelToken.token);
+      const project = await client.projects.createProject({
+        teamId,
+        requestBody: {
           name: app.name,
           framework: "nextjs",
           gitRepository: {
@@ -81,47 +77,33 @@ export const stepCreateVercelProject = internalAction({
               type: "encrypted",
             },
           ],
-        }),
+        },
       });
 
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Failed to create Vercel project: ${text}`);
-      }
-
-      const project = (await response.json()) as { id: string; name: string };
       const deploymentUrl = `https://${project.name}.vercel.app`;
 
       // Trigger initial deployment
       await setStep(ctx, args.appId, "vercel", "running", "Triggering first deployment...");
       const [repoOrg, repoName] = args.repoFullName.split("/");
-      const deployUrl = `https://api.vercel.com/v13/deployments?teamId=${teamId}`;
-
-      const deployRes = await fetch(deployUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${vercelToken.token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: project.name,
-          target: "production",
-          gitSource: {
-            type: "github",
-            org: repoOrg,
-            repo: repoName,
-            ref: "main",
-          },
-        }),
-      });
 
       let deploymentId: string | undefined;
-      if (!deployRes.ok) {
-        const text = await deployRes.text();
-        console.error("Failed to trigger deployment (non-fatal):", text);
-      } else {
-        const deployData = (await deployRes.json()) as { id: string };
+      try {
+        const deployData = await client.deployments.createDeployment({
+          teamId,
+          requestBody: {
+            name: project.name,
+            target: "production",
+            gitSource: {
+              type: "github",
+              org: repoOrg,
+              repo: repoName,
+              ref: "main",
+            },
+          },
+        });
         deploymentId = deployData.id;
+      } catch (err) {
+        console.error("Failed to trigger deployment (non-fatal):", err);
       }
 
       await ctx.runMutation(internal.workflows.createAppHelpers.insertVercelProject, {
@@ -162,20 +144,19 @@ export const stepWaitForDeployment = internalAction({
   handler: async (ctx, args): Promise<{ status: string }> => {
     await setStep(ctx, args.appId, "vercel", "running", "Waiting for deployment to finish...");
 
+    const client = createVercelClient(args.vercelToken);
     const maxAttempts = 30; // ~5 minutes (10s intervals)
     for (let i = 0; i < maxAttempts; i++) {
-      const url = `https://api.vercel.com/v13/deployments/${args.deploymentId}?teamId=${args.teamId}`;
-
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${args.vercelToken}` },
-      });
-
-      if (res.ok) {
-        const data = (await res.json()) as { readyState: string };
+      try {
+        const data = await client.deployments.getDeployment({
+          idOrUrl: args.deploymentId,
+          teamId: args.teamId,
+        });
         const state = data.readyState;
 
         if (state === "READY") {
           await setStep(ctx, args.appId, "vercel", "done", args.deploymentUrl);
+          console.log(JSON.stringify(data, null, 2));
           return { status: "READY" };
         }
 
@@ -186,6 +167,8 @@ export const stepWaitForDeployment = internalAction({
 
         // Still building — update the step message
         await setStep(ctx, args.appId, "vercel", "running", `Building... (${state})`);
+      } catch {
+        // Transient API errors — keep polling
       }
 
       // Wait 10 seconds before polling again

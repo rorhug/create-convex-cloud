@@ -18,6 +18,7 @@ import type * as lib_auth from "../lib/auth.js";
 import type * as lib_githubAccessToken from "../lib/githubAccessToken.js";
 import type * as lib_githubAuthAccount from "../lib/githubAuthAccount.js";
 import type * as lib_onboarding from "../lib/onboarding.js";
+import type * as lib_vercelClient from "../lib/vercelClient.js";
 import type * as providers_convexPlatform from "../providers/convexPlatform.js";
 import type * as providers_github from "../providers/github.js";
 import type * as vercel from "../vercel.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   "lib/githubAccessToken": typeof lib_githubAccessToken;
   "lib/githubAuthAccount": typeof lib_githubAuthAccount;
   "lib/onboarding": typeof lib_onboarding;
+  "lib/vercelClient": typeof lib_vercelClient;
   "providers/convexPlatform": typeof providers_convexPlatform;
   "providers/github": typeof providers_github;
   vercel: typeof vercel;
