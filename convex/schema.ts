@@ -4,19 +4,16 @@ import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
   ...authTables,
-  users: defineTable({
-    // Standard auth fields (required because overriding authTables.users)
-    name: v.optional(v.union(v.string(), v.null())),
-    image: v.optional(v.union(v.string(), v.null())),
-    email: v.optional(v.union(v.string(), v.null())),
-    emailVerificationTime: v.optional(v.number()),
-    phone: v.optional(v.string()),
-    phoneVerificationTime: v.optional(v.number()),
-    isAnonymous: v.optional(v.boolean()),
-    // GitHub OAuth fields (custom)
-    githubAccessToken: v.optional(v.string()),
-    githubUsername: v.optional(v.string()),
-  }).index("email", ["email"]),
+
+  /** OAuth tokens; `githubUserId` matches `authAccounts.providerAccountId` for provider `github`. */
+  githubTokens: defineTable({
+    githubUserId: v.string(),
+    token: v.string(),
+    /** Unix ms when `token` expires; omit if provider did not send expiry (e.g. non-expiring classic token). */
+    accessTokenExpiresAt: v.optional(v.number()),
+    refreshToken: v.optional(v.string()),
+    username: v.optional(v.string()),
+  }).index("by_github_user_id", ["githubUserId"]),
 
   // Vercel personal access token (pasted by user)
   vercelTokens: defineTable({
@@ -31,9 +28,10 @@ export default defineSchema({
     ),
   }).index("by_user", ["userId"]),
 
-  // Convex team access token (pasted by user)
+  // Convex OAuth team-scoped application token
   convexTokens: defineTable({
     userId: v.id("users"),
+    providerAccountId: v.optional(v.string()),
     token: v.string(),
     teamId: v.string(),
   }).index("by_user", ["userId"]),

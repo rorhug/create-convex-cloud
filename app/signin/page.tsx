@@ -12,16 +12,11 @@ export default function SignIn() {
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-slate-50">
       <div className="w-full max-w-lg rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-2xl shadow-slate-950/40">
         <div className="space-y-4 text-center">
-          <p className="text-sm uppercase tracking-[0.3em] text-slate-400">
-            Create Convex Cloud
-          </p>
-          <h1 className="text-3xl font-semibold text-white">
-            Sign in with GitHub
-          </h1>
+          <p className="text-sm uppercase tracking-[0.3em] text-slate-400">Create Convex Cloud</p>
+          <h1 className="text-3xl font-semibold text-white">Sign in with GitHub</h1>
           <p className="text-sm text-slate-300">
-            GitHub is the only login method enabled. After signing in, you will
-            connect Vercel and save a Convex team access token before creating
-            apps.
+            GitHub is the only login method enabled. After signing in, you will connect Vercel and link a Convex team
+            before creating apps.
           </p>
         </div>
 
@@ -31,7 +26,7 @@ export default function SignIn() {
             disabled={loading}
             onClick={() => {
               setError(null);
-          setLoading(true);
+              setLoading(true);
               void signIn("github", { redirectTo: "/" })
                 .then(({ redirect }) => {
                   if (redirect) {
@@ -39,14 +34,10 @@ export default function SignIn() {
                   }
                 })
                 .catch((signInError) => {
-                  setError(
-                    signInError instanceof Error
-                      ? signInError.message
-                      : "Could not start GitHub sign-in",
-                  );
+                  setError(signInError instanceof Error ? signInError.message : "Could not start GitHub sign-in");
                 })
                 .finally(() => {
-              setLoading(false);
+                  setLoading(false);
                 });
             }}
           >

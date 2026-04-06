@@ -1,20 +1,31 @@
 import type { OAuthConfig, OAuthUserConfig } from "@auth/core/providers";
 
-export interface ConvexPlatformProfile {
-  sub: string;
-  teamId: string;
+interface ConvexPlatformUserInfo {
+  sub?: string;
+  teamId?: number | string;
+  team_id?: number | string;
+  name?: string;
   [claim: string]: unknown;
 }
 
-function extractTeamFromToken(accessToken: string): string {
+export type ConvexPlatformProfile = {
+  convexAccessToken?: string | null;
+  convexTeamId?: string | null;
+  email?: string | null;
+  id?: string;
+  image?: string | null;
+  name?: string | null;
+};
+
+function extractTeamSlugFromToken(accessToken: string): string {
   // Token format: "team:my-team|AAAAAA=="
   const match = accessToken.match(/^team:([^|]+)\|/);
   return match?.[1] ?? "";
 }
 
 export default function ConvexPlatform(
-  config: OAuthUserConfig<ConvexPlatformProfile> = {},
-): OAuthConfig<ConvexPlatformProfile> {
+  config: OAuthUserConfig<ConvexPlatformUserInfo> = {},
+): OAuthConfig<ConvexPlatformUserInfo> {
   return {
     id: "convex",
     name: "Convex",
@@ -36,22 +47,14 @@ export default function ConvexPlatform(
     },
     checks: ["pkce", "state"],
     profile(profile, tokens) {
-      console.log("Convex OAuth profile callback:", {
-        profileKeys: Object.keys(profile),
-        profile,
-        hasAccessToken: Boolean(tokens.access_token),
-      });
-
       const accessToken = tokens.access_token ?? "";
-      const teamSlug = extractTeamFromToken(accessToken);
-
-      // Try multiple possible field names from token_details
       const teamId =
-        teamSlug ||
-        ((profile.teamId as string) ??
-        (profile.team_id as string) ??
-        (profile.sub as string) ??
-        "");
+        profile.teamId !== undefined
+          ? String(profile.teamId)
+          : profile.team_id !== undefined
+            ? String(profile.team_id)
+            : "";
+      const teamSlug = extractTeamSlugFromToken(accessToken);
 
       if (!teamId) {
         throw new Error("Could not determine team ID from Convex OAuth");
@@ -59,11 +62,14 @@ export default function ConvexPlatform(
 
       return {
         id: `convex-team-${teamId}`,
-        name: `Convex Team ${teamId}`,
+        name:
+          (typeof profile.name === "string" && profile.name) ||
+          (teamSlug ? `Convex Team ${teamSlug}` : `Convex Team ${teamId}`),
         email: null,
         image: null,
         convexAccessToken: accessToken,
         convexTeamId: teamId,
+        // convexTeamSlug: teamSlug || null,
       };
     },
     style: {

@@ -1,8 +1,10 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { getGithubTokenDocForUser } from "./githubAuthAccount";
 
 export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
-  const hasGitHubConnection = Boolean(user.githubAccessToken);
+  const githubToken = await getGithubTokenDocForUser(ctx, user._id);
+  const hasGitHubConnection = githubToken !== null;
 
   const vercelToken = await ctx.db
     .query("vercelTokens")
@@ -21,7 +23,7 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
       name: user.name ?? null,
       email: user.email ?? null,
       image: user.image ?? null,
-      githubUsername: user.githubUsername ?? null,
+      githubUsername: githubToken?.username ?? null,
     },
     vercel: hasVercelConnection
       ? {

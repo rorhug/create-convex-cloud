@@ -43,7 +43,7 @@ export default function AppsPage() {
             Connect GitHub, Vercel, and Convex before creating apps.
           </p>
           <Link
-            href="/"
+            href="/setup"
             className="mt-6 inline-flex rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200"
           >
             Back to setup
@@ -217,7 +217,7 @@ function AppsManager() {
             </p>
           </div>
           <Link
-            href="/"
+            href="/setup"
             className="inline-flex rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800"
           >
             Back to setup
