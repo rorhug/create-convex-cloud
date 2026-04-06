@@ -1,5 +1,5 @@
 /** Buffer before wall-clock expiry to refresh early (clock skew, network). */
-const DEFAULT_REFRESH_BUFFER_MS = 60_000;
+export const GITHUB_ACCESS_TOKEN_REFRESH_BUFFER_MS = 5 * 60_000;
 
 /**
  * Auth.js passes OAuth token fields on the `tokens` argument to `profile()`.
@@ -25,7 +25,7 @@ export function accessTokenExpiresAtMsFromOAuthTokens(tokens: {
 export function githubAccessTokenNeedsRefresh(
   accessTokenExpiresAtMs: number | undefined,
   nowMs: number = Date.now(),
-  bufferMs: number = DEFAULT_REFRESH_BUFFER_MS,
+  bufferMs: number = GITHUB_ACCESS_TOKEN_REFRESH_BUFFER_MS,
 ): boolean {
   if (accessTokenExpiresAtMs === undefined) return false;
   return nowMs >= accessTokenExpiresAtMs - bufferMs;

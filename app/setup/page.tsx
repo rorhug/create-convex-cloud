@@ -1,10 +1,11 @@
 "use client";
 
-import { useAction, useQuery, useMutation } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import Link from "next/link";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { type ReactNode, useState } from "react";
+import { ArrowCircleUpRightIcon } from "@phosphor-icons/react";
 
 export default function SetupPage() {
   const viewer = useQuery(api.viewer.getViewer);
@@ -94,7 +95,7 @@ type ViewerState = {
 function Content({ viewer }: { viewer: ViewerState }) {
   const { signIn } = useAuthActions();
   const verifyVercelToken = useAction(api.vercel.verifyVercelToken);
-  const saveVercelToken = useMutation(api.vercel.saveVercelToken);
+  const saveVercelToken = useAction(api.vercel.saveVercelToken);
 
   const [vercelToken, setVercelToken] = useState("");
   const [vercelTeams, setVercelTeams] = useState<
@@ -133,7 +134,6 @@ function Content({ viewer }: { viewer: ViewerState }) {
     try {
       await saveVercelToken({
         token: vercelToken.trim(),
-        teams: vercelTeams,
       });
       setVercelToken("");
       setVercelTeams(null);
@@ -227,18 +227,31 @@ function Content({ viewer }: { viewer: ViewerState }) {
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-slate-300">
-                Create a token at{" "}
-                <a
-                  href="https://vercel.com/account/settings/tokens"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 underline hover:text-blue-300"
-                >
-                  vercel.com/account/settings/tokens
-                </a>{" "}
-                and paste it below.
-              </p>
+              <div className="space-y-3 text-sm text-slate-300">
+                <p>
+                  Create a Vercel token, paste it here, verify and save. You
+                  will be able to select which team to deploy each app to.
+                </p>
+                <p>
+                  <a
+                    href="https://vercel.com/account/settings/tokens"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-blue-400 transition hover:text-blue-300"
+                  >
+                    vercel.com/account/settings/tokens
+                    <ArrowCircleUpRightIcon className="size-4 shrink-0" weight="regular" />
+                  </a>
+                </p>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 rounded-xl border border-slate-700/80 bg-slate-950/80 px-4 py-3">
+                  <dt className="text-slate-500">Token name</dt>
+                  <dd className="font-mono text-slate-100">ccc</dd>
+                  <dt className="text-slate-500">Scope</dt>
+                  <dd className="text-slate-100">Full Account</dd>
+                  <dt className="text-slate-500">Expiration</dt>
+                  <dd className="text-slate-100">No Expiration</dd>
+                </dl>
+              </div>
               <input
                 type="password"
                 value={vercelToken}
@@ -257,9 +270,10 @@ function Content({ viewer }: { viewer: ViewerState }) {
                   {vercelTeams.map((t) => t.name).join(", ")}
                 </Banner>
               )}
-              <div className="flex flex-wrap gap-3">
+              {vercelTeams === null ? (
                 <button
-                  className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                  type="button"
+                  className="w-full rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
                   disabled={busy !== null || vercelToken.trim().length === 0}
                   onClick={() => {
                     void handleVerifyVercelToken();
@@ -267,16 +281,30 @@ function Content({ viewer }: { viewer: ViewerState }) {
                 >
                   {busy === "vercel-verify" ? "Verifying..." : "Verify token"}
                 </button>
-                <button
-                  className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"
-                  disabled={busy !== null || vercelTeams === null}
-                  onClick={() => {
-                    void handleSaveVercelToken();
-                  }}
-                >
-                  {busy === "vercel-save" ? "Saving..." : "Save token"}
-                </button>
-              </div>
+              ) : (
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"
+                    disabled={busy !== null || vercelToken.trim().length === 0}
+                    onClick={() => {
+                      void handleVerifyVercelToken();
+                    }}
+                  >
+                    {busy === "vercel-verify" ? "Verifying..." : "Verify token"}
+                  </button>
+                  <button
+                    type="button"
+                    className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                    disabled={busy !== null}
+                    onClick={() => {
+                      void handleSaveVercelToken();
+                    }}
+                  >
+                    {busy === "vercel-save" ? "Saving..." : "Save token"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </StepCard>

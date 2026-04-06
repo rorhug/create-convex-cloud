@@ -11,6 +11,7 @@
 import type * as apps from "../apps.js";
 import type * as auth from "../auth.js";
 import type * as convexToken from "../convexToken.js";
+import type * as githubTokenRefresh from "../githubTokenRefresh.js";
 import type * as githubTokens from "../githubTokens.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
@@ -25,6 +26,7 @@ import type * as workflows_createApp from "../workflows/createApp.js";
 import type * as workflows_createAppHelpers from "../workflows/createAppHelpers.js";
 import type * as workflows_deleteApp from "../workflows/deleteApp.js";
 import type * as workflows_deleteAppHelpers from "../workflows/deleteAppHelpers.js";
+import type * as workflows_githubAccessTokenAction from "../workflows/githubAccessTokenAction.js";
 import type * as workflows_stepConvex from "../workflows/stepConvex.js";
 import type * as workflows_stepGithub from "../workflows/stepGithub.js";
 import type * as workflows_stepUtils from "../workflows/stepUtils.js";
@@ -41,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   apps: typeof apps;
   auth: typeof auth;
   convexToken: typeof convexToken;
+  githubTokenRefresh: typeof githubTokenRefresh;
   githubTokens: typeof githubTokens;
   http: typeof http;
   "lib/auth": typeof lib_auth;
@@ -55,6 +58,7 @@ declare const fullApi: ApiFromModules<{
   "workflows/createAppHelpers": typeof workflows_createAppHelpers;
   "workflows/deleteApp": typeof workflows_deleteApp;
   "workflows/deleteAppHelpers": typeof workflows_deleteAppHelpers;
+  "workflows/githubAccessTokenAction": typeof workflows_githubAccessTokenAction;
   "workflows/stepConvex": typeof workflows_stepConvex;
   "workflows/stepGithub": typeof workflows_stepGithub;
   "workflows/stepUtils": typeof workflows_stepUtils;

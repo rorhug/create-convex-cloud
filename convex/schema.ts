@@ -40,6 +40,8 @@ export default defineSchema({
   apps: defineTable({
     ownerId: v.id("users"),
     name: v.string(),
+    /** Vercel team id (includes personal/hobby via default team id). */
+    vercelTeamId: v.string(),
     status: v.string(), // "creating" | "ready" | "deleting" | "error"
     workflowId: v.optional(v.string()),
     createdAt: v.number(),
@@ -64,6 +66,9 @@ export default defineSchema({
     appId: v.id("apps"),
     projectId: v.string(),
     teamId: v.string(),
+    /** Dashboard URLs: /t/{teamSlug}/{projectSlug} */
+    teamSlug: v.string(),
+    projectSlug: v.string(),
     prodDeploymentName: v.string(),
     prodDeployKey: v.string(),
     previewDeployKey: v.string(),
@@ -73,7 +78,9 @@ export default defineSchema({
     appId: v.id("apps"),
     projectId: v.string(),
     projectName: v.string(),
-    teamId: v.optional(v.string()),
+    teamId: v.string(),
+    /** Scope in vercel.com/{teamSlug}/{projectName} (team slug or personal username). */
+    teamSlug: v.string(),
     deploymentUrl: v.optional(v.string()),
   }).index("by_app", ["appId"]),
 });

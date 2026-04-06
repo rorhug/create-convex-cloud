@@ -32,6 +32,7 @@ export const listApps = query({
 export const createApp = mutation({
   args: {
     name: v.string(),
+    vercelTeamId: v.string(),
   },
   returns: v.id("apps"),
   handler: async (ctx, args) => {
@@ -46,6 +47,15 @@ export const createApp = mutation({
       throw new Error("Connect your Vercel account before creating apps");
     }
 
+    const teams = vercelToken.teams;
+    const vercelTeamId = args.vercelTeamId.trim();
+    if (!vercelTeamId) {
+      throw new Error("Select a Vercel team");
+    }
+    if (!teams.some((t) => t.id === vercelTeamId)) {
+      throw new Error("That Vercel team is not available for your account. Re-verify your Vercel token on the setup page.");
+    }
+
     const convexToken = await ctx.db
       .query("convexTokens")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
@@ -58,11 +68,13 @@ export const createApp = mutation({
     if (!githubToken) {
       throw new Error("GitHub access token not available. Please sign out and sign in again.");
     }
-    if (githubAccessTokenNeedsRefresh(githubToken.accessTokenExpiresAt)) {
-      throw new Error("GitHub access token expired or expiring. Sign in with GitHub again to refresh it.");
+    if (githubAccessTokenNeedsRefresh(githubToken.accessTokenExpiresAt) && !githubToken.refreshToken) {
+      throw new Error(
+        "GitHub access token expired or expiring and cannot be refreshed automatically. Sign in with GitHub again.",
+      );
     }
 
-    const appId = await createAppForUser(ctx, user._id, args.name);
+    const appId = await createAppForUser(ctx, user._id, args.name, { vercelTeamId });
 
     // Schedule the creation workflow
     await ctx.scheduler.runAfter(0, internal.workflows.createApp.runCreateAppWorkflow, { appId });
@@ -148,6 +160,55 @@ export const getAppDeploymentUrl = query({
   },
 });
 
+const dashboardLinksValidator = v.object({
+  github: v.union(v.string(), v.null()),
+  vercel: v.union(v.string(), v.null()),
+  convex: v.union(v.string(), v.null()),
+});
+
+export const getAppDashboardLinks = query({
+  args: { appId: v.id("apps") },
+  returns: dashboardLinksValidator,
+  handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx);
+    const app = await ctx.db.get(args.appId);
+    if (!app || app.ownerId !== user._id) {
+      throw new Error("App not found");
+    }
+
+    const githubRepo = await ctx.db
+      .query("githubRepos")
+      .withIndex("by_app", (q) => q.eq("appId", args.appId))
+      .first();
+
+    const vercelProject = await ctx.db
+      .query("vercelProjects")
+      .withIndex("by_app", (q) => q.eq("appId", args.appId))
+      .first();
+
+    const convexProject = await ctx.db
+      .query("convexProjects")
+      .withIndex("by_app", (q) => q.eq("appId", args.appId))
+      .first();
+
+    let vercel: string | null = null;
+    if (vercelProject) {
+      vercel = `https://vercel.com/${vercelProject.teamSlug}/${vercelProject.projectName}`;
+    }
+
+    let convex: string | null = null;
+    if (convexProject) {
+      convex = `https://dashboard.convex.dev/t/${convexProject.teamSlug}/${convexProject.projectSlug}`;
+    }
+
+    return {
+      github: githubRepo?.repoUrl ?? null,
+      vercel,
+      convex,
+    };
+  },
+});
+
 // Internal mutations used by workflows
 export const internalGetApp = internalQuery({
   args: { id: v.id("apps") },
@@ -157,6 +218,7 @@ export const internalGetApp = internalQuery({
       ownerId: v.id("users"),
       name: v.string(),
       status: v.string(),
+      vercelTeamId: v.string(),
     }),
     v.null(),
   ),
@@ -168,6 +230,7 @@ export const internalGetApp = internalQuery({
       ownerId: app.ownerId,
       name: app.name,
       status: app.status,
+      vercelTeamId: app.vercelTeamId,
     };
   },
 });

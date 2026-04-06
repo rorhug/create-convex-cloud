@@ -97,6 +97,33 @@ function DeploymentUrl({ appId }: { appId: Id<"apps"> }) {
   );
 }
 
+function DashboardLinks({ appId }: { appId: Id<"apps"> }) {
+  const links = useQuery(api.apps.getAppDashboardLinks, { appId });
+  if (!links) return null;
+  const items: Array<{ label: string; href: string }> = [];
+  if (links.github) items.push({ label: "GitHub", href: links.github });
+  if (links.vercel) items.push({ label: "Vercel", href: links.vercel });
+  if (links.convex) items.push({ label: "Convex", href: links.convex });
+  if (items.length === 0) return null;
+  return (
+    <p className="mt-2 text-xs text-slate-500">
+      {items.map((item, i) => (
+        <span key={item.label}>
+          {i > 0 ? <span className="mx-1.5 text-slate-600">·</span> : null}
+          <a
+            href={item.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-slate-400 hover:text-slate-200 hover:underline"
+          >
+            {item.label}
+          </a>
+        </span>
+      ))}
+    </p>
+  );
+}
+
 function StepProgress({ appId }: { appId: Id<"apps"> }) {
   const steps = useQuery(api.apps.getAppSteps, { appId });
 
@@ -128,9 +155,12 @@ function StepProgress({ appId }: { appId: Id<"apps"> }) {
 }
 
 function AppsManager() {
+  const viewer = useQuery(api.viewer.getViewer);
   const apps = useQuery(api.apps.listApps);
   const createApp = useMutation(api.apps.createApp);
   const deleteApp = useAction(api.apps.deleteApp);
+  const vercelTeams = viewer?.vercel?.teams ?? [];
+  const [vercelTeamId, setVercelTeamId] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -188,7 +218,10 @@ function AppsManager() {
     setIsCreating(true);
     setError(null);
     try {
-      await createApp({ name });
+      await createApp({
+        name,
+        vercelTeamId: vercelTeamId.trim(),
+      });
       setName("");
     } catch (createError) {
       setError(
@@ -226,6 +259,40 @@ function AppsManager() {
 
         <section className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
           <div className="space-y-4">
+            {vercelTeams.length === 0 ? (
+              <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                No Vercel teams on file (your personal team should appear after you{" "}
+                <Link href="/setup" className="underline hover:text-white">
+                  verify your Vercel token again
+                </Link>
+                ).
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <label
+                  htmlFor="vercel-team"
+                  className="block text-sm font-medium text-slate-200"
+                >
+                  Vercel team
+                </label>
+                <select
+                  id="vercel-team"
+                  value={vercelTeamId}
+                  onChange={(event) => {
+                    setVercelTeamId(event.target.value);
+                    setError(null);
+                  }}
+                  className="w-full max-w-xs rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-slate-500"
+                >
+                  <option value="">Select a team…</option>
+                  {vercelTeams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <label className="block text-sm font-medium text-slate-200">
               App name
             </label>
@@ -241,7 +308,12 @@ function AppsManager() {
               />
               <button
                 className="rounded-2xl bg-white px-5 py-3 text-sm font-medium text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-                disabled={isCreating || name.trim().length === 0}
+                disabled={
+                  isCreating ||
+                  name.trim().length === 0 ||
+                  vercelTeams.length === 0 ||
+                  vercelTeamId === ""
+                }
                 onClick={() => {
                   void handleCreate();
                 }}
@@ -291,7 +363,10 @@ function AppsManager() {
                   </button>
                 </div>
                 {app.status === "ready" ? (
-                  <DeploymentUrl appId={app._id} />
+                  <>
+                    <DeploymentUrl appId={app._id} />
+                    <DashboardLinks appId={app._id} />
+                  </>
                 ) : (
                   <StepProgress appId={app._id} />
                 )}

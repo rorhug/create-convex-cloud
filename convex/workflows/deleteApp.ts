@@ -71,19 +71,13 @@ export const runDeleteAppWorkflow = internalAction({
             { userId: args.userId },
           );
           if (githubConnection?.githubAccessToken) {
-            if (githubConnection.githubAccessTokenNeedsRefresh) {
-              await setStep(
-                ctx,
-                args.appId,
-                "github",
-                "error",
-                "GitHub access token expired or expiring; refresh it before deleting the repo",
-              );
-              throw new Error("GitHub access token expired or expiring; refresh the token and retry");
-            }
             try {
+              const { accessToken } = await ctx.runAction(
+                internal.workflows.githubAccessTokenAction.ensureFreshGithubAccessToken,
+                { userId: args.userId },
+              );
               const octokit = new Octokit({
-                auth: githubConnection.githubAccessToken,
+                auth: accessToken,
               });
               const [owner, repo] = githubRepo.repoFullName.split("/");
               await octokit.request("DELETE /repos/{owner}/{repo}", {
@@ -171,12 +165,9 @@ export const runDeleteAppWorkflow = internalAction({
             { userId: args.userId },
           );
           if (vercelToken) {
-            const teamParam = vercelProject.teamId
-              ? `?teamId=${vercelProject.teamId}`
-              : "";
             try {
               const response = await fetch(
-                `https://api.vercel.com/v9/projects/${vercelProject.projectId}${teamParam}`,
+                `https://api.vercel.com/v9/projects/${vercelProject.projectId}?teamId=${vercelProject.teamId}`,
                 {
                   method: "DELETE",
                   headers: { Authorization: `Bearer ${vercelToken.token}` },
@@ -205,7 +196,7 @@ export const runDeleteAppWorkflow = internalAction({
         internal.apps.getAppStepsInternal,
         { appId: args.appId },
       );
-      const hasError = steps.some((s) => s.status === "error");
+      const hasError = steps.some((s: { step: string; status: string }) => s.status === "error");
 
       if (hasError) {
         await ctx.runMutation(internal.apps.internalUpdateAppStatus, {

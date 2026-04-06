@@ -101,11 +101,24 @@ export const stepCreateConvexProject = internalAction({
       const previewKey = unwrapPlatformResult(createPreviewKeyResult, "Failed to create preview deploy key")!;
       const previewDeployKey = previewKey.previewDeployKey;
 
+      const projectDetailsResult = await convexPlatform.GET("/projects/{project_id}", {
+        params: { path: { project_id: projectId } },
+      });
+      const projectDetails = unwrapPlatformResult(projectDetailsResult, "Failed to get project details");
+      if (!projectDetails) {
+        throw new Error("Failed to get project details: missing project");
+      }
+      if (!projectDetails.teamSlug || !projectDetails.slug) {
+        throw new Error("Convex project details missing teamSlug or slug");
+      }
+
       // Store in DB
       await ctx.runMutation(internal.workflows.createAppHelpers.insertConvexProject, {
         appId: args.appId,
         projectId: projectIdString,
         teamId: convexToken.teamId,
+        teamSlug: projectDetails.teamSlug,
+        projectSlug: projectDetails.slug,
         prodDeploymentName,
         prodDeployKey,
         previewDeployKey,

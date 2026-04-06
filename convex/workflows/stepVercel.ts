@@ -18,38 +18,41 @@ export const stepCreateVercelProject = internalAction({
     deploymentUrl: v.string(),
     deploymentId: v.optional(v.string()),
     vercelToken: v.string(),
-    teamId: v.optional(v.string()),
+    teamId: v.string(),
   }),
-  handler: async (ctx, args): Promise<{ projectId: string; projectName: string; deploymentUrl: string; deploymentId?: string; vercelToken: string; teamId?: string }> => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    projectId: string;
+    projectName: string;
+    deploymentUrl: string;
+    deploymentId?: string;
+    vercelToken: string;
+    teamId: string;
+  }> => {
     await setStep(ctx, args.appId, "vercel", "running", "Creating Vercel project...");
 
-    const app: any = await ctx.runQuery(internal.apps.internalGetApp, { id: args.appId });
+    const app = await ctx.runQuery(internal.apps.internalGetApp, { id: args.appId });
     if (!app) throw new Error("App not found");
 
-    const vercelToken: any = await ctx.runQuery(
-      internal.workflows.createAppHelpers.getVercelToken,
-      { userId: app.ownerId },
-    );
+    const vercelToken = await ctx.runQuery(internal.workflows.createAppHelpers.getVercelToken, {
+      userId: app.ownerId,
+    });
     if (!vercelToken) {
       await setStep(ctx, args.appId, "vercel", "error", "Vercel token not found");
       throw new Error("Vercel token not found for user");
     }
 
     try {
-      const teamId: string | undefined =
-        vercelToken.teams.length > 0 ? vercelToken.teams[0].id : undefined;
+      const teamId: string = app.vercelTeamId;
+      const team = vercelToken.teams.find((t: { id: string; slug: string }) => t.id === teamId);
+      if (!team) {
+        throw new Error("Selected Vercel team not found for this token; re-save your Vercel token on the setup page.");
+      }
+      const teamSlug = team.slug;
 
-      const url = teamId
-        ? `https://api.vercel.com/v11/projects?teamId=${teamId}`
-        : "https://api.vercel.com/v11/projects";
-
-      // Build command: run setup script to sync Convex env, then deploy + build.
-      // Must match the buildCommand in vercel.json (injected by SUPPLEMENTARY_FILES).
-      // --cmd-url-env-var-name injects NEXT_PUBLIC_CONVEX_URL before npm run build
-      // so Next.js knows the Convex URL at build time.
-      // set-convex-env.sh runs after the build to push JWT keys + SITE_URL to
-      // the Convex deployment (it only needs CONVEX_DEPLOY_KEY, not build-time vars).
-      const buildCommand = `npx convex deploy --cmd 'npm run build' --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL && sh ./set-convex-env.sh`;
+      const url = `https://api.vercel.com/v11/projects?teamId=${teamId}`;
 
       const response = await fetch(url, {
         method: "POST",
@@ -60,7 +63,6 @@ export const stepCreateVercelProject = internalAction({
         body: JSON.stringify({
           name: app.name,
           framework: "nextjs",
-          buildCommand,
           gitRepository: {
             type: "github",
             repo: args.repoFullName,
@@ -93,9 +95,7 @@ export const stepCreateVercelProject = internalAction({
       // Trigger initial deployment
       await setStep(ctx, args.appId, "vercel", "running", "Triggering first deployment...");
       const [repoOrg, repoName] = args.repoFullName.split("/");
-      const deployUrl = teamId
-        ? `https://api.vercel.com/v13/deployments?teamId=${teamId}`
-        : "https://api.vercel.com/v13/deployments";
+      const deployUrl = `https://api.vercel.com/v13/deployments?teamId=${teamId}`;
 
       const deployRes = await fetch(deployUrl, {
         method: "POST",
@@ -124,19 +124,24 @@ export const stepCreateVercelProject = internalAction({
         deploymentId = deployData.id;
       }
 
-      await ctx.runMutation(
-        internal.workflows.createAppHelpers.insertVercelProject,
-        {
-          appId: args.appId,
-          projectId: project.id,
-          projectName: project.name,
-          teamId: teamId ?? undefined,
-          deploymentUrl,
-        },
-      );
+      await ctx.runMutation(internal.workflows.createAppHelpers.insertVercelProject, {
+        appId: args.appId,
+        projectId: project.id,
+        projectName: project.name,
+        teamId,
+        teamSlug,
+        deploymentUrl,
+      });
 
       await setStep(ctx, args.appId, "vercel", "running", "Deploying...");
-      return { projectId: project.id, projectName: project.name, deploymentUrl, deploymentId, vercelToken: vercelToken.token, teamId };
+      return {
+        projectId: project.id,
+        projectName: project.name,
+        deploymentUrl,
+        deploymentId,
+        vercelToken: vercelToken.token,
+        teamId,
+      };
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error";
       await setStep(ctx, args.appId, "vercel", "error", msg);
@@ -150,7 +155,7 @@ export const stepWaitForDeployment = internalAction({
     appId: v.id("apps"),
     deploymentId: v.string(),
     vercelToken: v.string(),
-    teamId: v.optional(v.string()),
+    teamId: v.string(),
     deploymentUrl: v.string(),
   },
   returns: v.object({ status: v.string() }),
@@ -159,9 +164,7 @@ export const stepWaitForDeployment = internalAction({
 
     const maxAttempts = 30; // ~5 minutes (10s intervals)
     for (let i = 0; i < maxAttempts; i++) {
-      const url = args.teamId
-        ? `https://api.vercel.com/v13/deployments/${args.deploymentId}?teamId=${args.teamId}`
-        : `https://api.vercel.com/v13/deployments/${args.deploymentId}`;
+      const url = `https://api.vercel.com/v13/deployments/${args.deploymentId}?teamId=${args.teamId}`;
 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${args.vercelToken}` },

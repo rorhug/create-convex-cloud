@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { action, mutation, query } from "./_generated/server";
+import { action, internalMutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { requireCurrentUser, requireCurrentUserId } from "./lib/auth";
 
 const teamValidator = v.object({
@@ -8,6 +9,48 @@ const teamValidator = v.object({
   slug: v.string(),
 });
 
+type VercelTeam = { id: string; name: string; slug: string };
+
+/** Shared with verify + save: call Vercel and normalize teams. */
+async function fetchVercelTeamsForToken(token: string): Promise<VercelTeam[]> {
+  const trimmed = token.trim();
+  if (trimmed.length < 10) {
+    throw new Error("Vercel token looks too short");
+  }
+
+  const teamsResponse = await fetch("https://api.vercel.com/v2/teams", {
+    headers: {
+      Authorization: `Bearer ${trimmed}`,
+    },
+  });
+
+  if (!teamsResponse.ok) {
+    throw new Error("Vercel token is invalid or expired");
+  }
+
+  const data = (await teamsResponse.json()) as {
+    teams?: Array<{
+      id: string;
+      name: string | null;
+      slug: string;
+    }>;
+  };
+
+  const teams = (data.teams ?? []).map((t) => ({
+    id: t.id,
+    name: t.name ?? t.slug,
+    slug: t.slug,
+  }));
+
+  if (teams.length === 0) {
+    throw new Error(
+      "No Vercel teams found for this token. Check token access or your Vercel account.",
+    );
+  }
+
+  return teams;
+}
+
 export const verifyVercelToken = action({
   args: { token: v.string() },
   returns: v.object({
@@ -15,63 +58,48 @@ export const verifyVercelToken = action({
   }),
   handler: async (ctx, args) => {
     await requireCurrentUserId(ctx);
-    const token = args.token.trim();
-    if (token.length < 10) {
-      throw new Error("Vercel token looks too short");
-    }
-
-    const response = await fetch("https://api.vercel.com/v2/teams", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error("Vercel token is invalid or expired");
-    }
-
-    const data = (await response.json()) as {
-      teams?: Array<{
-        id: string;
-        name: string | null;
-        slug: string;
-      }>;
-    };
-
-    const teams = (data.teams ?? []).map((t) => ({
-      id: t.id,
-      name: t.name ?? t.slug,
-      slug: t.slug,
-    }));
-
+    const teams = await fetchVercelTeamsForToken(args.token);
     return { teams };
   },
 });
 
-export const saveVercelToken = mutation({
+export const internalUpsertVercelToken = internalMutation({
   args: {
+    userId: v.id("users"),
     token: v.string(),
     teams: v.array(teamValidator),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await requireCurrentUserId(ctx);
-
-    // Upsert: delete old token if exists
     const existing = await ctx.db
       .query("vercelTokens")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
     if (existing) {
       await ctx.db.delete(existing._id);
     }
-
     await ctx.db.insert("vercelTokens", {
-      userId,
+      userId: args.userId,
       token: args.token.trim(),
       teams: args.teams,
     });
+    return null;
+  },
+});
 
+export const saveVercelToken = action({
+  args: {
+    token: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await requireCurrentUserId(ctx);
+    const teams = await fetchVercelTeamsForToken(args.token);
+    await ctx.runMutation(internal.vercel.internalUpsertVercelToken, {
+      userId,
+      token: args.token,
+      teams,
+    });
     return null;
   },
 });
@@ -94,10 +122,7 @@ export const getVercelToken = query({
     if (!tokenDoc) return null;
 
     const token = tokenDoc.token;
-    const tokenPreview =
-      token.length <= 8
-        ? "********"
-        : `${token.slice(0, 4)}...${token.slice(-4)}`;
+    const tokenPreview = token.length <= 8 ? "********" : `${token.slice(0, 4)}...${token.slice(-4)}`;
 
     return {
       teams: tokenDoc.teams,
