@@ -31,11 +31,13 @@ export type GithubProfileWithTokens = {
 
 export default function GitHubProvider() {
   return GitHub({
+    allowDangerousEmailAccountLinking: false,
     clientId: process.env.AUTH_GITHUB_ID!,
     clientSecret: process.env.AUTH_GITHUB_SECRET!,
     authorization: {
       params: {
         scope: "repo delete_repo read:user user:email",
+        prompt: "consent"
       },
     },
     // profile(profile, tokens) {

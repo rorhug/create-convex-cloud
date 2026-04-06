@@ -1,20 +1,10 @@
 import { v } from "convex/values";
-import {
-  action,
-  internalMutation,
-  internalQuery,
-  mutation,
-  query,
-} from "./_generated/server";
+import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { requireCurrentUser, requireCurrentUserId } from "./lib/auth";
 import { getGithubTokenDocForUser } from "./lib/githubAuthAccount";
 import { githubAccessTokenNeedsRefresh } from "./lib/githubAccessToken";
-import {
-  createAppForUser,
-  deleteAppForUser,
-  listAppsForUser,
-} from "./lib/onboarding";
+import { createAppForUser, deleteAppForUser, listAppsForUser } from "./lib/onboarding";
 
 const appValidator = v.object({
   _id: v.id("apps"),
@@ -66,24 +56,16 @@ export const createApp = mutation({
 
     const githubToken = await getGithubTokenDocForUser(ctx, user._id);
     if (!githubToken) {
-      throw new Error(
-        "GitHub access token not available. Please sign out and sign in again.",
-      );
+      throw new Error("GitHub access token not available. Please sign out and sign in again.");
     }
     if (githubAccessTokenNeedsRefresh(githubToken.accessTokenExpiresAt)) {
-      throw new Error(
-        "GitHub access token expired or expiring. Sign in with GitHub again to refresh it.",
-      );
+      throw new Error("GitHub access token expired or expiring. Sign in with GitHub again to refresh it.");
     }
 
     const appId = await createAppForUser(ctx, user._id, args.name);
 
     // Schedule the creation workflow
-    await ctx.scheduler.runAfter(
-      0,
-      internal.workflows.createApp.runCreateAppWorkflow,
-      { appId },
-    );
+    await ctx.scheduler.runAfter(0, internal.workflows.createApp.runCreateAppWorkflow, { appId });
 
     return appId;
   },
@@ -118,17 +100,13 @@ export const deleteApp = action({
     });
 
     // Schedule the delete workflow
-    await ctx.scheduler.runAfter(
-      0,
-      internal.workflows.deleteApp.runDeleteAppWorkflow,
-      {
-        appId: args.id,
-        userId,
-        deleteGithubRepo: args.deleteGithubRepo,
-        deleteConvexProject: args.deleteConvexProject,
-        deleteVercelProject: args.deleteVercelProject,
-      },
-    );
+    await ctx.scheduler.runAfter(0, internal.workflows.deleteApp.runDeleteAppWorkflow, {
+      appId: args.id,
+      userId,
+      deleteGithubRepo: args.deleteGithubRepo,
+      deleteConvexProject: args.deleteConvexProject,
+      deleteVercelProject: args.deleteVercelProject,
+    });
 
     return null;
   },

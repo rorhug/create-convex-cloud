@@ -1,4 +1,4 @@
-import { convexAuth, getAuthUserId } from "@convex-dev/auth/server";
+import { convexAuth } from "@convex-dev/auth/server";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import ConvexPlatform, { type ConvexPlatformProfile } from "./providers/convexPlatform";
@@ -7,6 +7,7 @@ import { githubTokenFieldsFromProfile, upsertGithubTokenForGithubUser } from "./
 
 type CreateOrUpdateUserArgs = {
   existingUserId: Id<"users"> | null;
+  authUserId: Id<"users"> | null;
   profile: Record<string, unknown>;
   provider: { id: string };
   type: "oauth" | "credentials" | "email" | "phone" | "verification";
@@ -45,13 +46,13 @@ async function upsertConvexToken(ctx: MutationCtx, userId: Id<"users">, profile:
 }
 
 async function createOrUpdateGithubUser(ctx: MutationCtx, args: CreateOrUpdateUserArgs) {
-  const currentUserId = await getAuthUserId(ctx);
+  const authUserId = args.authUserId;
   const profile = args.profile as GithubProfileWithTokens;
 
-  if (currentUserId !== null && args.existingUserId === null) {
+  if (authUserId !== null && args.existingUserId === null) {
     throw new Error("GitHub account linking is not supported. Sign out before connecting a different GitHub account");
   }
-  if (currentUserId !== null && args.existingUserId !== null && args.existingUserId !== currentUserId) {
+  if (authUserId !== null && args.existingUserId !== null && args.existingUserId !== authUserId) {
     throw new Error("This GitHub account is already linked to a different user. Sign out first to switch accounts");
   }
 
@@ -71,18 +72,18 @@ async function createOrUpdateGithubUser(ctx: MutationCtx, args: CreateOrUpdateUs
 }
 
 async function createOrUpdateConvexUser(ctx: MutationCtx, args: CreateOrUpdateUserArgs) {
-  const currentUserId = await getAuthUserId(ctx);
+  const authUserId = args.authUserId;
   const profile = args.profile as ConvexPlatformProfile;
 
-  if (currentUserId === null) {
+  if (authUserId === null) {
     throw new Error("Sign in with GitHub before linking a Convex account");
   }
-  if (args.existingUserId !== null && args.existingUserId !== currentUserId) {
+  if (args.existingUserId !== null && args.existingUserId !== authUserId) {
     throw new Error("This Convex account is already linked to a different user");
   }
 
-  await upsertConvexToken(ctx, currentUserId, profile);
-  return currentUserId;
+  await upsertConvexToken(ctx, authUserId, profile);
+  return authUserId;
 }
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
@@ -98,7 +99,6 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       if (args.type !== "oauth") {
         throw new Error("Only OAuth authentication is supported");
       }
-      console.log("createOrUpdateUser", args.profile);
       switch (args.provider.id) {
         case "github":
           return await createOrUpdateGithubUser(ctx, args);
