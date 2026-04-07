@@ -5,6 +5,11 @@ import { requireCurrentUser, requireCurrentUserId } from "../lib/auth";
 import { getGithubTokenDocForUser } from "../lib/providers/github/data";
 import { githubAccessTokenNeedsRefresh } from "../lib/providers/github/platform";
 import { createAppForUser, deleteAppForUser, listAppsForUser } from "../lib/onboarding";
+import type { StepService, StepStatus } from "../workflows/stepTypes";
+import {
+  stepServiceValidator,
+  stepStatusValidator,
+} from "../workflows/stepTypes";
 
 const appValidator = v.object({
   _id: v.id("apps"),
@@ -126,8 +131,8 @@ export const deleteApp = action({
 });
 
 const stepValidator = v.object({
-  step: v.string(),
-  status: v.string(),
+  step: stepServiceValidator,
+  status: stepStatusValidator,
   message: v.union(v.string(), v.null()),
 });
 
@@ -141,8 +146,8 @@ export const getAppSteps = query({
       .withIndex("by_app", (q) => q.eq("appId", args.appId))
       .collect();
     return steps.map((step) => ({
-      step: step.step,
-      status: step.status,
+      step: step.step as StepService,
+      status: step.status as StepStatus,
       message: step.message ?? null,
     }));
   },
@@ -253,13 +258,16 @@ export const internalUpdateAppStatus = internalMutation({
 
 export const getAppStepsInternal = internalQuery({
   args: { appId: v.id("apps") },
-  returns: v.array(v.object({ step: v.string(), status: v.string() })),
+  returns: v.array(v.object({ step: stepServiceValidator, status: stepStatusValidator })),
   handler: async (ctx, args) => {
     const steps = await ctx.db
       .query("appSteps")
       .withIndex("by_app", (q) => q.eq("appId", args.appId))
       .collect();
-    return steps.map((step) => ({ step: step.step, status: step.status }));
+    return steps.map((step) => ({
+      step: step.step as StepService,
+      status: step.status as StepStatus,
+    }));
   },
 });
 

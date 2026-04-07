@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import type { FunctionReturnType } from "convex/server";
 
 export default function AppsPage() {
   const viewer = useQuery(api.client.viewer.getViewer);
@@ -174,7 +175,7 @@ function StepProgress({ appId }: { appId: Id<"apps"> }) {
 
   return (
     <div className="mt-2 space-y-1">
-      {steps.map((s) => (
+      {steps.map((s: FunctionReturnType<typeof api.client.apps.getAppSteps>[number]) => (
         <div key={s.step} className="flex items-start gap-2 text-xs">
           <StepIcon status={s.status} />
           <span
@@ -443,14 +444,9 @@ function AppsManager() {
                     Delete
                   </button>
                 </div>
-                {app.status === "ready" ? (
-                  <>
-                    <DeploymentUrl appId={app._id} />
-                    <DashboardLinks appId={app._id} />
-                  </>
-                ) : (
-                  <StepProgress appId={app._id} />
-                )}
+                <DeploymentUrl appId={app._id} />
+                <DashboardLinks appId={app._id} />
+                {app.status !== "ready" ? <StepProgress appId={app._id} /> : null}
               </div>
             ))}
           </div>

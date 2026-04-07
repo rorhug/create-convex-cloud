@@ -1,9 +1,7 @@
 import { internal } from "../_generated/api";
 import { Id } from "../_generated/dataModel";
 import { ActionCtx } from "../_generated/server";
-
-export type StepStatus = "pending" | "running" | "done" | "error";
-export type StepService = "github" | "convex" | "vercel";
+import type { StepService, StepStatus } from "./stepTypes";
 
 /**
  * Convenience wrapper to update a step's status and optional message.
@@ -16,7 +14,6 @@ export async function setStep(
   status: StepStatus,
   message?: string,
 ): Promise<void> {
-  console.log("setStep", { appId, step, status, message });
   await ctx.runMutation(internal.workflows.createAppHelpers.updateStep, {
     appId,
     step,

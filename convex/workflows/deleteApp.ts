@@ -7,12 +7,13 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { Octokit } from "octokit";
 import { createVercelClient } from "../lib/providers/vercel/platform";
+import type { StepService, StepStatus } from "./stepTypes";
 
 async function setStep(
   ctx: ActionCtx,
   appId: Id<"apps">,
-  step: string,
-  status: string,
+  step: StepService,
+  status: StepStatus,
   message?: string,
 ) {
   await ctx.runMutation(internal.workflows.createAppHelpers.updateStep, {
@@ -48,7 +49,7 @@ export const runDeleteAppWorkflow = internalAction({
   returns: v.null(),
   handler: async (ctx, args) => {
     // Initialize step records for selected deletions
-    const steps: string[] = [];
+    const steps: StepService[] = [];
     if (args.deleteGithubRepo) steps.push("github");
     if (args.deleteConvexProject) steps.push("convex");
     if (args.deleteVercelProject) steps.push("vercel");
@@ -190,7 +191,7 @@ export const runDeleteAppWorkflow = internalAction({
         internal.client.apps.getAppStepsInternal,
         { appId: args.appId },
       );
-      const hasError = steps.some((s: { step: string; status: string }) => s.status === "error");
+      const hasError = steps.some((s: { status: StepStatus }) => s.status === "error");
 
       if (hasError) {
         await ctx.runMutation(internal.client.apps.internalUpdateAppStatus, {

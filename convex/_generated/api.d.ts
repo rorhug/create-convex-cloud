@@ -31,6 +31,7 @@ import type * as workflows_githubAccessTokenAction from "../workflows/githubAcce
 import type * as workflows_stepConvex from "../workflows/stepConvex.js";
 import type * as workflows_stepGithubRepoClone from "../workflows/stepGithubRepoClone.js";
 import type * as workflows_stepGithubRepoTemplate from "../workflows/stepGithubRepoTemplate.js";
+import type * as workflows_stepTypes from "../workflows/stepTypes.js";
 import type * as workflows_stepUtils from "../workflows/stepUtils.js";
 import type * as workflows_stepVercel from "../workflows/stepVercel.js";
 import type * as workflows_templateConfig from "../workflows/templateConfig.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   "workflows/stepConvex": typeof workflows_stepConvex;
   "workflows/stepGithubRepoClone": typeof workflows_stepGithubRepoClone;
   "workflows/stepGithubRepoTemplate": typeof workflows_stepGithubRepoTemplate;
+  "workflows/stepTypes": typeof workflows_stepTypes;
   "workflows/stepUtils": typeof workflows_stepUtils;
   "workflows/stepVercel": typeof workflows_stepVercel;
   "workflows/templateConfig": typeof workflows_templateConfig;

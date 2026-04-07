@@ -2,6 +2,7 @@ import { WorkflowManager } from "@convex-dev/workflow";
 import { components, internal } from "../_generated/api";
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import { stepServiceValidator, stepStatusValidator } from "./stepTypes";
 
 const workflow = new WorkflowManager(components.workflow, {
   workpoolOptions: {
@@ -14,7 +15,7 @@ const workflow = new WorkflowManager(components.workflow, {
 export const initSteps = internalMutation({
   args: {
     appId: v.id("apps"),
-    steps: v.array(v.string()),
+    steps: v.array(stepServiceValidator),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -41,17 +42,17 @@ export const initSteps = internalMutation({
 export const updateStep = internalMutation({
   args: {
     appId: v.id("apps"),
-    step: v.string(),
-    status: v.string(),
+    step: stepServiceValidator,
+    status: stepStatusValidator,
     message: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const existing = await ctx.db
+    const existingSteps = await ctx.db
       .query("appSteps")
       .withIndex("by_app", (q) => q.eq("appId", args.appId))
-      .filter((q) => q.eq(q.field("step"), args.step))
-      .first();
+      .collect();
+    const existing = existingSteps.find((step) => step.step === args.step);
     if (existing) {
       await ctx.db.patch(existing._id, {
         status: args.status,

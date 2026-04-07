@@ -24,7 +24,7 @@ export const TEMPLATE_SKIP_FILES = new Set(["package-lock.json"]);
 // the upstream template doesn't include:
 //   • vercel.json  – our build command (calls set-convex-env.sh)
 //   • set-convex-env.sh – sets SITE_URL + JWT keys on the Convex deployment
-//   • generateJwtKeys.mjs – helper called by set-convex-env.sh
+//   • generate-jwt-keys.mjs – helper called by set-convex-env.sh
 // ---------------------------------------------------------------------------
 
 export const SUPPLEMENTARY_FILES: Array<{
@@ -96,7 +96,7 @@ ensure_jwt_env() {
   fi
 
   echo "Generating JWT key pair for Convex env"
-  generated_env="$(node generateJwtKeys.mjs)"
+  generated_env="$(node generate-jwt-keys.mjs)"
   eval "$generated_env"
 
   echo "Setting JWT_PRIVATE_KEY on Convex"
@@ -129,7 +129,7 @@ echo "set-convex-env.sh completed"
 `,
   },
   {
-    path: "generateJwtKeys.mjs",
+    path: "generate-jwt-keys.mjs",
     executable: false,
     content: `import { exportJWK, exportPKCS8, generateKeyPair } from "jose";
 import { pathToFileURL } from "node:url";

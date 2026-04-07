@@ -43,7 +43,7 @@ ensure_jwt_env() {
   fi
 
   echo "Generating JWT key pair for Convex env"
-  generated_env="$(node generateJwtKeys.mjs)"
+  generated_env="$(node generate-jwt-keys.mjs)"
   eval "$generated_env"
 
   echo "Setting JWT_PRIVATE_KEY on Convex"
