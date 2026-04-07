@@ -69,6 +69,39 @@ const STEP_LABELS: Record<string, string> = {
   vercel: "Vercel deployment",
 };
 
+/** Joins with commas and a final "and", e.g. "a, b and c" (matches natural lists). */
+function joinCommaAnd(items: string[]): string {
+  if (items.length === 0) return "";
+  if (items.length === 1) return items[0]!;
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+function deleteConfirmationSureLabel(
+  deleteGithub: boolean,
+  deleteConvex: boolean,
+  deleteVercel: boolean,
+): string {
+  const deleteParts: string[] = [];
+  if (deleteGithub) deleteParts.push("the repo on GitHub");
+  if (deleteConvex) deleteParts.push("the Convex project");
+  if (deleteVercel) deleteParts.push("the Vercel project");
+
+  const leaveParts: string[] = [];
+  if (!deleteGithub) leaveParts.push("the GitHub repo");
+  if (!deleteConvex) leaveParts.push("the Convex project");
+  if (!deleteVercel) leaveParts.push("the Vercel project");
+
+  const toRemove = [...deleteParts, "metadata from this product"];
+  let main = `I am sure I want to delete ${joinCommaAnd(toRemove)}`;
+
+  if (leaveParts.length > 0) {
+    main += `, but leave ${joinCommaAnd(leaveParts)} intact`;
+  }
+
+  return main;
+}
+
 function StepIcon({ status }: { status: string }) {
   switch (status) {
     case "done":
@@ -432,54 +465,55 @@ function AppsManager() {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            <label className="flex items-center gap-3 cursor-pointer">
+            <div className="space-y-3 rounded-xl border border-slate-700 bg-slate-950 p-4">
+              <p className="text-xs uppercase tracking-widest text-slate-500">
+                Resources to delete
+              </p>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Checkbox
+                  checked={deleteGithub}
+                  onCheckedChange={(checked) =>
+                    setDeleteGithub(checked === true)
+                  }
+                />
+                <span className="text-sm text-slate-300">Git repo</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Checkbox
+                  checked={deleteConvex}
+                  onCheckedChange={(checked) =>
+                    setDeleteConvex(checked === true)
+                  }
+                />
+                <span className="text-sm text-slate-300">Convex project</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <Checkbox
+                  checked={deleteVercel}
+                  onCheckedChange={(checked) =>
+                    setDeleteVercel(checked === true)
+                  }
+                />
+                <span className="text-sm text-slate-300">Vercel project</span>
+              </label>
+            </div>
+
+            <label className="flex cursor-pointer items-start gap-3">
               <Checkbox
+                className="mt-0.5"
                 checked={confirmChecked}
                 onCheckedChange={(checked) =>
                   setConfirmChecked(checked === true)
                 }
               />
-              <span className="text-sm font-medium text-slate-200">
-                I am sure I want to delete everything
+              <span className="text-sm font-medium leading-snug text-slate-200">
+                {deleteConfirmationSureLabel(
+                  deleteGithub,
+                  deleteConvex,
+                  deleteVercel,
+                )}
               </span>
             </label>
-
-            {confirmChecked && (
-              <div className="space-y-3 rounded-xl border border-slate-700 bg-slate-950 p-4">
-                <p className="text-xs uppercase tracking-widest text-slate-500">
-                  Resources to delete
-                </p>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <Checkbox
-                    checked={deleteGithub}
-                    onCheckedChange={(checked) =>
-                      setDeleteGithub(checked === true)
-                    }
-                  />
-                  <span className="text-sm text-slate-300">Git repo</span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <Checkbox
-                    checked={deleteConvex}
-                    onCheckedChange={(checked) =>
-                      setDeleteConvex(checked === true)
-                    }
-                  />
-                  <span className="text-sm text-slate-300">Convex project</span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <Checkbox
-                    checked={deleteVercel}
-                    onCheckedChange={(checked) =>
-                      setDeleteVercel(checked === true)
-                    }
-                  />
-                  <span className="text-sm text-slate-300">
-                    Vercel project
-                  </span>
-                </label>
-              </div>
-            )}
 
             {deleteError && (
               <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
