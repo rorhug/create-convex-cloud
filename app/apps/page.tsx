@@ -161,6 +161,9 @@ function AppsManager() {
   const deleteApp = useAction(api.apps.deleteApp);
   const vercelTeams = viewer?.vercel?.teams ?? [];
   const [vercelTeamId, setVercelTeamId] = useState("");
+  const [githubRepoVisibility, setGithubRepoVisibility] = useState<
+    "" | "public" | "private"
+  >("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -215,14 +218,19 @@ function AppsManager() {
   }
 
   async function handleCreate() {
+    if (githubRepoVisibility !== "public" && githubRepoVisibility !== "private") {
+      return;
+    }
     setIsCreating(true);
     setError(null);
     try {
       await createApp({
         name,
         vercelTeamId: vercelTeamId.trim(),
+        githubRepoVisibility,
       });
       setName("");
+      setGithubRepoVisibility("");
     } catch (createError) {
       setError(
         createError instanceof Error
@@ -293,6 +301,34 @@ function AppsManager() {
                 </select>
               </div>
             )}
+            <div className="space-y-2">
+              <label
+                htmlFor="github-visibility"
+                className="block text-sm font-medium text-slate-200"
+              >
+                GitHub repository
+              </label>
+              <select
+                id="github-visibility"
+                value={githubRepoVisibility}
+                onChange={(event) => {
+                  const v = event.target.value;
+                  setGithubRepoVisibility(
+                    v === "public" || v === "private" ? v : "",
+                  );
+                  setError(null);
+                }}
+                className="w-full max-w-xs rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-slate-500"
+              >
+                <option value="">Public or private…</option>
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+              </select>
+              <p className="text-xs text-slate-500">
+                New repos are created under your GitHub account with this
+                visibility.
+              </p>
+            </div>
             <label className="block text-sm font-medium text-slate-200">
               App name
             </label>
@@ -312,7 +348,9 @@ function AppsManager() {
                   isCreating ||
                   name.trim().length === 0 ||
                   vercelTeams.length === 0 ||
-                  vercelTeamId === ""
+                  vercelTeamId === "" ||
+                  (githubRepoVisibility !== "public" &&
+                    githubRepoVisibility !== "private")
                 }
                 onClick={() => {
                   void handleCreate();

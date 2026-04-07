@@ -33,6 +33,7 @@ export const createApp = mutation({
   args: {
     name: v.string(),
     vercelTeamId: v.string(),
+    githubRepoVisibility: v.union(v.literal("public"), v.literal("private")),
   },
   returns: v.id("apps"),
   handler: async (ctx, args) => {
@@ -74,7 +75,10 @@ export const createApp = mutation({
       );
     }
 
-    const appId = await createAppForUser(ctx, user._id, args.name, { vercelTeamId });
+    const appId = await createAppForUser(ctx, user._id, args.name, {
+      vercelTeamId,
+      githubRepoPrivate: args.githubRepoVisibility === "private",
+    });
 
     // Schedule the creation workflow
     await ctx.scheduler.runAfter(0, internal.workflows.createApp.runCreateAppWorkflow, { appId });
@@ -219,6 +223,7 @@ export const internalGetApp = internalQuery({
       name: v.string(),
       status: v.string(),
       vercelTeamId: v.string(),
+      githubRepoPrivate: v.boolean(),
     }),
     v.null(),
   ),
@@ -231,6 +236,7 @@ export const internalGetApp = internalQuery({
       name: app.name,
       status: app.status,
       vercelTeamId: app.vercelTeamId,
+      githubRepoPrivate: app.githubRepoPrivate ?? false,
     };
   },
 });

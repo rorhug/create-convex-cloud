@@ -25,10 +25,9 @@ export const stepCreateGithubRepo = internalAction({
     const app = await ctx.runQuery(internal.apps.internalGetApp, { id: args.appId });
     if (!app) throw new Error("App not found");
 
-    const githubConnection = await ctx.runQuery(
-      internal.workflows.createAppHelpers.getGithubConnection,
-      { userId: app.ownerId },
-    );
+    const githubConnection = await ctx.runQuery(internal.workflows.createAppHelpers.getGithubConnection, {
+      userId: app.ownerId,
+    });
     if (!githubConnection?.githubAccessToken) {
       await setStep(ctx, args.appId, "github", "error", "GitHub access token not found");
       throw new Error("GitHub access token not found for user");
@@ -61,7 +60,10 @@ export const stepCreateGithubRepo = internalAction({
       // minus files we explicitly skip (e.g. package-lock.json).
       const prefix = `${DEFAULT_TEMPLATE_FOLDER}/`;
       const upstreamEntries: Array<{ path: string; sha: string; mode: string }> = upstreamTreeRes.data.tree
-        .filter((e) => e.type === "blob" && e.path?.startsWith(prefix) && !TEMPLATE_SKIP_FILES.has(e.path.slice(prefix.length)))
+        .filter(
+          (e) =>
+            e.type === "blob" && e.path?.startsWith(prefix) && !TEMPLATE_SKIP_FILES.has(e.path.slice(prefix.length)),
+        )
         .map((e) => ({
           path: e.path.slice(prefix.length), // strip "template-nextjs-convexauth/"
           sha: e.sha as string,
@@ -108,7 +110,7 @@ export const stepCreateGithubRepo = internalAction({
       const createRepoRes = await octokit.request("POST /user/repos", {
         name: app.name,
         description: "Created by create-convex-cloud",
-        private: false,
+        private: app.githubRepoPrivate ?? true,
         auto_init: true,
         headers: { "X-GitHub-Api-Version": "2022-11-28" },
       });
@@ -174,7 +176,11 @@ export const stepCreateGithubRepo = internalAction({
         headers: { "X-GitHub-Api-Version": "2022-11-28" },
       });
 
-      await ctx.runMutation(internal.workflows.createAppHelpers.insertGithubRepo, { appId: args.appId, repoFullName, repoUrl });
+      await ctx.runMutation(internal.workflows.createAppHelpers.insertGithubRepo, {
+        appId: args.appId,
+        repoFullName,
+        repoUrl,
+      });
 
       await setStep(ctx, args.appId, "github", "done", `Created ${repoFullName}`);
       return { repoFullName, repoUrl };
