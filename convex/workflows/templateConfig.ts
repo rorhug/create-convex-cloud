@@ -2,13 +2,17 @@
 // Template source configuration
 // ---------------------------------------------------------------------------
 
-// Owner/repo of the upstream Convex templates repository.
-export const TEMPLATE_SOURCE_OWNER = "get-convex";
-export const TEMPLATE_SOURCE_REPO = "templates";
+// Owner/repo of the upstream repo used by the clone-based flow.
+export const CLONE_TEMPLATE_SOURCE_OWNER = "get-convex";
+export const CLONE_TEMPLATE_SOURCE_REPO = "templates";
 
 // Folder name inside that repo.  Change this (or make it per-app) to support
 // multiple template types in the future.
-export const DEFAULT_TEMPLATE_FOLDER = "template-nextjs-convexauth";
+export const CLONE_TEMPLATE_FOLDER = "template-nextjs-convexauth";
+
+// Default GitHub template repository used by the template-based flow.
+export const DEFAULT_TEMPLATE_OWNER = "rorhug";
+export const DEFAULT_TEMPLATE_REPO = "ccc-template";
 
 // Files from the upstream template that we do NOT want in the generated repo.
 export const TEMPLATE_SKIP_FILES = new Set(["package-lock.json"]);

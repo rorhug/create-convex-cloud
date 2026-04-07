@@ -53,7 +53,9 @@ export const createApp = mutation({
       throw new Error("Select a Vercel team");
     }
     if (!teams.some((team) => team.id === vercelTeamId)) {
-      throw new Error("That Vercel team is not available for your account. Re-verify your Vercel token on the setup page.");
+      throw new Error(
+        "That Vercel team is not available for your account. Re-verify your Vercel token on the setup page.",
+      );
     }
 
     const convexToken = await ctx.db
@@ -218,6 +220,7 @@ export const internalGetApp = internalQuery({
       status: v.string(),
       vercelTeamId: v.string(),
       githubRepoPrivate: v.boolean(),
+      githubRepoCreationMethod: v.union(v.literal("clone"), v.literal("template")),
     }),
     v.null(),
   ),
@@ -231,6 +234,7 @@ export const internalGetApp = internalQuery({
       status: app.status,
       vercelTeamId: app.vercelTeamId,
       githubRepoPrivate: app.githubRepoPrivate ?? false,
+      githubRepoCreationMethod: app.githubRepoCreationMethod,
     };
   },
 });

@@ -75,12 +75,19 @@ export const createApp = workflow.define({
       steps: ["github", "convex", "vercel"],
     });
 
+    const app = await step.runQuery(internal.client.apps.internalGetApp, {
+      id: args.appId,
+    });
+    if (!app) {
+      throw new Error("App not found");
+    }
+
     // Steps 1 & 2 in parallel: GitHub repo + Convex project
     const [githubResult, convexResult] = await Promise.all([
       step.runAction(
-        internal.workflows.stepGithub.stepCreateGithubRepo,
+        internal.workflows.stepGithubRepoTemplate.stepCreateGithubRepoTemplate,
         { appId: args.appId },
-        { name: "createGithubRepo", retry: true },
+        { name: "createGithubRepoTemplate", retry: true },
       ),
       step.runAction(
         internal.workflows.stepConvex.stepCreateConvexProject,

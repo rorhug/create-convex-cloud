@@ -42,8 +42,10 @@ export default defineSchema({
     name: v.string(),
     /** Vercel team id (includes personal/hobby via default team id). */
     vercelTeamId: v.string(),
-    /** GitHub repo visibility at creation time (`false` = public). Omitted on legacy rows. */
+    /** GitHub repo visibility at creation time (`false` = public). */
     githubRepoPrivate: v.boolean(),
+    /** GitHub repo setup strategy. */
+    githubRepoCreationMethod: v.union(v.literal("clone"), v.literal("template")),
     status: v.string(), // "creating" | "ready" | "deleting" | "error"
     workflowId: v.optional(v.string()),
     createdAt: v.number(),

@@ -29,7 +29,8 @@ import type * as workflows_createAppHelpers from "../workflows/createAppHelpers.
 import type * as workflows_deleteApp from "../workflows/deleteApp.js";
 import type * as workflows_githubAccessTokenAction from "../workflows/githubAccessTokenAction.js";
 import type * as workflows_stepConvex from "../workflows/stepConvex.js";
-import type * as workflows_stepGithub from "../workflows/stepGithub.js";
+import type * as workflows_stepGithubRepoClone from "../workflows/stepGithubRepoClone.js";
+import type * as workflows_stepGithubRepoTemplate from "../workflows/stepGithubRepoTemplate.js";
 import type * as workflows_stepUtils from "../workflows/stepUtils.js";
 import type * as workflows_stepVercel from "../workflows/stepVercel.js";
 import type * as workflows_templateConfig from "../workflows/templateConfig.js";
@@ -62,7 +63,8 @@ declare const fullApi: ApiFromModules<{
   "workflows/deleteApp": typeof workflows_deleteApp;
   "workflows/githubAccessTokenAction": typeof workflows_githubAccessTokenAction;
   "workflows/stepConvex": typeof workflows_stepConvex;
-  "workflows/stepGithub": typeof workflows_stepGithub;
+  "workflows/stepGithubRepoClone": typeof workflows_stepGithubRepoClone;
+  "workflows/stepGithubRepoTemplate": typeof workflows_stepGithubRepoTemplate;
   "workflows/stepUtils": typeof workflows_stepUtils;
   "workflows/stepVercel": typeof workflows_stepVercel;
   "workflows/templateConfig": typeof workflows_templateConfig;

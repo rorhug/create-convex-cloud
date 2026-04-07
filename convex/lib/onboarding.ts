@@ -51,7 +51,10 @@ export async function createAppForUser(
   ctx: MutationCtx,
   userId: Id<"users">,
   name: string,
-  options: { vercelTeamId: string; githubRepoPrivate: boolean },
+  options: {
+    vercelTeamId: string;
+    githubRepoPrivate: boolean;
+  },
 ) {
   const trimmedName = name.trim();
   if (trimmedName.length < 2) {
@@ -66,6 +69,7 @@ export async function createAppForUser(
     name: trimmedName,
     vercelTeamId: options.vercelTeamId,
     githubRepoPrivate: options.githubRepoPrivate,
+    githubRepoCreationMethod: "template",
     status: "creating",
     createdAt: Date.now(),
   });
