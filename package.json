@@ -7,8 +7,8 @@
     "dev:frontend": "next dev",
     "dev:backend": "convex dev",
     "predev": "true || (convex dev --until-success && convex dev --once --run-sh \"node setup.mjs --once\" && convex dashboard)",
-    "wipe:convex": "node wipeConvex.mjs",
-    "wipe:convex:prod": "node wipeConvex.mjs --prod",
+    "wipe:convex": "node wipe-convex.mjs",
+    "wipe:convex:prod": "node wipe-convex.mjs --prod",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ignore-pattern \"convex/_generated/**\""

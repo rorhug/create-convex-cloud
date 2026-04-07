@@ -14,8 +14,8 @@ const isHelp = process.argv.includes("--help") || process.argv.includes("-h");
 
 if (isHelp) {
   console.log(`Usage:
-  node wipeConvex.mjs
-  node wipeConvex.mjs --prod
+  node wipe-convex.mjs
+  node wipe-convex.mjs --prod
 
 Behavior:
   - Dev: requires typing YES
