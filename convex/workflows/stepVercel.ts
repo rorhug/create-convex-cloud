@@ -5,6 +5,7 @@ import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { createVercelClient } from "../lib/vercelClient";
 import { setStep } from "./stepUtils";
+import { Id } from "../_generated/dataModel";
 
 export const stepCreateVercelProject = internalAction({
   args: {
@@ -14,9 +15,9 @@ export const stepCreateVercelProject = internalAction({
     previewDeployKey: v.string(),
   },
   returns: v.object({
-    projectId: v.string(),
+    projectId: v.id("vercelProjects"),
     projectName: v.string(),
-    deploymentUrl: v.string(),
+    // deploymentUrl: v.string(),
     deploymentId: v.optional(v.string()),
     vercelToken: v.string(),
     teamId: v.string(),
@@ -25,9 +26,9 @@ export const stepCreateVercelProject = internalAction({
     ctx,
     args,
   ): Promise<{
-    projectId: string;
+    projectId: Id<"vercelProjects">;
     projectName: string;
-    deploymentUrl: string;
+    // deploymentUrl: string;
     deploymentId?: string;
     vercelToken: string;
     teamId: string;
@@ -80,7 +81,7 @@ export const stepCreateVercelProject = internalAction({
         },
       });
 
-      const deploymentUrl = `https://${project.name}.vercel.app`;
+      // const deploymentUrl = `https://${project.name}.vercel.app`;
 
       // Trigger initial deployment
       await setStep(ctx, args.appId, "vercel", "running", "Triggering first deployment...");
@@ -106,20 +107,20 @@ export const stepCreateVercelProject = internalAction({
         console.error("Failed to trigger deployment (non-fatal):", err);
       }
 
-      await ctx.runMutation(internal.workflows.createAppHelpers.insertVercelProject, {
+      const projectId = await ctx.runMutation(internal.workflows.createAppHelpers.insertVercelProject, {
         appId: args.appId,
         projectId: project.id,
         projectName: project.name,
         teamId,
         teamSlug,
-        deploymentUrl,
+        // deploymentUrl,
       });
 
       await setStep(ctx, args.appId, "vercel", "running", "Deploying...");
       return {
-        projectId: project.id,
+        projectId,
         projectName: project.name,
-        deploymentUrl,
+        // deploymentUrl,
         deploymentId,
         vercelToken: vercelToken.token,
         teamId,
@@ -138,7 +139,7 @@ export const stepWaitForDeployment = internalAction({
     deploymentId: v.string(),
     vercelToken: v.string(),
     teamId: v.string(),
-    deploymentUrl: v.string(),
+    projectId: v.id("vercelProjects"),
   },
   returns: v.object({ status: v.string() }),
   handler: async (ctx, args): Promise<{ status: string }> => {
@@ -153,10 +154,19 @@ export const stepWaitForDeployment = internalAction({
           teamId: args.teamId,
         });
         const state = data.readyState;
+        const deploymentAlias = data.alias?.[0];
 
         if (state === "READY") {
-          await setStep(ctx, args.appId, "vercel", "done", args.deploymentUrl);
-          console.log(JSON.stringify(data, null, 2));
+          if (deploymentAlias) {
+            const deploymentUrl = deploymentAlias ? `https://${deploymentAlias}` : undefined;
+            await setStep(ctx, args.appId, "vercel", "done", deploymentUrl);
+            await ctx.runMutation(internal.workflows.createAppHelpers.updateVercelProject, {
+              projectId: args.projectId,
+              deploymentUrl,
+            });
+          } else {
+            await setStep(ctx, args.appId, "vercel", "done", "no deployment alias found");
+          }
           return { status: "READY" };
         }
 
@@ -176,7 +186,7 @@ export const stepWaitForDeployment = internalAction({
     }
 
     // Timed out — still mark vercel step as done so the UI doesn't hang
-    await setStep(ctx, args.appId, "vercel", "done", args.deploymentUrl);
+    await setStep(ctx, args.appId, "vercel", "done", "Deployment timed out");
     return { status: "TIMEOUT" };
   },
 });

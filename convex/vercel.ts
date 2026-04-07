@@ -1,8 +1,6 @@
 import { v } from "convex/values";
-import { action, internalMutation, query } from "./_generated/server";
-import { internal } from "./_generated/api";
-import { requireCurrentUser, requireCurrentUserId } from "./lib/auth";
-import { createVercelClient } from "./lib/vercelClient";
+import { internalMutation, query } from "./_generated/server";
+import { requireCurrentUser } from "./lib/auth";
 
 export const teamValidator = v.object({
   id: v.string(),

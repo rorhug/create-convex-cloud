@@ -72,10 +72,10 @@ export const createApp = workflow.define({
   },
   handler: async (step, args): Promise<void> => {
     // Initialize step records
-    await step.runMutation(
-      internal.workflows.createAppHelpers.initSteps,
-      { appId: args.appId, steps: ["github", "convex", "vercel"] },
-    );
+    await step.runMutation(internal.workflows.createAppHelpers.initSteps, {
+      appId: args.appId,
+      steps: ["github", "convex", "vercel"],
+    });
 
     // Steps 1 & 2 in parallel: GitHub repo + Convex project
     const [githubResult, convexResult] = await Promise.all([
@@ -112,7 +112,7 @@ export const createApp = workflow.define({
           deploymentId: vercelResult.deploymentId,
           vercelToken: vercelResult.vercelToken,
           teamId: vercelResult.teamId,
-          deploymentUrl: vercelResult.deploymentUrl,
+          projectId: vercelResult.projectId,
         },
         { name: "waitForDeployment" },
       );
@@ -251,14 +251,27 @@ export const insertVercelProject = internalMutation({
     teamSlug: v.string(),
     deploymentUrl: v.optional(v.string()),
   },
-  returns: v.null(),
+  returns: v.id("vercelProjects"),
   handler: async (ctx, args) => {
-    await ctx.db.insert("vercelProjects", {
+    return await ctx.db.insert("vercelProjects", {
       appId: args.appId,
       projectId: args.projectId,
       projectName: args.projectName,
       teamId: args.teamId,
       teamSlug: args.teamSlug,
+      deploymentUrl: args.deploymentUrl,
+    });
+  },
+});
+
+export const updateVercelProject = internalMutation({
+  args: {
+    projectId: v.id("vercelProjects"),
+    deploymentUrl: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch("vercelProjects", args.projectId, {
       deploymentUrl: args.deploymentUrl,
     });
     return null;
