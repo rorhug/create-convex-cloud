@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function Home() {
-  const viewer = useQuery(api.viewer.getViewer);
+  const viewer = useQuery(api.client.viewer.getViewer);
   const router = useRouter();
 
   useEffect(() => {

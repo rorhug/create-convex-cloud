@@ -23,7 +23,7 @@ export const runCreateAppWorkflow = internalAction({
       await workflow.start(ctx, internal.workflows.createAppHelpers.createApp, { appId: args.appId });
     } catch (error) {
       console.error("Failed to start create app workflow:", error);
-      await ctx.runMutation(internal.apps.internalUpdateAppStatus, {
+      await ctx.runMutation(internal.client.apps.internalUpdateAppStatus, {
         id: args.appId,
         status: "error",
       });

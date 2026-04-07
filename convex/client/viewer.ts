@@ -1,7 +1,7 @@
 import { v } from "convex/values";
-import { query } from "./_generated/server";
-import { requireCurrentUser } from "./lib/auth";
-import { getViewerState } from "./lib/onboarding";
+import { query } from "../_generated/server";
+import { requireCurrentUser } from "../lib/auth";
+import { getViewerState } from "../lib/onboarding";
 
 const teamValidator = v.object({
   id: v.string(),

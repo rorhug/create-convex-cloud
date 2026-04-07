@@ -6,7 +6,7 @@ import { ActionCtx, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { Octokit } from "octokit";
-import { createVercelClient } from "../lib/vercelClient";
+import { createVercelClient } from "../lib/providers/vercel/platform";
 
 async function setStep(
   ctx: ActionCtx,
@@ -63,12 +63,12 @@ export const runDeleteAppWorkflow = internalAction({
       if (args.deleteGithubRepo) {
         await setStep(ctx, args.appId, "github", "running", "Deleting GitHub repo...");
         const githubRepo = await ctx.runQuery(
-          internal.workflows.deleteAppHelpers.getGithubRepo,
+          internal.lib.providers.github.data.getGithubRepoByAppId,
           { appId: args.appId },
         );
         if (githubRepo) {
           const githubConnection = await ctx.runQuery(
-            internal.workflows.createAppHelpers.getGithubConnection,
+            internal.lib.providers.github.data.getGithubConnection,
             { userId: args.userId },
           );
           if (githubConnection?.githubAccessToken) {
@@ -103,12 +103,12 @@ export const runDeleteAppWorkflow = internalAction({
       if (args.deleteConvexProject) {
         await setStep(ctx, args.appId, "convex", "running", "Deleting Convex project...");
         const convexProject = await ctx.runQuery(
-          internal.workflows.deleteAppHelpers.getConvexProject,
+          internal.lib.providers.convex.data.getConvexProjectByAppId,
           { appId: args.appId },
         );
         if (convexProject) {
           const convexToken = await ctx.runQuery(
-            internal.workflows.createAppHelpers.getConvexToken,
+            internal.lib.providers.convex.data.getConvexTokenForUser,
             { userId: args.userId },
           );
           if (convexToken) {
@@ -157,12 +157,12 @@ export const runDeleteAppWorkflow = internalAction({
       if (args.deleteVercelProject) {
         await setStep(ctx, args.appId, "vercel", "running", "Deleting Vercel project...");
         const vercelProject = await ctx.runQuery(
-          internal.workflows.deleteAppHelpers.getVercelProject,
+          internal.lib.providers.vercel.data.getVercelProjectByAppId,
           { appId: args.appId },
         );
         if (vercelProject) {
           const vercelToken = await ctx.runQuery(
-            internal.workflows.createAppHelpers.getVercelToken,
+            internal.lib.providers.vercel.data.getVercelTokenForUser,
             { userId: args.userId },
           );
           if (vercelToken) {
@@ -187,26 +187,26 @@ export const runDeleteAppWorkflow = internalAction({
 
       // Check if any step had an error
       const steps = await ctx.runQuery(
-        internal.apps.getAppStepsInternal,
+        internal.client.apps.getAppStepsInternal,
         { appId: args.appId },
       );
       const hasError = steps.some((s: { step: string; status: string }) => s.status === "error");
 
       if (hasError) {
-        await ctx.runMutation(internal.apps.internalUpdateAppStatus, {
+        await ctx.runMutation(internal.client.apps.internalUpdateAppStatus, {
           id: args.appId,
           status: "error",
         });
       } else {
         // All done - delete DB records
-        await ctx.runMutation(internal.apps.internalDeleteApp, {
+        await ctx.runMutation(internal.client.apps.internalDeleteApp, {
           id: args.appId,
           userId: args.userId,
         });
       }
     } catch (error) {
       console.error("Delete workflow failed:", error);
-      await ctx.runMutation(internal.apps.internalUpdateAppStatus, {
+      await ctx.runMutation(internal.client.apps.internalUpdateAppStatus, {
         id: args.appId,
         status: "error",
       });

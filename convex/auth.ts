@@ -1,9 +1,13 @@
 import { convexAuth } from "@convex-dev/auth/server";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import ConvexPlatform, { type ConvexPlatformProfile } from "./providers/convexPlatform";
-import GitHubProvider, { type GithubProfileWithTokens } from "./providers/github";
-import { githubTokenFieldsFromProfile, upsertGithubTokenForGithubUser } from "./githubTokens";
+import ConvexPlatform, { type ConvexPlatformProfile } from "./authProviders/convexPlatform";
+import GitHubProvider, { type GithubProfileWithTokens } from "./authProviders/github";
+import {
+  githubTokenFieldsFromProfile,
+  upsertGithubTokenForGithubUser,
+} from "./lib/providers/github/data";
+import { upsertConvexTokenForUser } from "./lib/providers/convex/data";
 
 type CreateOrUpdateUserArgs = {
   existingUserId: Id<"users"> | null;
@@ -24,25 +28,7 @@ async function upsertConvexToken(ctx: MutationCtx, userId: Id<"users">, profile:
   if (typeof token !== "string" || token.length === 0 || typeof teamId !== "string" || teamId.length === 0) {
     throw new Error("Convex OAuth did not return the expected team token");
   }
-
-  const existingToken = await ctx.db
-    .query("convexTokens")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .first();
-
-  const tokenDoc = {
-    providerAccountId: getProviderAccountId(profile),
-    teamId,
-    token,
-    userId,
-  };
-
-  if (existingToken) {
-    await ctx.db.patch(existingToken._id, tokenDoc);
-    return;
-  }
-
-  await ctx.db.insert("convexTokens", tokenDoc);
+  await upsertConvexTokenForUser(ctx, userId, token, teamId, getProviderAccountId(profile));
 }
 
 async function createOrUpdateGithubUser(ctx: MutationCtx, args: CreateOrUpdateUserArgs) {

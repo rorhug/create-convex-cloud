@@ -46,12 +46,14 @@ export const stepCreateConvexProject = internalAction({
   }> => {
     await setStep(ctx, args.appId, "convex", "running", "Creating Convex project...");
 
-    const app = await ctx.runQuery(internal.apps.internalGetApp, {
+    const app = await ctx.runQuery(internal.client.apps.internalGetApp, {
       id: args.appId,
     });
     if (!app) throw new Error("App not found");
 
-    const convexToken = await ctx.runQuery(internal.workflows.createAppHelpers.getConvexToken, { userId: app.ownerId });
+    const convexToken = await ctx.runQuery(internal.lib.providers.convex.data.getConvexTokenForUser, {
+      userId: app.ownerId,
+    });
     if (!convexToken) {
       await setStep(ctx, args.appId, "convex", "error", "Convex token not found");
       throw new Error("Convex token not found for user");
@@ -113,7 +115,7 @@ export const stepCreateConvexProject = internalAction({
       }
 
       // Store in DB
-      await ctx.runMutation(internal.workflows.createAppHelpers.insertConvexProject, {
+      await ctx.runMutation(internal.lib.providers.convex.data.insertConvexProject, {
         appId: args.appId,
         projectId: projectIdString,
         teamId: convexToken.teamId,

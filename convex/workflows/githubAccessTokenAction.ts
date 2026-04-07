@@ -8,7 +8,7 @@ import { v } from "convex/values";
 import {
   accessTokenExpiresAtMsFromOAuthTokens,
   githubAccessTokenNeedsRefresh,
-} from "../lib/githubAccessToken";
+} from "../lib/providers/github/platform";
 
 type GithubRefreshResponse = {
   access_token: string;
@@ -60,7 +60,7 @@ async function ensureFreshGithubAccessTokenImpl(
   ctx: ActionCtx,
   args: { userId: Id<"users"> },
 ): Promise<{ accessToken: string; githubUsername: string | null }> {
-  const row = await ctx.runQuery(internal.githubTokenRefresh.getGithubTokenRowForRefresh, {
+  const row = await ctx.runQuery(internal.lib.providers.github.data.getGithubTokenRowForRefresh, {
     userId: args.userId,
   });
   if (!row) {
@@ -79,7 +79,7 @@ async function ensureFreshGithubAccessTokenImpl(
   }
   const refreshed = await exchangeGithubRefreshToken(row.refreshToken);
   const accessTokenExpiresAt = accessTokenExpiresAtMsFromOAuthTokens(refreshed);
-  await ctx.runMutation(internal.githubTokenRefresh.applyGithubOAuthRefresh, {
+  await ctx.runMutation(internal.lib.providers.github.data.applyGithubOAuthRefresh, {
     githubUserId: row.githubUserId,
     accessToken: refreshed.access_token,
     ...(accessTokenExpiresAt !== undefined ? { accessTokenExpiresAt } : {}),

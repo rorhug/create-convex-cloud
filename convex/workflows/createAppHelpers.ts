@@ -1,9 +1,7 @@
 import { WorkflowManager } from "@convex-dev/workflow";
 import { components, internal } from "../_generated/api";
-import { internalQuery, internalMutation } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
-import { getGithubTokenDocForUser } from "../lib/githubAuthAccount";
-import { githubAccessTokenNeedsRefresh } from "../lib/githubAccessToken";
 
 const workflow = new WorkflowManager(components.workflow, {
   workpoolOptions: {
@@ -119,161 +117,9 @@ export const createApp = workflow.define({
     }
 
     // Mark app as ready
-    await step.runMutation(internal.apps.internalUpdateAppStatus, {
+    await step.runMutation(internal.client.apps.internalUpdateAppStatus, {
       id: args.appId,
       status: "ready",
     });
-  },
-});
-
-// --- Data queries ---
-
-export const getGithubConnection = internalQuery({
-  args: { userId: v.id("users") },
-  returns: v.union(
-    v.object({
-      githubAccessToken: v.union(v.string(), v.null()),
-      githubAccessTokenExpiresAt: v.union(v.number(), v.null()),
-      githubAccessTokenNeedsRefresh: v.boolean(),
-      githubUsername: v.union(v.string(), v.null()),
-    }),
-    v.null(),
-  ),
-  handler: async (ctx, args) => {
-    const githubToken = await getGithubTokenDocForUser(ctx, args.userId);
-    if (!githubToken) return null;
-    const expiresAt = githubToken.accessTokenExpiresAt;
-    return {
-      githubAccessToken: githubToken.token,
-      githubAccessTokenExpiresAt: expiresAt ?? null,
-      githubAccessTokenNeedsRefresh: githubAccessTokenNeedsRefresh(expiresAt),
-      githubUsername: githubToken.username ?? null,
-    };
-  },
-});
-
-export const getConvexToken = internalQuery({
-  args: { userId: v.id("users") },
-  returns: v.union(
-    v.object({
-      token: v.string(),
-      teamId: v.string(),
-    }),
-    v.null(),
-  ),
-  handler: async (ctx, args) => {
-    const tokenDoc = await ctx.db
-      .query("convexTokens")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .first();
-    if (!tokenDoc) return null;
-    return { token: tokenDoc.token, teamId: tokenDoc.teamId };
-  },
-});
-
-export const getVercelToken = internalQuery({
-  args: { userId: v.id("users") },
-  returns: v.union(
-    v.object({
-      token: v.string(),
-      teams: v.array(
-        v.object({
-          id: v.string(),
-          name: v.string(),
-          slug: v.string(),
-        }),
-      ),
-    }),
-    v.null(),
-  ),
-  handler: async (ctx, args) => {
-    const tokenDoc = await ctx.db
-      .query("vercelTokens")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .first();
-    if (!tokenDoc) return null;
-    return { token: tokenDoc.token, teams: tokenDoc.teams };
-  },
-});
-
-// --- Resource insert mutations ---
-
-export const insertGithubRepo = internalMutation({
-  args: {
-    appId: v.id("apps"),
-    repoFullName: v.string(),
-    repoUrl: v.string(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.db.insert("githubRepos", {
-      appId: args.appId,
-      repoFullName: args.repoFullName,
-      repoUrl: args.repoUrl,
-    });
-    return null;
-  },
-});
-
-export const insertConvexProject = internalMutation({
-  args: {
-    appId: v.id("apps"),
-    projectId: v.string(),
-    teamId: v.string(),
-    teamSlug: v.string(),
-    projectSlug: v.string(),
-    prodDeploymentName: v.string(),
-    prodDeployKey: v.string(),
-    previewDeployKey: v.string(),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.db.insert("convexProjects", {
-      appId: args.appId,
-      projectId: args.projectId,
-      teamId: args.teamId,
-      teamSlug: args.teamSlug,
-      projectSlug: args.projectSlug,
-      prodDeploymentName: args.prodDeploymentName,
-      prodDeployKey: args.prodDeployKey,
-      previewDeployKey: args.previewDeployKey,
-    });
-    return null;
-  },
-});
-
-export const insertVercelProject = internalMutation({
-  args: {
-    appId: v.id("apps"),
-    projectId: v.string(),
-    projectName: v.string(),
-    teamId: v.string(),
-    teamSlug: v.string(),
-    deploymentUrl: v.optional(v.string()),
-  },
-  returns: v.id("vercelProjects"),
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("vercelProjects", {
-      appId: args.appId,
-      projectId: args.projectId,
-      projectName: args.projectName,
-      teamId: args.teamId,
-      teamSlug: args.teamSlug,
-      deploymentUrl: args.deploymentUrl,
-    });
-  },
-});
-
-export const updateVercelProject = internalMutation({
-  args: {
-    projectId: v.id("vercelProjects"),
-    deploymentUrl: v.optional(v.string()),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    await ctx.db.patch("vercelProjects", args.projectId, {
-      deploymentUrl: args.deploymentUrl,
-    });
-    return null;
   },
 });

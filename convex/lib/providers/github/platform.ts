@@ -20,7 +20,7 @@ export function accessTokenExpiresAtMsFromOAuthTokens(tokens: {
 
 /**
  * Returns true when the access token should be refreshed before use (or is already stale).
- * If expiry is unknown (`undefined`), returns false — caller cannot rely on rotation by time alone.
+ * If expiry is unknown (`undefined`), returns false.
  */
 export function githubAccessTokenNeedsRefresh(
   accessTokenExpiresAtMs: number | undefined,

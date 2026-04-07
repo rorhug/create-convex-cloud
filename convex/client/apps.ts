@@ -1,10 +1,10 @@
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
-import { internal } from "./_generated/api";
-import { requireCurrentUser, requireCurrentUserId } from "./lib/auth";
-import { getGithubTokenDocForUser } from "./lib/githubAuthAccount";
-import { githubAccessTokenNeedsRefresh } from "./lib/githubAccessToken";
-import { createAppForUser, deleteAppForUser, listAppsForUser } from "./lib/onboarding";
+import { action, internalMutation, internalQuery, mutation, query } from "../_generated/server";
+import { internal } from "../_generated/api";
+import { requireCurrentUser, requireCurrentUserId } from "../lib/auth";
+import { getGithubTokenDocForUser } from "../lib/providers/github/data";
+import { githubAccessTokenNeedsRefresh } from "../lib/providers/github/platform";
+import { createAppForUser, deleteAppForUser, listAppsForUser } from "../lib/onboarding";
 
 const appValidator = v.object({
   _id: v.id("apps"),
@@ -39,7 +39,6 @@ export const createApp = mutation({
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
 
-    // Check tokens exist
     const vercelToken = await ctx.db
       .query("vercelTokens")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
@@ -53,7 +52,7 @@ export const createApp = mutation({
     if (!vercelTeamId) {
       throw new Error("Select a Vercel team");
     }
-    if (!teams.some((t) => t.id === vercelTeamId)) {
+    if (!teams.some((team) => team.id === vercelTeamId)) {
       throw new Error("That Vercel team is not available for your account. Re-verify your Vercel token on the setup page.");
     }
 
@@ -80,7 +79,6 @@ export const createApp = mutation({
       githubRepoPrivate: args.githubRepoVisibility === "private",
     });
 
-    // Schedule the creation workflow
     await ctx.scheduler.runAfter(0, internal.workflows.createApp.runCreateAppWorkflow, { appId });
 
     return appId;
@@ -98,8 +96,7 @@ export const deleteApp = action({
   handler: async (ctx, args) => {
     const userId = await requireCurrentUserId(ctx);
 
-    // Verify ownership
-    const app = await ctx.runQuery(internal.apps.internalGetApp, {
+    const app = await ctx.runQuery(internal.client.apps.internalGetApp, {
       id: args.id,
     });
     if (!app) {
@@ -109,13 +106,11 @@ export const deleteApp = action({
       throw new Error("You do not own this app");
     }
 
-    // Set status to deleting
-    await ctx.runMutation(internal.apps.internalUpdateAppStatus, {
+    await ctx.runMutation(internal.client.apps.internalUpdateAppStatus, {
       id: args.id,
       status: "deleting",
     });
 
-    // Schedule the delete workflow
     await ctx.scheduler.runAfter(0, internal.workflows.deleteApp.runDeleteAppWorkflow, {
       appId: args.id,
       userId,
@@ -143,10 +138,10 @@ export const getAppSteps = query({
       .query("appSteps")
       .withIndex("by_app", (q) => q.eq("appId", args.appId))
       .collect();
-    return steps.map((s) => ({
-      step: s.step,
-      status: s.status,
-      message: s.message ?? null,
+    return steps.map((step) => ({
+      step: step.step,
+      status: step.status,
+      message: step.message ?? null,
     }));
   },
 });
@@ -213,7 +208,6 @@ export const getAppDashboardLinks = query({
   },
 });
 
-// Internal mutations used by workflows
 export const internalGetApp = internalQuery({
   args: { id: v.id("apps") },
   returns: v.union(
@@ -261,7 +255,7 @@ export const getAppStepsInternal = internalQuery({
       .query("appSteps")
       .withIndex("by_app", (q) => q.eq("appId", args.appId))
       .collect();
-    return steps.map((s) => ({ step: s.step, status: s.status }));
+    return steps.map((step) => ({ step: step.step, status: step.status }));
   },
 });
 

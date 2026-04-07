@@ -1,6 +1,6 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { getGithubTokenDocForUser } from "./githubAuthAccount";
+import { getGithubTokenDocForUser } from "./providers/github/data";
 
 export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
   const githubToken = await getGithubTokenDocForUser(ctx, user._id);

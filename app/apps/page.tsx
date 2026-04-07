@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 
 export default function AppsPage() {
-  const viewer = useQuery(api.viewer.getViewer);
+  const viewer = useQuery(api.client.viewer.getViewer);
 
   if (viewer === undefined) {
     return (
@@ -116,7 +116,7 @@ function StepIcon({ status }: { status: string }) {
 }
 
 function DeploymentUrl({ appId }: { appId: Id<"apps"> }) {
-  const url = useQuery(api.apps.getAppDeploymentUrl, { appId });
+  const url = useQuery(api.client.apps.getAppDeploymentUrl, { appId });
   if (!url) return null;
   return (
     <a
@@ -131,7 +131,8 @@ function DeploymentUrl({ appId }: { appId: Id<"apps"> }) {
 }
 
 function DashboardLinks({ appId }: { appId: Id<"apps"> }) {
-  const links = useQuery(api.apps.getAppDashboardLinks, { appId });
+  const links = useQuery(api.client.apps.getAppDashboardLinks, { appId });
+  const [hoveredHref, setHoveredHref] = useState<string | null>(null);
   if (!links) return null;
   const items: Array<{ label: string; href: string }> = [];
   if (links.github) items.push({ label: "GitHub", href: links.github });
@@ -139,26 +140,35 @@ function DashboardLinks({ appId }: { appId: Id<"apps"> }) {
   if (links.convex) items.push({ label: "Convex", href: links.convex });
   if (items.length === 0) return null;
   return (
-    <p className="mt-2 text-xs text-slate-500">
-      {items.map((item, i) => (
-        <span key={item.label}>
-          {i > 0 ? <span className="mx-1.5 text-slate-600">·</span> : null}
-          <a
-            href={item.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-slate-400 hover:text-slate-200 hover:underline"
-          >
-            {item.label}
-          </a>
-        </span>
-      ))}
-    </p>
+    <div className="mt-2 flex items-baseline justify-between gap-3 text-xs text-slate-500">
+      <p className="min-w-0">
+        {items.map((item, i) => (
+          <span key={item.label}>
+            {i > 0 ? <span className="mx-1.5 text-slate-600">·</span> : null}
+            <a
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onMouseEnter={() => setHoveredHref(item.href)}
+              onMouseLeave={() => setHoveredHref((current) => (current === item.href ? null : current))}
+              onFocus={() => setHoveredHref(item.href)}
+              onBlur={() => setHoveredHref((current) => (current === item.href ? null : current))}
+              className="font-medium text-slate-400 hover:text-slate-200 hover:underline"
+            >
+              {item.label}
+            </a>
+          </span>
+        ))}
+      </p>
+      <span className="min-w-0 truncate text-right text-slate-600">
+        {hoveredHref ?? ""}
+      </span>
+    </div>
   );
 }
 
 function StepProgress({ appId }: { appId: Id<"apps"> }) {
-  const steps = useQuery(api.apps.getAppSteps, { appId });
+  const steps = useQuery(api.client.apps.getAppSteps, { appId });
 
   if (!steps || steps.length === 0) return null;
 
@@ -188,10 +198,10 @@ function StepProgress({ appId }: { appId: Id<"apps"> }) {
 }
 
 function AppsManager() {
-  const viewer = useQuery(api.viewer.getViewer);
-  const apps = useQuery(api.apps.listApps);
-  const createApp = useMutation(api.apps.createApp);
-  const deleteApp = useAction(api.apps.deleteApp);
+  const viewer = useQuery(api.client.viewer.getViewer);
+  const apps = useQuery(api.client.apps.listApps);
+  const createApp = useMutation(api.client.apps.createApp);
+  const deleteApp = useAction(api.client.apps.deleteApp);
   const vercelTeams = viewer?.vercel?.teams ?? [];
   const [vercelTeamId, setVercelTeamId] = useState("");
   const [githubRepoVisibility, setGithubRepoVisibility] = useState<

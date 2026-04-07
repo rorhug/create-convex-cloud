@@ -8,7 +8,7 @@ import { type ReactNode, useState } from "react";
 import { ArrowCircleUpRightIcon } from "@phosphor-icons/react";
 
 export default function SetupPage() {
-  const viewer = useQuery(api.viewer.getViewer);
+  const viewer = useQuery(api.client.viewer.getViewer);
 
   if (viewer === undefined) {
     return (
@@ -94,8 +94,8 @@ type ViewerState = {
 
 function Content({ viewer }: { viewer: ViewerState }) {
   const { signIn } = useAuthActions();
-  const verifyVercelToken = useAction(api.vercel.verifyVercelToken);
-  const saveVercelToken = useAction(api.vercel.saveVercelToken);
+  const verifyVercelToken = useAction(api.client.providers.vercel.clientActions.verifyVercelToken);
+  const saveVercelToken = useAction(api.client.providers.vercel.clientActions.saveVercelToken);
 
   const [vercelToken, setVercelToken] = useState("");
   const [vercelTeams, setVercelTeams] = useState<

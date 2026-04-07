@@ -22,10 +22,10 @@ export const stepCreateGithubRepo = internalAction({
   handler: async (ctx, args): Promise<{ repoFullName: string; repoUrl: string }> => {
     await setStep(ctx, args.appId, "github", "running", "Creating GitHub repo...");
 
-    const app = await ctx.runQuery(internal.apps.internalGetApp, { id: args.appId });
+    const app = await ctx.runQuery(internal.client.apps.internalGetApp, { id: args.appId });
     if (!app) throw new Error("App not found");
 
-    const githubConnection = await ctx.runQuery(internal.workflows.createAppHelpers.getGithubConnection, {
+    const githubConnection = await ctx.runQuery(internal.lib.providers.github.data.getGithubConnection, {
       userId: app.ownerId,
     });
     if (!githubConnection?.githubAccessToken) {
@@ -110,7 +110,7 @@ export const stepCreateGithubRepo = internalAction({
       const createRepoRes = await octokit.request("POST /user/repos", {
         name: app.name,
         description: "Created by create-convex-cloud",
-        private: app.githubRepoPrivate ?? true,
+        private: app.githubRepoPrivate ?? false,
         auto_init: true,
         headers: { "X-GitHub-Api-Version": "2022-11-28" },
       });
@@ -176,7 +176,7 @@ export const stepCreateGithubRepo = internalAction({
         headers: { "X-GitHub-Api-Version": "2022-11-28" },
       });
 
-      await ctx.runMutation(internal.workflows.createAppHelpers.insertGithubRepo, {
+      await ctx.runMutation(internal.lib.providers.github.data.insertGithubRepo, {
         appId: args.appId,
         repoFullName,
         repoUrl,

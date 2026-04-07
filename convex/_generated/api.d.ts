@@ -8,25 +8,25 @@
  * @module
  */
 
-import type * as apps from "../apps.js";
 import type * as auth from "../auth.js";
-import type * as convexToken from "../convexToken.js";
-import type * as githubTokenRefresh from "../githubTokenRefresh.js";
-import type * as githubTokens from "../githubTokens.js";
+import type * as authProviders_convexPlatform from "../authProviders/convexPlatform.js";
+import type * as authProviders_github from "../authProviders/github.js";
+import type * as client_apps from "../client/apps.js";
+import type * as client_providers_convex_client from "../client/providers/convex/client.js";
+import type * as client_providers_vercel_clientActions from "../client/providers/vercel/clientActions.js";
+import type * as client_viewer from "../client/viewer.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
-import type * as lib_githubAccessToken from "../lib/githubAccessToken.js";
-import type * as lib_githubAuthAccount from "../lib/githubAuthAccount.js";
 import type * as lib_onboarding from "../lib/onboarding.js";
-import type * as lib_vercelClient from "../lib/vercelClient.js";
-import type * as providers_convexPlatform from "../providers/convexPlatform.js";
-import type * as providers_github from "../providers/github.js";
-import type * as vercel from "../vercel.js";
-import type * as viewer from "../viewer.js";
+import type * as lib_providers_convex_data from "../lib/providers/convex/data.js";
+import type * as lib_providers_convex_platform from "../lib/providers/convex/platform.js";
+import type * as lib_providers_github_data from "../lib/providers/github/data.js";
+import type * as lib_providers_github_platform from "../lib/providers/github/platform.js";
+import type * as lib_providers_vercel_data from "../lib/providers/vercel/data.js";
+import type * as lib_providers_vercel_platform from "../lib/providers/vercel/platform.js";
 import type * as workflows_createApp from "../workflows/createApp.js";
 import type * as workflows_createAppHelpers from "../workflows/createAppHelpers.js";
 import type * as workflows_deleteApp from "../workflows/deleteApp.js";
-import type * as workflows_deleteAppHelpers from "../workflows/deleteAppHelpers.js";
 import type * as workflows_githubAccessTokenAction from "../workflows/githubAccessTokenAction.js";
 import type * as workflows_stepConvex from "../workflows/stepConvex.js";
 import type * as workflows_stepGithub from "../workflows/stepGithub.js";
@@ -41,25 +41,25 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  apps: typeof apps;
   auth: typeof auth;
-  convexToken: typeof convexToken;
-  githubTokenRefresh: typeof githubTokenRefresh;
-  githubTokens: typeof githubTokens;
+  "authProviders/convexPlatform": typeof authProviders_convexPlatform;
+  "authProviders/github": typeof authProviders_github;
+  "client/apps": typeof client_apps;
+  "client/providers/convex/client": typeof client_providers_convex_client;
+  "client/providers/vercel/clientActions": typeof client_providers_vercel_clientActions;
+  "client/viewer": typeof client_viewer;
   http: typeof http;
   "lib/auth": typeof lib_auth;
-  "lib/githubAccessToken": typeof lib_githubAccessToken;
-  "lib/githubAuthAccount": typeof lib_githubAuthAccount;
   "lib/onboarding": typeof lib_onboarding;
-  "lib/vercelClient": typeof lib_vercelClient;
-  "providers/convexPlatform": typeof providers_convexPlatform;
-  "providers/github": typeof providers_github;
-  vercel: typeof vercel;
-  viewer: typeof viewer;
+  "lib/providers/convex/data": typeof lib_providers_convex_data;
+  "lib/providers/convex/platform": typeof lib_providers_convex_platform;
+  "lib/providers/github/data": typeof lib_providers_github_data;
+  "lib/providers/github/platform": typeof lib_providers_github_platform;
+  "lib/providers/vercel/data": typeof lib_providers_vercel_data;
+  "lib/providers/vercel/platform": typeof lib_providers_vercel_platform;
   "workflows/createApp": typeof workflows_createApp;
   "workflows/createAppHelpers": typeof workflows_createAppHelpers;
   "workflows/deleteApp": typeof workflows_deleteApp;
-  "workflows/deleteAppHelpers": typeof workflows_deleteAppHelpers;
   "workflows/githubAccessTokenAction": typeof workflows_githubAccessTokenAction;
   "workflows/stepConvex": typeof workflows_stepConvex;
   "workflows/stepGithub": typeof workflows_stepGithub;

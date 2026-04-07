@@ -3,7 +3,12 @@
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
-import { createVercelClient } from "../lib/vercelClient";
+import {
+  createVercelClient,
+  getVercelErrorMessage,
+  isRetryableVercelGitError,
+  sleepMs,
+} from "../lib/providers/vercel/platform";
 import { setStep } from "./stepUtils";
 import { Id } from "../_generated/dataModel";
 
@@ -35,10 +40,10 @@ export const stepCreateVercelProject = internalAction({
   }> => {
     await setStep(ctx, args.appId, "vercel", "running", "Creating Vercel project...");
 
-    const app = await ctx.runQuery(internal.apps.internalGetApp, { id: args.appId });
+    const app = await ctx.runQuery(internal.client.apps.internalGetApp, { id: args.appId });
     if (!app) throw new Error("App not found");
 
-    const vercelToken = await ctx.runQuery(internal.workflows.createAppHelpers.getVercelToken, {
+    const vercelToken = await ctx.runQuery(internal.lib.providers.vercel.data.getVercelTokenForUser, {
       userId: app.ownerId,
     });
     if (!vercelToken) {
@@ -55,31 +60,58 @@ export const stepCreateVercelProject = internalAction({
       const teamSlug = team.slug;
 
       const client = createVercelClient(vercelToken.token);
-      const project = await client.projects.createProject({
-        teamId,
-        requestBody: {
-          name: app.name,
-          framework: "nextjs",
-          gitRepository: {
-            type: "github",
-            repo: args.repoFullName,
-          },
-          environmentVariables: [
-            {
-              key: "CONVEX_DEPLOY_KEY",
-              value: args.prodDeployKey,
-              target: ["production"],
-              type: "encrypted",
+      let project:
+        | Awaited<ReturnType<typeof client.projects.createProject>>
+        | undefined;
+      const projectCreateDelaysMs = [0, 2_000, 5_000, 10_000];
+      for (let attempt = 0; attempt < projectCreateDelaysMs.length; attempt++) {
+        const delayMs = projectCreateDelaysMs[attempt]!;
+        if (delayMs > 0) {
+          await setStep(
+            ctx,
+            args.appId,
+            "vercel",
+            "running",
+            `Waiting for GitHub repo to propagate to Vercel... (${Math.round(delayMs / 1000)}s)`,
+          );
+          await sleepMs(delayMs);
+        }
+        try {
+          project = await client.projects.createProject({
+            teamId,
+            requestBody: {
+              name: app.name,
+              framework: "nextjs",
+              gitRepository: {
+                type: "github",
+                repo: args.repoFullName,
+              },
+              environmentVariables: [
+                {
+                  key: "CONVEX_DEPLOY_KEY",
+                  value: args.prodDeployKey,
+                  target: ["production"],
+                  type: "encrypted",
+                },
+                {
+                  key: "CONVEX_DEPLOY_KEY",
+                  value: args.previewDeployKey,
+                  target: ["preview"],
+                  type: "encrypted",
+                },
+              ],
             },
-            {
-              key: "CONVEX_DEPLOY_KEY",
-              value: args.previewDeployKey,
-              target: ["preview"],
-              type: "encrypted",
-            },
-          ],
-        },
-      });
+          });
+          break;
+        } catch (error) {
+          if (attempt === projectCreateDelaysMs.length - 1 || !isRetryableVercelGitError(error)) {
+            throw error;
+          }
+        }
+      }
+      if (!project) {
+        throw new Error("Vercel project creation failed with no response");
+      }
 
       // const deploymentUrl = `https://${project.name}.vercel.app`;
 
@@ -88,26 +120,44 @@ export const stepCreateVercelProject = internalAction({
       const [repoOrg, repoName] = args.repoFullName.split("/");
 
       let deploymentId: string | undefined;
-      try {
-        const deployData = await client.deployments.createDeployment({
-          teamId,
-          requestBody: {
-            name: project.name,
-            target: "production",
-            gitSource: {
-              type: "github",
-              org: repoOrg,
-              repo: repoName,
-              ref: "main",
+      const deployDelaysMs = [0, 2_000, 5_000];
+      for (let attempt = 0; attempt < deployDelaysMs.length; attempt++) {
+        const delayMs = deployDelaysMs[attempt]!;
+        if (delayMs > 0) {
+          await setStep(
+            ctx,
+            args.appId,
+            "vercel",
+            "running",
+            `Waiting before triggering deployment... (${Math.round(delayMs / 1000)}s)`,
+          );
+          await sleepMs(delayMs);
+        }
+        try {
+          const deployData = await client.deployments.createDeployment({
+            teamId,
+            requestBody: {
+              name: project.name,
+              target: "production",
+              gitSource: {
+                type: "github",
+                org: repoOrg,
+                repo: repoName,
+                ref: "main",
+              },
             },
-          },
-        });
-        deploymentId = deployData.id;
-      } catch (err) {
-        console.error("Failed to trigger deployment (non-fatal):", err);
+          });
+          deploymentId = deployData.id;
+          break;
+        } catch (error) {
+          if (attempt === deployDelaysMs.length - 1 || !isRetryableVercelGitError(error)) {
+            console.error("Failed to trigger deployment (non-fatal):", error);
+            break;
+          }
+        }
       }
 
-      const projectId = await ctx.runMutation(internal.workflows.createAppHelpers.insertVercelProject, {
+      const projectId = await ctx.runMutation(internal.lib.providers.vercel.data.insertVercelProject, {
         appId: args.appId,
         projectId: project.id,
         projectName: project.name,
@@ -126,7 +176,7 @@ export const stepCreateVercelProject = internalAction({
         teamId,
       };
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "Unknown error";
+      const msg = getVercelErrorMessage(error);
       await setStep(ctx, args.appId, "vercel", "error", msg);
       throw error;
     }
@@ -160,7 +210,7 @@ export const stepWaitForDeployment = internalAction({
           if (deploymentAlias) {
             const deploymentUrl = deploymentAlias ? `https://${deploymentAlias}` : undefined;
             await setStep(ctx, args.appId, "vercel", "done", deploymentUrl);
-            await ctx.runMutation(internal.workflows.createAppHelpers.updateVercelProject, {
+            await ctx.runMutation(internal.lib.providers.vercel.data.updateVercelProject, {
               projectId: args.projectId,
               deploymentUrl,
             });

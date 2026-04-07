@@ -1,20 +1,11 @@
 import GitHub from "@auth/core/providers/github";
-import { accessTokenExpiresAtMsFromOAuthTokens } from "../lib/githubAccessToken";
-
-// export type GitHubOAuthProfile = {
-//   id?: string | number;
-//   email?: string;
-//   githubAccessToken?: string | null;
-//   githubUsername?: string | null;
-//   image?: string;
-//   name?: string;
-// };
+import { accessTokenExpiresAtMsFromOAuthTokens } from "../lib/providers/github/platform";
 
 export type GithubProfileWithTokens = {
   /**
    * Convex Auth strips `id` from the profile before `createOrUpdateUser` (it becomes
    * `providerAccountId` on the OAuth path). Duplicate the GitHub user id here so it
-   * still reaches our callback — see `@convex-dev/auth` OAuth callback `profileFromCallback`.
+   * still reaches our callback.
    */
   githubUserId?: string;
   id?: string;
@@ -37,17 +28,9 @@ export default function GitHubProvider() {
     authorization: {
       params: {
         scope: "repo delete_repo read:user user:email",
-        prompt: "consent"
+        prompt: "consent",
       },
     },
-    // profile(profile, tokens) {
-    //   return {
-    //     ...profile,
-    //     id: String(profile.id),
-    //     githubAccessToken: tokens.access_token ?? null,
-    //     githubUsername: typeof profile.login === "string" ? profile.login : null,
-    //   };
-    // },
     profile(profile, tokens): GithubProfileWithTokens {
       const accessToken = tokens.access_token;
       const refreshToken = tokens.refresh_token;
