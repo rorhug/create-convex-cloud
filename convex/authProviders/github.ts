@@ -21,30 +21,25 @@ export type GithubProfileWithTokens = {
 };
 
 export default function GitHubProvider() {
+  const appSlug = process.env.AUTH_GITHUB_APP_SLUG?.trim() ?? "create-convex-cloud";
+
   return GitHub({
     allowDangerousEmailAccountLinking: false,
     clientId: process.env.AUTH_GITHUB_ID!,
     clientSecret: process.env.AUTH_GITHUB_SECRET!,
-    authorization: {
-      params: {
-        scope: "repo delete_repo read:user user:email",
-        prompt: "consent",
-      },
-    },
+    ...(appSlug
+      ? {
+          // For GitHub Apps, start at the installation URL so install + user authorization
+          // happen in one flow before returning to the normal OAuth callback.
+          authorization: {
+            url: `https://github.com/apps/${encodeURIComponent(appSlug)}/installations/new`,
+          },
+        }
+      : {}),
     profile(profile, tokens): GithubProfileWithTokens {
       const accessToken = tokens.access_token;
       const refreshToken = tokens.refresh_token;
       const accessTokenExpiresAt = accessTokenExpiresAtMsFromOAuthTokens(tokens);
-      console.log("[GitHub OAuth profile]", {
-        githubUserId: profile.id,
-        login: profile.login,
-        hasAccessToken: typeof accessToken === "string" && accessToken.length > 0,
-        accessTokenLength: typeof accessToken === "string" ? accessToken.length : 0,
-        hasRefreshToken: typeof refreshToken === "string" && refreshToken.length > 0,
-        refreshTokenLength: typeof refreshToken === "string" ? refreshToken.length : 0,
-        accessTokenExpiresAtMs: accessTokenExpiresAt ?? null,
-        tokenResponseKeys: tokens && typeof tokens === "object" ? Object.keys(tokens as object) : [],
-      });
 
       const githubUserId = String(profile.id);
       return {

@@ -13,10 +13,10 @@ export default function SignIn() {
       <div className="w-full max-w-lg rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-2xl shadow-slate-950/40">
         <div className="space-y-4 text-center">
           <p className="text-sm uppercase tracking-[0.3em] text-slate-400">Create Convex Cloud</p>
-          <h1 className="text-3xl font-semibold text-white">Sign in with GitHub</h1>
+          <h1 className="text-3xl font-semibold text-white">Install GitHub App</h1>
           <p className="text-sm text-slate-300">
-            GitHub is the only login method enabled. After signing in, you will connect Vercel and link a Convex team
-            before creating apps.
+            GitHub is the only login method enabled. Install the GitHub App to authorize your account, then connect
+            Vercel and link a Convex team before creating apps.
           </p>
         </div>
 
@@ -41,7 +41,7 @@ export default function SignIn() {
                 });
             }}
           >
-            {loading ? "Redirecting to GitHub..." : "Continue with GitHub"}
+            {loading ? "Redirecting to GitHub..." : "Install GitHub App"}
           </button>
 
           {error && (

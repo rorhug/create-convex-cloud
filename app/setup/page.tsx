@@ -169,17 +169,17 @@ function Content({ viewer }: { viewer: ViewerState }) {
         {/* Step 1: GitHub */}
         <StepCard
           step="1"
-          title="GitHub login"
+          title="GitHub app"
           complete={viewer.onboarding.hasGitHubConnection}
         >
           {viewer.onboarding.hasGitHubConnection ? (
             <p className="text-sm text-slate-300">
-              Connected as {viewer.user.githubUsername ?? viewer.user.name ?? "GitHub user"}. Repo access granted.
+              Connected as {viewer.user.githubUsername ?? viewer.user.name ?? "GitHub user"}.
             </p>
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-slate-300">
-                Sign in with GitHub to grant repo access.
+                Install the GitHub App to connect your GitHub account and grant repo access.
               </p>
               <button
                 className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
@@ -201,7 +201,7 @@ function Content({ viewer }: { viewer: ViewerState }) {
                   })();
                 }}
               >
-                Connect GitHub
+                Install GitHub App
               </button>
             </div>
           )}
