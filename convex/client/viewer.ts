@@ -5,7 +5,7 @@ import { getViewerState } from "../lib/onboarding";
 
 const teamValidator = v.object({
   id: v.string(),
-  name: v.string(),
+  name: v.optional(v.string()),
   slug: v.string(),
 });
 

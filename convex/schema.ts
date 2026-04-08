@@ -22,7 +22,7 @@ export default defineSchema({
     teams: v.array(
       v.object({
         id: v.string(),
-        name: v.string(),
+        name: v.optional(v.string()),
         slug: v.string(),
       }),
     ),

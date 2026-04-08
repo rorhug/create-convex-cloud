@@ -77,7 +77,7 @@ type ViewerState = {
     githubUsername: string | null;
   };
   vercel: {
-    teams: Array<{ id: string; name: string; slug: string }>;
+    teams: Array<{ id: string; name?: string | undefined; slug: string }>;
     tokenPreview: string;
   } | null;
   convex: {
@@ -99,7 +99,7 @@ function Content({ viewer }: { viewer: ViewerState }) {
 
   const [vercelToken, setVercelToken] = useState("");
   const [vercelTeams, setVercelTeams] = useState<
-    Array<{ id: string; name: string; slug: string }> | null
+    Array<{ id: string; name: string | undefined; slug: string }> | null
   >(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<

@@ -4,8 +4,10 @@ import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import {
-  createVercelClient,
+  createVercelDeployment,
+  createVercelProject,
   getVercelErrorMessage,
+  getVercelDeployment,
   isRetryableVercelGitError,
   sleepMs,
 } from "../lib/providers/vercel/platform";
@@ -59,10 +61,7 @@ export const stepCreateVercelProject = internalAction({
       }
       const teamSlug = team.slug;
 
-      const client = createVercelClient(vercelToken.token);
-      let project:
-        | Awaited<ReturnType<typeof client.projects.createProject>>
-        | undefined;
+      let project: Awaited<ReturnType<typeof createVercelProject>> | undefined;
       const projectCreateDelaysMs = [0, 2_000, 5_000, 10_000];
       for (let attempt = 0; attempt < projectCreateDelaysMs.length; attempt++) {
         const delayMs = projectCreateDelaysMs[attempt]!;
@@ -77,30 +76,27 @@ export const stepCreateVercelProject = internalAction({
           await sleepMs(delayMs);
         }
         try {
-          project = await client.projects.createProject({
-            teamId,
-            requestBody: {
-              name: app.name,
-              framework: "nextjs",
-              gitRepository: {
-                type: "github",
-                repo: args.repoFullName,
-              },
-              environmentVariables: [
-                {
-                  key: "CONVEX_DEPLOY_KEY",
-                  value: args.prodDeployKey,
-                  target: ["production"],
-                  type: "encrypted",
-                },
-                {
-                  key: "CONVEX_DEPLOY_KEY",
-                  value: args.previewDeployKey,
-                  target: ["preview"],
-                  type: "encrypted",
-                },
-              ],
+          project = await createVercelProject(vercelToken.token, teamId, {
+            name: app.name,
+            framework: "nextjs",
+            gitRepository: {
+              type: "github",
+              repo: args.repoFullName,
             },
+            environmentVariables: [
+              {
+                key: "CONVEX_DEPLOY_KEY",
+                value: args.prodDeployKey,
+                target: ["production"],
+                type: "encrypted",
+              },
+              {
+                key: "CONVEX_DEPLOY_KEY",
+                value: args.previewDeployKey,
+                target: ["preview"],
+                type: "encrypted",
+              },
+            ],
           });
           break;
         } catch (error) {
@@ -134,17 +130,14 @@ export const stepCreateVercelProject = internalAction({
           await sleepMs(delayMs);
         }
         try {
-          const deployData = await client.deployments.createDeployment({
-            teamId,
-            requestBody: {
-              name: project.name,
-              target: "production",
-              gitSource: {
-                type: "github",
-                org: repoOrg,
-                repo: repoName,
-                ref: "main",
-              },
+          const deployData = await createVercelDeployment(vercelToken.token, teamId, {
+            name: project.name,
+            target: "production",
+            gitSource: {
+              type: "github",
+              org: repoOrg,
+              repo: repoName,
+              ref: "main",
             },
           });
           deploymentId = deployData.id;
@@ -195,14 +188,14 @@ export const stepWaitForDeployment = internalAction({
   handler: async (ctx, args): Promise<{ status: string }> => {
     await setStep(ctx, args.appId, "vercel", "running", "Waiting for deployment to finish...");
 
-    const client = createVercelClient(args.vercelToken);
     const maxAttempts = 30; // ~5 minutes (10s intervals)
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        const data = await client.deployments.getDeployment({
-          idOrUrl: args.deploymentId,
-          teamId: args.teamId,
-        });
+        const data = await getVercelDeployment(
+          args.vercelToken,
+          args.deploymentId,
+          args.teamId,
+        );
         const state = data.readyState;
         const deploymentAlias = data.alias?.[0];
 

@@ -1,16 +1,15 @@
 import { v } from "convex/values";
-import type { Id } from "../../../_generated/dataModel";
 import { internalMutation, internalQuery } from "../../../_generated/server";
 
 export const teamValidator = v.object({
   id: v.string(),
-  name: v.string(),
+  name: v.optional(v.string()),
   slug: v.string(),
 });
 
 export type VercelTeam = {
   id: string;
-  name: string;
+  name: string | undefined;
   slug: string;
 };
 

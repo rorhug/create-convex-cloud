@@ -6,7 +6,7 @@ import { ActionCtx, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { Octokit } from "octokit";
-import { createVercelClient } from "../lib/providers/vercel/platform";
+import { deleteVercelProject } from "../lib/providers/vercel/platform";
 import type { StepService, StepStatus } from "./stepTypes";
 
 async function setStep(
@@ -168,11 +168,11 @@ export const runDeleteAppWorkflow = internalAction({
           );
           if (vercelToken) {
             try {
-              const vercel = createVercelClient(vercelToken.token);
-              await vercel.projects.deleteProject({
-                idOrName: vercelProject.projectId,
-                teamId: vercelProject.teamId,
-              });
+              await deleteVercelProject(
+                vercelToken.token,
+                vercelProject.projectId,
+                vercelProject.teamId,
+              );
               await setStep(ctx, args.appId, "vercel", "done", "Deleted Vercel project");
             } catch (error) {
               const msg = error instanceof Error ? error.message : "Unknown error";
