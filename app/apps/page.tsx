@@ -16,6 +16,11 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import type { FunctionReturnType } from "convex/server";
+import {
+  AppCreationSection,
+  type AppsGithubInstallation,
+  type AppsVercelTeam,
+} from "./components";
 
 export default function AppsPage() {
   const viewer = useQuery(api.client.viewer.getViewer);
@@ -206,9 +211,10 @@ function AppsManager() {
   const refreshGithubInstallations = useAction(
     api.client.providers.github.clientActions.refreshGithubInstallations,
   );
-  const githubInstallations = viewer?.github.installations ?? [];
+  const githubInstallations: AppsGithubInstallation[] =
+    viewer?.github.installations ?? [];
   const githubInstallUrl = viewer?.github.installUrl ?? "#";
-  const vercelTeams = viewer?.vercel?.teams ?? [];
+  const vercelTeams: AppsVercelTeam[] = viewer?.vercel?.teams ?? [];
   const [githubInstallationId, setGithubInstallationId] = useState("");
   const [vercelTeamId, setVercelTeamId] = useState("");
   const [githubRepoVisibility, setGithubRepoVisibility] = useState<
@@ -318,183 +324,54 @@ function AppsManager() {
           </Link>
         </header>
 
-        <section className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
-          <div className="space-y-4">
-            {githubInstallations.length === 0 ? (
-              <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                No GitHub App installations on file yet. Add your personal account or an
-                organization, then refresh.
-              </p>
-            ) : null}
-            <div className="space-y-2">
-              <label
-                htmlFor="github-installation"
-                className="block text-sm font-medium text-slate-200"
-              >
-                GitHub installation
-              </label>
-              <select
-                id="github-installation"
-                value={githubInstallationId}
-                onChange={(event) => {
-                  setGithubInstallationId(event.target.value);
-                  setError(null);
-                }}
-                className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-slate-500"
-              >
-                <option value="">Select an installation…</option>
-                {githubInstallations.map((installation) => (
-                  <option key={installation.id} value={installation.id}>
-                    {installation.accountLogin}
-                    {installation.accountType.toLowerCase() === "organization"
-                      ? " (org)"
-                      : " (personal)"}
-                    {installation.repositorySelection === "selected"
-                      ? " - selected repos"
-                      : ""}
-                  </option>
-                ))}
-              </select>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"
-                  disabled={isCreating || isRefreshingGithub}
-                  onClick={() => {
-                    void (async () => {
-                      setIsRefreshingGithub(true);
-                      setError(null);
-                      try {
-                        await refreshGithubInstallations({});
-                      } catch (refreshError) {
-                        setError(
-                          refreshError instanceof Error
-                            ? refreshError.message
-                            : "Could not refresh GitHub installations",
-                        );
-                      } finally {
-                        setIsRefreshingGithub(false);
-                      }
-                    })();
-                  }}
-                >
-                  {isRefreshingGithub ? "Refreshing..." : "Refresh"}
-                </button>
-                <a
-                  href={githubInstallUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200"
-                >
-                  Add orgs / repos
-                </a>
-              </div>
-              <p className="text-xs text-slate-500">
-                Choose the personal account or organization that should own and
-                authorize the new repo.
-              </p>
-            </div>
-            {vercelTeams.length === 0 ? (
-              <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                No Vercel teams on file (your personal team should appear after you{" "}
-                <Link href="/setup" className="underline hover:text-white">
-                  verify your Vercel token again
-                </Link>
-                ).
-              </p>
-            ) : (
-              <div className="space-y-2">
-                <label
-                  htmlFor="vercel-team"
-                  className="block text-sm font-medium text-slate-200"
-                >
-                  Vercel team
-                </label>
-                <select
-                  id="vercel-team"
-                  value={vercelTeamId}
-                  onChange={(event) => {
-                    setVercelTeamId(event.target.value);
-                    setError(null);
-                  }}
-                  className="w-full max-w-xs rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-slate-500"
-                >
-                  <option value="">Select a team…</option>
-                  {vercelTeams.map((team) => (
-                    <option key={team.id} value={team.id}>
-                      {team.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div className="space-y-2">
-              <label
-                htmlFor="github-visibility"
-                className="block text-sm font-medium text-slate-200"
-              >
-                GitHub repository
-              </label>
-              <select
-                id="github-visibility"
-                value={githubRepoVisibility}
-                onChange={(event) => {
-                  const v = event.target.value;
-                  setGithubRepoVisibility(
-                    v === "public" || v === "private" ? v : "",
-                  );
-                  setError(null);
-                }}
-                className="w-full max-w-xs rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-slate-500"
-              >
-                <option value="">Public or private…</option>
-                <option value="public">Public</option>
-                <option value="private">Private</option>
-              </select>
-              <p className="text-xs text-slate-500">
-                New repos are created under the selected GitHub installation with this
-                visibility.
-              </p>
-            </div>
-            <label className="block text-sm font-medium text-slate-200">
-              App name
-            </label>
-            <div className="flex flex-col gap-3 md:flex-row">
-              <input
-                value={name}
-                onChange={(event) => {
-                  setName(event.target.value);
-                  setError(null);
-                }}
-                placeholder="my-demo-app"
-                className="flex-1 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
-              />
-              <button
-                className="rounded-2xl bg-white px-5 py-3 text-sm font-medium text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-                disabled={
-                  isCreating ||
-                  name.trim().length === 0 ||
-                  githubInstallations.length === 0 ||
-                  githubInstallationId === "" ||
-                  vercelTeams.length === 0 ||
-                  vercelTeamId === "" ||
-                  (githubRepoVisibility !== "public" &&
-                    githubRepoVisibility !== "private")
-                }
-                onClick={() => {
-                  void handleCreate();
-                }}
-              >
-                {isCreating ? "Creating..." : "Create app"}
-              </button>
-            </div>
-            {error && (
-              <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-                {error}
-              </div>
-            )}
-          </div>
-        </section>
+        <AppCreationSection
+          error={error}
+          githubInstallationId={githubInstallationId}
+          githubInstallations={githubInstallations}
+          githubInstallUrl={githubInstallUrl}
+          githubRepoVisibility={githubRepoVisibility}
+          isCreating={isCreating}
+          isRefreshingGithub={isRefreshingGithub}
+          name={name}
+          onGithubInstallationChange={(value) => {
+            setGithubInstallationId(value);
+            setError(null);
+          }}
+          onGithubRepoVisibilityChange={(value) => {
+            setGithubRepoVisibility(value);
+            setError(null);
+          }}
+          onNameChange={(value) => {
+            setName(value);
+            setError(null);
+          }}
+          onRefreshGithubInstallations={() => {
+            void (async () => {
+              setIsRefreshingGithub(true);
+              setError(null);
+              try {
+                await refreshGithubInstallations({});
+              } catch (refreshError) {
+                setError(
+                  refreshError instanceof Error
+                    ? refreshError.message
+                    : "Could not refresh GitHub installations",
+                );
+              } finally {
+                setIsRefreshingGithub(false);
+              }
+            })();
+          }}
+          onSubmit={() => {
+            void handleCreate();
+          }}
+          onVercelTeamChange={(value) => {
+            setVercelTeamId(value);
+            setError(null);
+          }}
+          vercelTeamId={vercelTeamId}
+          vercelTeams={vercelTeams}
+        />
 
         <section className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
           <h2 className="text-xl font-semibold text-white">Your apps</h2>

@@ -2,30 +2,23 @@ import { v } from "convex/values";
 import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { requireCurrentUser, requireCurrentUserId } from "./lib/auth";
-import { getGithubTokenDocForUser } from "./lib/providers/github/data";
-import { githubAccessTokenNeedsRefresh } from "./lib/providers/github/platform";
+import {
+  appSummaryValidator,
+  internalAppValidator,
+  mapAppSummary,
+  mapInternalApp,
+  validateCreateAppSelections,
+} from "./lib/apps";
 import { createAppForUser, deleteAppForUser, listAppsForUser } from "./lib/onboarding";
-
-const appValidator = v.object({
-  _id: v.id("apps"),
-  name: v.string(),
-  status: v.string(),
-  createdAt: v.number(),
-});
 
 export const listApps = query({
   args: {},
-  returns: v.array(appValidator),
+  returns: v.array(appSummaryValidator),
   handler: async (ctx) => {
     const user = await requireCurrentUser(ctx);
 
     const apps = await listAppsForUser(ctx, user._id);
-    return apps.map((app) => ({
-      _id: app._id,
-      name: app.name,
-      status: app.status,
-      createdAt: app.createdAt,
-    }));
+    return apps.map(mapAppSummary);
   },
 });
 
@@ -39,54 +32,11 @@ export const createApp = mutation({
   returns: v.id("apps"),
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
-
-    // Check tokens exist
-    const vercelToken = await ctx.db
-      .query("vercelTokens")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .first();
-    if (!vercelToken) {
-      throw new Error("Connect your Vercel account before creating apps");
-    }
-
-    const teams = vercelToken.teams;
-    const vercelTeamId = args.vercelTeamId.trim();
-    if (!vercelTeamId) {
-      throw new Error("Select a Vercel team");
-    }
-    if (!teams.some((t) => t.id === vercelTeamId)) {
-      throw new Error(
-        "That Vercel team is not available for your account. Re-verify your Vercel token on the setup page.",
-      );
-    }
-
-    const convexToken = await ctx.db
-      .query("convexTokens")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .first();
-    if (!convexToken) {
-      throw new Error("Connect your Convex account before creating apps");
-    }
-
-    const githubToken = await getGithubTokenDocForUser(ctx, user._id);
-    if (!githubToken) {
-      throw new Error("GitHub access token not available. Please sign out and sign in again.");
-    }
-    if (githubAccessTokenNeedsRefresh(githubToken.accessTokenExpiresAt) && !githubToken.refreshToken) {
-      throw new Error(
-        "GitHub access token expired or expiring and cannot be refreshed automatically. Sign in with GitHub again.",
-      );
-    }
-    const githubInstallations = githubToken.installations;
-    const githubInstallationId = args.githubInstallationId.trim();
-    if (!githubInstallationId) {
-      throw new Error("Select a GitHub installation");
-    }
-    if (!githubInstallations.some((installation) => installation.id === githubInstallationId)) {
-      throw new Error(
-        "That GitHub installation is not available for your account. Refresh installations or re-install the GitHub App.",
-      );
-    }
+    const { githubInstallationId, vercelTeamId } =
+      await validateCreateAppSelections(ctx, user._id, {
+        githubInstallationId: args.githubInstallationId,
+        vercelTeamId: args.vercelTeamId,
+      });
 
     const appId = await createAppForUser(ctx, user._id, args.name, {
       vercelTeamId,
@@ -230,30 +180,11 @@ export const getAppDashboardLinks = query({
 // Internal mutations used by workflows
 export const internalGetApp = internalQuery({
   args: { id: v.id("apps") },
-  returns: v.union(
-    v.object({
-      _id: v.id("apps"),
-      ownerId: v.id("users"),
-      name: v.string(),
-      status: v.string(),
-      vercelTeamId: v.string(),
-      githubInstallationId: v.string(),
-      githubRepoPrivate: v.boolean(),
-    }),
-    v.null(),
-  ),
+  returns: v.union(internalAppValidator, v.null()),
   handler: async (ctx, args) => {
     const app = await ctx.db.get(args.id);
     if (!app) return null;
-    return {
-      _id: app._id,
-      ownerId: app.ownerId,
-      name: app.name,
-      status: app.status,
-      vercelTeamId: app.vercelTeamId,
-      githubInstallationId: app.githubInstallationId,
-      githubRepoPrivate: app.githubRepoPrivate ?? false,
-    };
+    return mapInternalApp(app);
   },
 });
 
