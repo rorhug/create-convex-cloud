@@ -9,12 +9,25 @@ const teamValidator = v.object({
   slug: v.string(),
 });
 
+const githubInstallationValidator = v.object({
+  id: v.string(),
+  accountLogin: v.string(),
+  accountName: v.optional(v.string()),
+  accountType: v.string(),
+  accountAvatarUrl: v.optional(v.string()),
+  repositorySelection: v.string(),
+});
+
 const viewerStateValidator = v.object({
   user: v.object({
     name: v.union(v.string(), v.null()),
     email: v.union(v.string(), v.null()),
     image: v.union(v.string(), v.null()),
     githubUsername: v.union(v.string(), v.null()),
+  }),
+  github: v.object({
+    installations: v.array(githubInstallationValidator),
+    installUrl: v.string(),
   }),
   vercel: v.union(
     v.object({

@@ -13,6 +13,16 @@ export default defineSchema({
     accessTokenExpiresAt: v.optional(v.number()),
     refreshToken: v.optional(v.string()),
     username: v.optional(v.string()),
+    installations: v.array(
+      v.object({
+        id: v.string(),
+        accountLogin: v.string(),
+        accountName: v.optional(v.string()),
+        accountType: v.string(),
+        accountAvatarUrl: v.optional(v.string()),
+        repositorySelection: v.string(),
+      }),
+    ),
   }).index("by_github_user_id", ["githubUserId"]),
 
   // Vercel personal access token (pasted by user)
@@ -42,6 +52,8 @@ export default defineSchema({
     name: v.string(),
     /** Vercel team id (includes personal/hobby via default team id). */
     vercelTeamId: v.string(),
+    /** GitHub App installation to use for repo access and ownership. */
+    githubInstallationId: v.string(),
     /** GitHub repo visibility at creation time (`false` = public). */
     githubRepoPrivate: v.boolean(),
     /** GitHub repo setup strategy. */

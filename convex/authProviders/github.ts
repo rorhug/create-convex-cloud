@@ -21,21 +21,10 @@ export type GithubProfileWithTokens = {
 };
 
 export default function GitHubProvider() {
-  const appSlug = process.env.AUTH_GITHUB_APP_SLUG?.trim() ?? "create-convex-cloud";
-
   return GitHub({
     allowDangerousEmailAccountLinking: false,
     clientId: process.env.AUTH_GITHUB_ID!,
     clientSecret: process.env.AUTH_GITHUB_SECRET!,
-    ...(appSlug
-      ? {
-          // For GitHub Apps, start at the installation URL so install + user authorization
-          // happen in one flow before returning to the normal OAuth callback.
-          authorization: {
-            url: `https://github.com/apps/${encodeURIComponent(appSlug)}/installations/new`,
-          },
-        }
-      : {}),
     profile(profile, tokens): GithubProfileWithTokens {
       const accessToken = tokens.access_token;
       const refreshToken = tokens.refresh_token;

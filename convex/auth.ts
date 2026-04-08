@@ -4,10 +4,12 @@ import type { MutationCtx } from "./_generated/server";
 import ConvexPlatform, { type ConvexPlatformProfile } from "./authProviders/convexPlatform";
 import GitHubProvider, { type GithubProfileWithTokens } from "./authProviders/github";
 import {
+  getGithubTokenDocForUser,
   githubTokenFieldsFromProfile,
   upsertGithubTokenForGithubUser,
 } from "./lib/providers/github/data";
 import { upsertConvexTokenForUser } from "./lib/providers/convex/data";
+import { fetchGithubInstallationsForAccessToken } from "./lib/providers/github/platform";
 
 type CreateOrUpdateUserArgs = {
   existingUserId: Id<"users"> | null;
@@ -53,7 +55,20 @@ async function createOrUpdateGithubUser(ctx: MutationCtx, args: CreateOrUpdateUs
     await ctx.db.patch(args.existingUserId, userDoc);
   }
 
-  await upsertGithubTokenForGithubUser(ctx, githubTokenFieldsFromProfile(profile));
+  const tokenFields = githubTokenFieldsFromProfile(profile);
+  let installations = undefined;
+  try {
+    installations = await fetchGithubInstallationsForAccessToken(tokenFields.accessToken);
+  } catch (error) {
+    const existingToken = await getGithubTokenDocForUser(ctx, userId);
+    installations = existingToken?.installations ?? [];
+    console.error("Failed to refresh GitHub installations during sign-in:", error);
+  }
+
+  await upsertGithubTokenForGithubUser(ctx, {
+    ...tokenFields,
+    installations,
+  });
   return userId;
 }
 

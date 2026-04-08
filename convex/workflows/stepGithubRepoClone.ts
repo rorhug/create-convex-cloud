@@ -35,6 +35,13 @@ export const stepCreateGithubRepoClone = internalAction({
       await setStep(ctx, args.appId, "github", "error", "GitHub access token not found");
       throw new Error("GitHub access token not found for user");
     }
+    const installation = githubConnection.githubInstallations.find(
+      (candidate: { id: string }) => candidate.id === app.githubInstallationId,
+    );
+    if (!installation) {
+      await setStep(ctx, args.appId, "github", "error", "GitHub installation not found");
+      throw new Error("Selected GitHub installation not found. Refresh installations and try again.");
+    }
 
     const { accessToken, githubUsername } = await ctx.runAction(
       internal.workflows.githubAccessTokenAction.ensureFreshGithubAccessToken,
@@ -42,7 +49,7 @@ export const stepCreateGithubRepoClone = internalAction({
     );
 
     const octokit = new Octokit({ auth: accessToken });
-    const owner: string = githubUsername ?? "";
+    const owner: string = installation.accountLogin || githubUsername || "";
     let repoCreated = false;
 
     try {
@@ -102,13 +109,22 @@ export const stepCreateGithubRepoClone = internalAction({
 
       await setStep(ctx, args.appId, "github", "running", "Creating GitHub repo...");
 
-      const createRepoRes = await octokit.request("POST /user/repos", {
-        name: app.name,
-        description: "Created by create-convex-cloud",
-        private: app.githubRepoPrivate ?? false,
-        auto_init: true,
-        headers: { "X-GitHub-Api-Version": "2022-11-28" },
-      });
+      const createRepoRes = installation.accountType.toLowerCase() === "organization"
+        ? await octokit.request("POST /orgs/{org}/repos", {
+            org: owner,
+            name: app.name,
+            description: "Created by create-convex-cloud",
+            private: app.githubRepoPrivate ?? false,
+            auto_init: true,
+            headers: { "X-GitHub-Api-Version": "2022-11-28" },
+          })
+        : await octokit.request("POST /user/repos", {
+            name: app.name,
+            description: "Created by create-convex-cloud",
+            private: app.githubRepoPrivate ?? false,
+            auto_init: true,
+            headers: { "X-GitHub-Api-Version": "2022-11-28" },
+          });
       repoCreated = true;
 
       const repoFullName: string = createRepoRes.data.full_name;

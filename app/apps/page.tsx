@@ -203,7 +203,13 @@ function AppsManager() {
   const apps = useQuery(api.client.apps.listApps);
   const createApp = useMutation(api.client.apps.createApp);
   const deleteApp = useAction(api.client.apps.deleteApp);
+  const refreshGithubInstallations = useAction(
+    api.client.providers.github.clientActions.refreshGithubInstallations,
+  );
+  const githubInstallations = viewer?.github.installations ?? [];
+  const githubInstallUrl = viewer?.github.installUrl ?? "#";
   const vercelTeams = viewer?.vercel?.teams ?? [];
+  const [githubInstallationId, setGithubInstallationId] = useState("");
   const [vercelTeamId, setVercelTeamId] = useState("");
   const [githubRepoVisibility, setGithubRepoVisibility] = useState<
     "" | "public" | "private"
@@ -211,6 +217,7 @@ function AppsManager() {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [isRefreshingGithub, setIsRefreshingGithub] = useState(false);
 
   // Delete dialog state
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -270,10 +277,12 @@ function AppsManager() {
     try {
       await createApp({
         name,
+        githubInstallationId,
         vercelTeamId: vercelTeamId.trim(),
         githubRepoVisibility,
       });
       setName("");
+      setGithubInstallationId("");
       setGithubRepoVisibility("");
     } catch (createError) {
       setError(
@@ -311,6 +320,80 @@ function AppsManager() {
 
         <section className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
           <div className="space-y-4">
+            {githubInstallations.length === 0 ? (
+              <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                No GitHub App installations on file yet. Add your personal account or an
+                organization, then refresh.
+              </p>
+            ) : null}
+            <div className="space-y-2">
+              <label
+                htmlFor="github-installation"
+                className="block text-sm font-medium text-slate-200"
+              >
+                GitHub installation
+              </label>
+              <select
+                id="github-installation"
+                value={githubInstallationId}
+                onChange={(event) => {
+                  setGithubInstallationId(event.target.value);
+                  setError(null);
+                }}
+                className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-slate-500"
+              >
+                <option value="">Select an installation…</option>
+                {githubInstallations.map((installation) => (
+                  <option key={installation.id} value={installation.id}>
+                    {installation.accountLogin}
+                    {installation.accountType.toLowerCase() === "organization"
+                      ? " (org)"
+                      : " (personal)"}
+                    {installation.repositorySelection === "selected"
+                      ? " - selected repos"
+                      : ""}
+                  </option>
+                ))}
+              </select>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"
+                  disabled={isCreating || isRefreshingGithub}
+                  onClick={() => {
+                    void (async () => {
+                      setIsRefreshingGithub(true);
+                      setError(null);
+                      try {
+                        await refreshGithubInstallations({});
+                      } catch (refreshError) {
+                        setError(
+                          refreshError instanceof Error
+                            ? refreshError.message
+                            : "Could not refresh GitHub installations",
+                        );
+                      } finally {
+                        setIsRefreshingGithub(false);
+                      }
+                    })();
+                  }}
+                >
+                  {isRefreshingGithub ? "Refreshing..." : "Refresh"}
+                </button>
+                <a
+                  href={githubInstallUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200"
+                >
+                  Add orgs / repos
+                </a>
+              </div>
+              <p className="text-xs text-slate-500">
+                Choose the personal account or organization that should own and
+                authorize the new repo.
+              </p>
+            </div>
             {vercelTeams.length === 0 ? (
               <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                 No Vercel teams on file (your personal team should appear after you{" "}
@@ -369,7 +452,7 @@ function AppsManager() {
                 <option value="private">Private</option>
               </select>
               <p className="text-xs text-slate-500">
-                New repos are created under your GitHub account with this
+                New repos are created under the selected GitHub installation with this
                 visibility.
               </p>
             </div>
@@ -391,6 +474,8 @@ function AppsManager() {
                 disabled={
                   isCreating ||
                   name.trim().length === 0 ||
+                  githubInstallations.length === 0 ||
+                  githubInstallationId === "" ||
                   vercelTeams.length === 0 ||
                   vercelTeamId === "" ||
                   (githubRepoVisibility !== "public" &&

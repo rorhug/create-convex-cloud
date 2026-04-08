@@ -5,8 +5,10 @@ import { internal } from "../_generated/api";
 import type { ActionCtx } from "../_generated/server";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
+import { githubInstallationValidator } from "../lib/providers/github/data";
 import {
   accessTokenExpiresAtMsFromOAuthTokens,
+  fetchGithubInstallationsForAccessToken,
   githubAccessTokenNeedsRefresh,
 } from "../lib/providers/github/platform";
 
@@ -93,6 +95,26 @@ async function ensureFreshGithubAccessTokenImpl(
   };
 }
 
+async function refreshGithubInstallationsImpl(
+  ctx: ActionCtx,
+  args: { userId: Id<"users"> },
+) {
+  const row = await ctx.runQuery(internal.lib.providers.github.data.getGithubTokenRowForRefresh, {
+    userId: args.userId,
+  });
+  if (!row) {
+    throw new Error("GitHub access token not found for user");
+  }
+
+  const { accessToken } = await ensureFreshGithubAccessTokenImpl(ctx, args);
+  const installations = await fetchGithubInstallationsForAccessToken(accessToken);
+  await ctx.runMutation(internal.lib.providers.github.data.updateGithubInstallations, {
+    githubUserId: row.githubUserId,
+    installations,
+  });
+  return { installations };
+}
+
 /**
  * Ensures the user's GitHub OAuth access token is valid for API use: refreshes via
  * `grant_type=refresh_token` when within the expiry buffer, updates `githubTokens`, then
@@ -105,4 +127,12 @@ export const ensureFreshGithubAccessToken = internalAction({
     githubUsername: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => ensureFreshGithubAccessTokenImpl(ctx, args),
+});
+
+export const refreshGithubInstallations = internalAction({
+  args: { userId: v.id("users") },
+  returns: v.object({
+    installations: v.array(githubInstallationValidator),
+  }),
+  handler: async (ctx, args) => refreshGithubInstallationsImpl(ctx, args),
 });

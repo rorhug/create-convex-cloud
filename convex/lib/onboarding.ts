@@ -1,10 +1,12 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { getGithubTokenDocForUser } from "./providers/github/data";
+import { getGithubAppInstallUrl } from "./providers/github/platform";
 
 export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
   const githubToken = await getGithubTokenDocForUser(ctx, user._id);
-  const hasGitHubConnection = githubToken !== null;
+  const githubInstallations = githubToken?.installations ?? [];
+  const hasGitHubConnection = githubInstallations.length > 0;
 
   const vercelToken = await ctx.db
     .query("vercelTokens")
@@ -24,6 +26,10 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
       email: user.email ?? null,
       image: user.image ?? null,
       githubUsername: githubToken?.username ?? null,
+    },
+    github: {
+      installations: githubInstallations,
+      installUrl: getGithubAppInstallUrl(),
     },
     vercel: hasVercelConnection
       ? {
@@ -53,6 +59,7 @@ export async function createAppForUser(
   name: string,
   options: {
     vercelTeamId: string;
+    githubInstallationId: string;
     githubRepoPrivate: boolean;
   },
 ) {
@@ -68,6 +75,7 @@ export async function createAppForUser(
     ownerId: userId,
     name: trimmedName,
     vercelTeamId: options.vercelTeamId,
+    githubInstallationId: options.githubInstallationId,
     githubRepoPrivate: options.githubRepoPrivate,
     githubRepoCreationMethod: "template",
     status: "creating",

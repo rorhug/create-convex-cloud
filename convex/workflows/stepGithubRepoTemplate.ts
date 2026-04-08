@@ -26,13 +26,20 @@ export const stepCreateGithubRepoTemplate = internalAction({
       await setStep(ctx, args.appId, "github", "error", "GitHub access token not found");
       throw new Error("GitHub access token not found for user");
     }
+    const installation = githubConnection.githubInstallations.find(
+      (candidate: { id: string }) => candidate.id === app.githubInstallationId,
+    );
+    if (!installation) {
+      await setStep(ctx, args.appId, "github", "error", "GitHub installation not found");
+      throw new Error("Selected GitHub installation not found. Refresh installations and try again.");
+    }
 
     const { accessToken, githubUsername } = await ctx.runAction(
       internal.workflows.githubAccessTokenAction.ensureFreshGithubAccessToken,
       { userId: app.ownerId },
     );
     const octokit = new Octokit({ auth: accessToken });
-    const owner = githubUsername ?? "";
+    const owner = installation.accountLogin || githubUsername || "";
     let repoCreated = false;
     let createdRepoFullName: string | null = null;
 
@@ -42,7 +49,7 @@ export const stepCreateGithubRepoTemplate = internalAction({
         args.appId,
         "github",
         "running",
-        `Creating repo from template ${DEFAULT_TEMPLATE_OWNER}/${DEFAULT_TEMPLATE_REPO}...`,
+        `Creating repo in ${owner} from template ${DEFAULT_TEMPLATE_OWNER}/${DEFAULT_TEMPLATE_REPO}...`,
       );
 
       const createRepoRes = await octokit.request("POST /repos/{template_owner}/{template_repo}/generate", {

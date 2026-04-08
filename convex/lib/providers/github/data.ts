@@ -3,7 +3,16 @@ import type { Doc, Id } from "../../../_generated/dataModel";
 import { internalMutation, internalQuery } from "../../../_generated/server";
 import type { MutationCtx, QueryCtx } from "../../../_generated/server";
 import type { GithubProfileWithTokens } from "../../../authProviders/github";
-import { githubAccessTokenNeedsRefresh } from "./platform";
+import { type GithubInstallation, githubAccessTokenNeedsRefresh } from "./platform";
+
+export const githubInstallationValidator = v.object({
+  id: v.string(),
+  accountLogin: v.string(),
+  accountName: v.optional(v.string()),
+  accountType: v.string(),
+  accountAvatarUrl: v.optional(v.string()),
+  repositorySelection: v.string(),
+});
 
 export async function findGithubAuthAccountForUser(
   ctx: QueryCtx | MutationCtx,
@@ -37,6 +46,7 @@ export type GithubTokenFields = {
   accessTokenExpiresAt?: number;
   refreshToken?: string;
   username?: string;
+  installations?: GithubInstallation[];
 };
 
 export function githubTokenFieldsFromProfile(profile: GithubProfileWithTokens): GithubTokenFields {
@@ -79,6 +89,7 @@ export async function upsertGithubTokenForGithubUser(ctx: MutationCtx, fields: G
   const tokenDoc = {
     githubUserId: fields.githubUserId,
     token: fields.accessToken,
+    installations: fields.installations ?? [],
     ...(fields.accessTokenExpiresAt !== undefined
       ? { accessTokenExpiresAt: fields.accessTokenExpiresAt }
       : {}),
@@ -102,6 +113,7 @@ export const getGithubConnection = internalQuery({
       githubAccessTokenExpiresAt: v.union(v.number(), v.null()),
       githubAccessTokenNeedsRefresh: v.boolean(),
       githubUsername: v.union(v.string(), v.null()),
+      githubInstallations: v.array(githubInstallationValidator),
     }),
     v.null(),
   ),
@@ -114,6 +126,7 @@ export const getGithubConnection = internalQuery({
       githubAccessTokenExpiresAt: expiresAt ?? null,
       githubAccessTokenNeedsRefresh: githubAccessTokenNeedsRefresh(expiresAt),
       githubUsername: githubToken.username ?? null,
+      githubInstallations: githubToken.installations,
     };
   },
 });
@@ -146,6 +159,7 @@ export const getGithubTokenRowForRefresh = internalQuery({
       accessTokenExpiresAt: v.optional(v.number()),
       refreshToken: v.optional(v.string()),
       username: v.optional(v.string()),
+      installations: v.array(githubInstallationValidator),
     }),
   ),
   handler: async (ctx, args) => {
@@ -157,6 +171,7 @@ export const getGithubTokenRowForRefresh = internalQuery({
       accessTokenExpiresAt: doc.accessTokenExpiresAt,
       refreshToken: doc.refreshToken,
       username: doc.username,
+      installations: doc.installations,
     };
   },
 });
@@ -189,6 +204,27 @@ export const applyGithubOAuthRefresh = internalMutation({
       patch.refreshToken = args.refreshToken;
     }
     await ctx.db.patch(existing._id, patch);
+    return null;
+  },
+});
+
+export const updateGithubInstallations = internalMutation({
+  args: {
+    githubUserId: v.string(),
+    installations: v.array(githubInstallationValidator),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("githubTokens")
+      .withIndex("by_github_user_id", (q) => q.eq("githubUserId", args.githubUserId))
+      .first();
+    if (!existing) {
+      throw new Error("githubTokens row not found for GitHub user");
+    }
+    await ctx.db.patch(existing._id, {
+      installations: args.installations,
+    });
     return null;
   },
 });

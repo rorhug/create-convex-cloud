@@ -38,6 +38,7 @@ export const createApp = mutation({
   args: {
     name: v.string(),
     vercelTeamId: v.string(),
+    githubInstallationId: v.string(),
     githubRepoVisibility: v.union(v.literal("public"), v.literal("private")),
   },
   returns: v.id("apps"),
@@ -80,9 +81,20 @@ export const createApp = mutation({
         "GitHub access token expired or expiring and cannot be refreshed automatically. Sign in with GitHub again.",
       );
     }
+    const githubInstallations = githubToken.installations;
+    const githubInstallationId = args.githubInstallationId.trim();
+    if (!githubInstallationId) {
+      throw new Error("Select a GitHub installation");
+    }
+    if (!githubInstallations.some((installation) => installation.id === githubInstallationId)) {
+      throw new Error(
+        "That GitHub installation is not available for your account. Refresh installations or re-install the GitHub App.",
+      );
+    }
 
     const appId = await createAppForUser(ctx, user._id, args.name, {
       vercelTeamId,
+      githubInstallationId,
       githubRepoPrivate: args.githubRepoVisibility === "private",
     });
 
@@ -224,6 +236,7 @@ export const internalGetApp = internalQuery({
       name: v.string(),
       status: v.string(),
       vercelTeamId: v.string(),
+      githubInstallationId: v.string(),
       githubRepoPrivate: v.boolean(),
       githubRepoCreationMethod: v.union(v.literal("clone"), v.literal("template")),
     }),
@@ -238,6 +251,7 @@ export const internalGetApp = internalQuery({
       name: app.name,
       status: app.status,
       vercelTeamId: app.vercelTeamId,
+      githubInstallationId: app.githubInstallationId,
       githubRepoPrivate: app.githubRepoPrivate ?? false,
       githubRepoCreationMethod: app.githubRepoCreationMethod,
     };

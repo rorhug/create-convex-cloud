@@ -4,7 +4,7 @@ import { useAction, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import Link from "next/link";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ArrowCircleUpRightIcon } from "@phosphor-icons/react";
 
 export default function SetupPage() {
@@ -76,6 +76,17 @@ type ViewerState = {
     image: string | null;
     githubUsername: string | null;
   };
+  github: {
+    installations: Array<{
+      id: string;
+      accountLogin: string;
+      accountName?: string | undefined;
+      accountType: string;
+      accountAvatarUrl?: string | undefined;
+      repositorySelection: string;
+    }>;
+    installUrl: string;
+  };
   vercel: {
     teams: Array<{ id: string; name?: string | undefined; slug: string }>;
     tokenPreview: string;
@@ -94,6 +105,9 @@ type ViewerState = {
 
 function Content({ viewer }: { viewer: ViewerState }) {
   const { signIn } = useAuthActions();
+  const refreshGithubInstallations = useAction(
+    api.client.providers.github.clientActions.refreshGithubInstallations,
+  );
   const verifyVercelToken = useAction(api.client.providers.vercel.clientActions.verifyVercelToken);
   const saveVercelToken = useAction(api.client.providers.vercel.clientActions.saveVercelToken);
 
@@ -103,8 +117,41 @@ function Content({ viewer }: { viewer: ViewerState }) {
   >(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<
-    "github" | "vercel-verify" | "vercel-save" | "convex" | null
+    "github-refresh" | "vercel-verify" | "vercel-save" | "convex" | null
   >(null);
+  const hasHandledRefreshGithubInstallationsParam = useRef(false);
+
+  useEffect(() => {
+    if (hasHandledRefreshGithubInstallationsParam.current) {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("refresh-github-installations") !== "1") {
+      return;
+    }
+
+    hasHandledRefreshGithubInstallationsParam.current = true;
+    url.searchParams.delete("refresh-github-installations");
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
+
+    void (async () => {
+      setBusy("github-refresh");
+      setError(null);
+      try {
+        await refreshGithubInstallations({});
+      } catch (refreshError) {
+        setError(
+          refreshError instanceof Error
+            ? refreshError.message
+            : "Could not refresh GitHub installations",
+        );
+      } finally {
+        setBusy(null);
+      }
+    })();
+  }, [refreshGithubInstallations]);
 
   async function handleVerifyVercelToken() {
     setBusy("vercel-verify");
@@ -173,36 +220,104 @@ function Content({ viewer }: { viewer: ViewerState }) {
           complete={viewer.onboarding.hasGitHubConnection}
         >
           {viewer.onboarding.hasGitHubConnection ? (
-            <p className="text-sm text-slate-300">
-              Connected as {viewer.user.githubUsername ?? viewer.user.name ?? "GitHub user"}.
-            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-slate-300">
+                Installed for {viewer.github.installations.length} account
+                {viewer.github.installations.length === 1 ? "" : "s"}.
+              </p>
+              <div className="space-y-2">
+                {viewer.github.installations.map((installation) => (
+                  <div
+                    key={installation.id}
+                    className="rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm text-slate-200"
+                  >
+                    <div className="font-medium text-white">
+                      {installation.accountLogin}
+                      {installation.accountType.toLowerCase() === "organization"
+                        ? " (org)"
+                        : " (personal)"}
+                    </div>
+                    <div className="text-slate-400">
+                      {installation.accountName ?? installation.repositorySelection}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"
+                  disabled={busy !== null}
+                  onClick={() => {
+                    void (async () => {
+                      setBusy("github-refresh");
+                      setError(null);
+                      try {
+                        await refreshGithubInstallations({});
+                      } catch (err) {
+                        setError(
+                          err instanceof Error
+                            ? err.message
+                            : "Could not refresh GitHub installations",
+                        );
+                      } finally {
+                        setBusy(null);
+                      }
+                    })();
+                  }}
+                >
+                  {busy === "github-refresh" ? "Refreshing..." : "Refresh"}
+                </button>
+                <a
+                  href={viewer.github.installUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200"
+                >
+                  Add orgs / repos
+                </a>
+              </div>
+            </div>
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-slate-300">
-                Install the GitHub App to connect your GitHub account and grant repo access.
+                Install the GitHub App on your personal account or an organization
+                before continuing.
               </p>
-              <button
-                className="rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-                disabled={busy !== null}
-                onClick={() => {
-                  void (async () => {
-                    setBusy("github");
-                    setError(null);
-                    try {
-                      const result = await signIn("github", { redirectTo: "/" });
-                      if (result.redirect) {
-                        window.location.href = result.redirect.toString();
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"
+                  disabled={busy !== null}
+                  onClick={() => {
+                    void (async () => {
+                      setBusy("github-refresh");
+                      setError(null);
+                      try {
+                        await refreshGithubInstallations({});
+                      } catch (err) {
+                        setError(
+                          err instanceof Error
+                            ? err.message
+                            : "Could not refresh GitHub installations",
+                        );
+                      } finally {
+                        setBusy(null);
                       }
-                    } catch (err) {
-                      setError(err instanceof Error ? err.message : "Could not connect GitHub");
-                    } finally {
-                      setBusy(null);
-                    }
-                  })();
-                }}
-              >
-                Install GitHub App
-              </button>
+                    })();
+                  }}
+                >
+                  {busy === "github-refresh" ? "Refreshing..." : "Refresh"}
+                </button>
+                <a
+                  href={viewer.github.installUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200"
+                >
+                  Add orgs / repos
+                </a>
+              </div>
             </div>
           )}
         </StepCard>
