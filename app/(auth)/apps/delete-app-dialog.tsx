@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -12,8 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
 
 function joinCommaAnd(items: string[]): string {
   if (items.length === 0) return "";
@@ -114,21 +114,21 @@ export function DeleteAppDialog({
             <p className="text-xs uppercase tracking-widest text-muted-foreground">
               Resources to delete
             </p>
-            <label className="flex items-center gap-3 cursor-pointer">
+            <label className="flex cursor-pointer items-center gap-3">
               <Checkbox
                 checked={deleteGithub}
                 onCheckedChange={(checked) => setDeleteGithub(checked === true)}
               />
               <span className="text-sm">Git repo</span>
             </label>
-            <label className="flex items-center gap-3 cursor-pointer">
+            <label className="flex cursor-pointer items-center gap-3">
               <Checkbox
                 checked={deleteConvex}
                 onCheckedChange={(checked) => setDeleteConvex(checked === true)}
               />
               <span className="text-sm">Convex project</span>
             </label>
-            <label className="flex items-center gap-3 cursor-pointer">
+            <label className="flex cursor-pointer items-center gap-3">
               <Checkbox
                 checked={deleteVercel}
                 onCheckedChange={(checked) => setDeleteVercel(checked === true)}

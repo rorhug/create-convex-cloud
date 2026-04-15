@@ -1,7 +1,7 @@
 "use client";
 
-import { StepCard } from "./step-card";
 import { Button } from "@/components/ui/button";
+import { StepCard } from "./step-card";
 import type { SetupBusyState } from "./types";
 
 export function ConvexSetupStep({
@@ -28,7 +28,9 @@ export function ConvexSetupStep({
           </p>
           <p>
             Token preview:{" "}
-            <span className="font-medium text-foreground">{convex.tokenPreview}</span>
+            <span className="font-medium text-foreground">
+              {convex.tokenPreview}
+            </span>
           </p>
         </div>
       ) : (

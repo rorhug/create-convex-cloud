@@ -1,20 +1,30 @@
 "use client";
 
 import { useAction } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useEffect, useRef, useState } from "react";
+import { api } from "@/convex/_generated/api";
 import { Banner } from "./components/banner";
 import { ConvexSetupStep } from "./components/convex-setup-step";
 import { GitHubSetupStep } from "./components/github-setup-step";
+import type {
+  SetupBusyState,
+  SetupVercelTeam,
+  SetupViewerState,
+} from "./components/types";
 import { VercelSetupStep } from "./components/vercel-setup-step";
-import type { SetupBusyState, SetupViewerState, SetupVercelTeam } from "./components/types";
 
 export function Content({ viewer }: { viewer: SetupViewerState }) {
   const { signIn } = useAuthActions();
-  const refreshGithubInstallations = useAction(api.client.providers.github.clientActions.refreshGithubInstallations);
-  const verifyVercelToken = useAction(api.client.providers.vercel.clientActions.verifyVercelToken);
-  const saveVercelToken = useAction(api.client.providers.vercel.clientActions.saveVercelToken);
+  const refreshGithubInstallations = useAction(
+    api.client.providers.github.clientActions.refreshGithubInstallations,
+  );
+  const verifyVercelToken = useAction(
+    api.client.providers.vercel.clientActions.verifyVercelToken,
+  );
+  const saveVercelToken = useAction(
+    api.client.providers.vercel.clientActions.saveVercelToken,
+  );
 
   const [vercelToken, setVercelToken] = useState("");
   const [vercelTeams, setVercelTeams] = useState<SetupVercelTeam[] | null>(null);
@@ -43,7 +53,11 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
       try {
         await refreshGithubInstallations({});
       } catch (refreshError) {
-        setError(refreshError instanceof Error ? refreshError.message : "Could not refresh GitHub installations");
+        setError(
+          refreshError instanceof Error
+            ? refreshError.message
+            : "Could not refresh GitHub installations",
+        );
       } finally {
         setBusy(null);
       }
@@ -56,7 +70,11 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
     try {
       await refreshGithubInstallations({});
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : "Could not refresh GitHub installations");
+      setError(
+        refreshError instanceof Error
+          ? refreshError.message
+          : "Could not refresh GitHub installations",
+      );
     } finally {
       setBusy(null);
     }
@@ -70,7 +88,11 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
       setVercelTeams(result.teams);
     } catch (verifyError) {
       setVercelTeams(null);
-      setError(verifyError instanceof Error ? verifyError.message : "Could not verify the Vercel token");
+      setError(
+        verifyError instanceof Error
+          ? verifyError.message
+          : "Could not verify the Vercel token",
+      );
     } finally {
       setBusy(null);
     }
@@ -90,7 +112,11 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
       setVercelToken("");
       setVercelTeams(null);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Could not save the Vercel token");
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Could not save the Vercel token",
+      );
     } finally {
       setBusy(null);
     }
@@ -100,7 +126,11 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
     <section className="space-y-6 border border-border bg-card p-6">
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          Signed in as {viewer.user.githubUsername ?? viewer.user.email ?? viewer.user.name ?? "GitHub user"}
+          Signed in as{" "}
+          {viewer.user.githubUsername ??
+            viewer.user.email ??
+            viewer.user.name ??
+            "GitHub user"}
         </p>
         <h2 className="text-2xl font-semibold">Onboarding checklist</h2>
       </div>

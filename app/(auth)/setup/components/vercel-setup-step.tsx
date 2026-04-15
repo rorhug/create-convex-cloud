@@ -1,10 +1,10 @@
 "use client";
 
 import { ArrowCircleUpRightIcon } from "@phosphor-icons/react";
-import { Banner } from "./banner";
-import { StepCard } from "./step-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Banner } from "./banner";
+import { StepCard } from "./step-card";
 import type { SetupBusyState, SetupVercelTeam } from "./types";
 
 export function VercelSetupStep({
@@ -105,11 +105,7 @@ export function VercelSetupStep({
               >
                 {busy === "vercel-verify" ? "Verifying..." : "Verify token"}
               </Button>
-              <Button
-                className="flex-1"
-                disabled={busy !== null}
-                onClick={onSave}
-              >
+              <Button className="flex-1" disabled={busy !== null} onClick={onSave}>
                 {busy === "vercel-save" ? "Saving..." : "Save token"}
               </Button>
             </div>

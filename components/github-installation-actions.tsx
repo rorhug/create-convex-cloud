@@ -19,30 +19,15 @@ export function GitHubInstallationActions({
   layout = "row",
   size = "default",
 }: GitHubInstallationActionsProps) {
-  const buttonClassName =
-    layout === "column" ? "w-full justify-start" : undefined;
+  const buttonClassName = layout === "column" ? "w-full justify-start" : undefined;
 
   return (
-    <div
-      className={
-        layout === "column" ? "flex flex-col gap-2" : "flex flex-wrap gap-3"
-      }
-    >
-      <Button
-        variant="outline"
-        size={size}
-        className={buttonClassName}
-        disabled={disabled}
-        onClick={onRefresh}
-      >
+    <div className={layout === "column" ? "flex flex-col gap-2" : "flex flex-wrap gap-3"}>
+      <Button variant="outline" size={size} className={buttonClassName} disabled={disabled} onClick={onRefresh}>
         {isRefreshing ? "Refreshing..." : "Refresh"}
       </Button>
       <Button asChild size={size} className={buttonClassName}>
-        <a
-          href={installUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <a href={installUrl} target="_blank" rel="noopener noreferrer">
           Add orgs / repos
         </a>
       </Button>
