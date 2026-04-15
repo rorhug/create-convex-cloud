@@ -1,72 +1,67 @@
 "use client";
 
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
 import { useState } from "react";
 import type { Id } from "@/convex/_generated/dataModel";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
 import type { FunctionReturnType } from "convex/server";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/ui/spinner";
+import { WorkspaceShell } from "@/components/workspace-shell";
 import {
-  AppCreationSection,
-  type AppsGithubInstallation,
-  type AppsVercelTeam,
-} from "./components";
+  Item,
+  ItemContent,
+  ItemTitle,
+  ItemDescription,
+  ItemActions,
+  ItemGroup,
+  ItemHeader,
+  ItemFooter,
+} from "@/components/ui/item";
+import { AppCreationSection, type AppsGithubInstallation, type AppsVercelTeam } from "./components";
+import { DeleteAppDialog } from "./delete-app-dialog";
 
 export default function AppsPage() {
   const viewer = useQuery(api.client.viewer.getViewer);
 
   if (viewer === undefined) {
     return (
-      <main className="min-h-screen bg-slate-950 p-8 text-slate-50">
-        <div className="mx-auto max-w-3xl rounded-3xl border border-slate-800 bg-slate-900 p-8">
-          <p className="text-sm text-slate-400">Loading apps...</p>
+      <WorkspaceShell>
+        <div className="mx-auto max-w-3xl border border-border bg-card p-8">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Spinner />
+            Loading apps...
+          </div>
         </div>
-      </main>
+      </WorkspaceShell>
     );
   }
 
   if (!viewer.onboarding.canAccessApps) {
     return (
-      <main className="min-h-screen bg-slate-950 p-8 text-slate-50">
-        <div className="mx-auto max-w-3xl rounded-3xl border border-slate-800 bg-slate-900 p-8">
-          <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
-            Apps locked
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold text-white">
-            Finish onboarding first
-          </h1>
-          <p className="mt-3 text-sm text-slate-300">
-            Connect GitHub, Vercel, and Convex before creating apps.
-          </p>
-          <Link
-            href="/setup"
-            className="mt-6 inline-flex rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200"
-          >
-            Back to setup
-          </Link>
+      <WorkspaceShell>
+        <div className="mx-auto max-w-3xl border border-border bg-card p-8">
+          <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Apps locked</p>
+          <h1 className="mt-2 text-3xl font-semibold">Finish onboarding first</h1>
+          <p className="mt-3 text-sm text-muted-foreground">Connect GitHub, Vercel, and Convex before creating apps.</p>
+          <Button asChild className="mt-6">
+            <Link href="/setup">Back to setup</Link>
+          </Button>
         </div>
-      </main>
+      </WorkspaceShell>
     );
   }
 
   return <AppsManager />;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  creating: "bg-blue-500/15 text-blue-300",
-  ready: "bg-emerald-500/15 text-emerald-300",
-  deleting: "bg-amber-500/15 text-amber-300",
-  error: "bg-rose-500/15 text-rose-300",
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+  creating: "secondary",
+  ready: "default",
+  deleting: "outline",
+  error: "destructive",
 };
 
 const STEP_LABELS: Record<string, string> = {
@@ -75,49 +70,16 @@ const STEP_LABELS: Record<string, string> = {
   vercel: "Vercel deployment",
 };
 
-/** Joins with commas and a final "and", e.g. "a, b and c" (matches natural lists). */
-function joinCommaAnd(items: string[]): string {
-  if (items.length === 0) return "";
-  if (items.length === 1) return items[0]!;
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
-}
-
-function deleteConfirmationSureLabel(
-  deleteGithub: boolean,
-  deleteConvex: boolean,
-  deleteVercel: boolean,
-): string {
-  const deleteParts: string[] = [];
-  if (deleteGithub) deleteParts.push("the repo on GitHub");
-  if (deleteConvex) deleteParts.push("the Convex project");
-  if (deleteVercel) deleteParts.push("the Vercel project");
-
-  const leaveParts: string[] = [];
-  if (!deleteGithub) leaveParts.push("the GitHub repo");
-  if (!deleteConvex) leaveParts.push("the Convex project");
-  if (!deleteVercel) leaveParts.push("the Vercel project");
-
-  const toRemove = [...deleteParts, "metadata from this product"];
-  let main = `I am sure I want to delete ${joinCommaAnd(toRemove)}`;
-
-  if (leaveParts.length > 0) {
-    main += `, but leave ${joinCommaAnd(leaveParts)} intact`;
-  }
-
-  return main;
-}
-
 function StepIcon({ status }: { status: string }) {
   switch (status) {
     case "done":
-      return <span className="text-emerald-400">&#10003;</span>;
+      return <span className="text-primary">&#10003;</span>;
     case "running":
-      return <span className="text-blue-400 animate-pulse">&#9679;</span>;
+      return <Spinner className="size-3" />;
     case "error":
-      return <span className="text-rose-400">&#10007;</span>;
+      return <span className="text-destructive">&#10007;</span>;
     default:
-      return <span className="text-slate-600">&#9675;</span>;
+      return <span className="text-muted-foreground/50">&#9675;</span>;
   }
 }
 
@@ -129,7 +91,7 @@ function DeploymentUrl({ appId }: { appId: Id<"apps"> }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-1 inline-block text-xs text-blue-400 hover:text-blue-300 hover:underline"
+      className="inline-block text-xs text-primary hover:underline"
     >
       {url}
     </a>
@@ -138,7 +100,6 @@ function DeploymentUrl({ appId }: { appId: Id<"apps"> }) {
 
 function DashboardLinks({ appId }: { appId: Id<"apps"> }) {
   const links = useQuery(api.client.apps.getAppDashboardLinks, { appId });
-  const [hoveredHref, setHoveredHref] = useState<string | null>(null);
   if (!links) return null;
   const items: Array<{ label: string; href: string }> = [];
   if (links.github) items.push({ label: "GitHub", href: links.github });
@@ -146,29 +107,20 @@ function DashboardLinks({ appId }: { appId: Id<"apps"> }) {
   if (links.convex) items.push({ label: "Convex", href: links.convex });
   if (items.length === 0) return null;
   return (
-    <div className="mt-2 flex items-baseline justify-between gap-3 text-xs text-slate-500">
-      <p className="min-w-0">
-        {items.map((item, i) => (
-          <span key={item.label}>
-            {i > 0 ? <span className="mx-1.5 text-slate-600">·</span> : null}
-            <a
-              href={item.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              onMouseEnter={() => setHoveredHref(item.href)}
-              onMouseLeave={() => setHoveredHref((current) => (current === item.href ? null : current))}
-              onFocus={() => setHoveredHref(item.href)}
-              onBlur={() => setHoveredHref((current) => (current === item.href ? null : current))}
-              className="font-medium text-slate-400 hover:text-slate-200 hover:underline"
-            >
-              {item.label}
-            </a>
-          </span>
-        ))}
-      </p>
-      <span className="min-w-0 truncate text-right text-slate-600">
-        {hoveredHref ?? ""}
-      </span>
+    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+      {items.map((item, i) => (
+        <span key={item.label}>
+          {i > 0 ? <span className="mx-1 text-border">·</span> : null}
+          <a
+            href={item.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium hover:text-foreground hover:underline"
+          >
+            {item.label}
+          </a>
+        </span>
+      ))}
     </div>
   );
 }
@@ -179,19 +131,19 @@ function StepProgress({ appId }: { appId: Id<"apps"> }) {
   if (!steps || steps.length === 0) return null;
 
   return (
-    <div className="mt-2 space-y-1">
+    <div className="space-y-1">
       {steps.map((s: FunctionReturnType<typeof api.client.apps.getAppSteps>[number]) => (
         <div key={s.step} className="flex items-start gap-2 text-xs">
           <StepIcon status={s.status} />
           <span
             className={
               s.status === "error"
-                ? "text-rose-300"
+                ? "text-destructive"
                 : s.status === "done"
-                  ? "text-slate-400"
+                  ? "text-muted-foreground"
                   : s.status === "running"
-                    ? "text-blue-300"
-                    : "text-slate-600"
+                    ? "text-foreground"
+                    : "text-muted-foreground/50"
             }
           >
             {STEP_LABELS[s.step] ?? s.step}
@@ -207,72 +159,19 @@ function AppsManager() {
   const viewer = useQuery(api.client.viewer.getViewer);
   const apps = useQuery(api.client.apps.listApps);
   const createApp = useMutation(api.client.apps.createApp);
-  const deleteApp = useAction(api.client.apps.deleteApp);
-  const refreshGithubInstallations = useAction(
-    api.client.providers.github.clientActions.refreshGithubInstallations,
-  );
-  const githubInstallations: AppsGithubInstallation[] =
-    viewer?.github.installations ?? [];
-  const githubInstallUrl = viewer?.github.installUrl ?? "#";
+  const githubInstallations: AppsGithubInstallation[] = viewer?.github.installations ?? [];
   const vercelTeams: AppsVercelTeam[] = viewer?.vercel?.teams ?? [];
   const [githubInstallationId, setGithubInstallationId] = useState("");
   const [vercelTeamId, setVercelTeamId] = useState("");
-  const [githubRepoVisibility, setGithubRepoVisibility] = useState<
-    "" | "public" | "private"
-  >("");
+  const [githubRepoVisibility, setGithubRepoVisibility] = useState<"" | "public" | "private">("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [isRefreshingGithub, setIsRefreshingGithub] = useState(false);
 
-  // Delete dialog state
   const [deleteTarget, setDeleteTarget] = useState<{
     id: Id<"apps">;
     name: string;
   } | null>(null);
-  const [confirmChecked, setConfirmChecked] = useState(false);
-  const [deleteGithub, setDeleteGithub] = useState(true);
-  const [deleteConvex, setDeleteConvex] = useState(true);
-  const [deleteVercel, setDeleteVercel] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  function openDeleteDialog(id: Id<"apps">, appName: string) {
-    setDeleteTarget({ id, name: appName });
-    setConfirmChecked(false);
-    setDeleteGithub(true);
-    setDeleteConvex(true);
-    setDeleteVercel(true);
-    setIsDeleting(false);
-    setDeleteError(null);
-  }
-
-  function closeDeleteDialog() {
-    if (!isDeleting) {
-      setDeleteTarget(null);
-    }
-  }
-
-  async function handleDelete() {
-    if (!deleteTarget) return;
-    setIsDeleting(true);
-    setDeleteError(null);
-    try {
-      await deleteApp({
-        id: deleteTarget.id,
-        deleteGithubRepo: deleteGithub,
-        deleteConvexProject: deleteConvex,
-        deleteVercelProject: deleteVercel,
-      });
-      setDeleteTarget(null);
-    } catch (err) {
-      setDeleteError(
-        err instanceof Error ? err.message : "Could not delete the app",
-      );
-    } finally {
-      setIsDeleting(false);
-    }
-  }
 
   async function handleCreate() {
     if (githubRepoVisibility !== "public" && githubRepoVisibility !== "private") {
@@ -291,47 +190,30 @@ function AppsManager() {
       setGithubInstallationId("");
       setGithubRepoVisibility("");
     } catch (createError) {
-      setError(
-        createError instanceof Error
-          ? createError.message
-          : "Could not create the app",
-      );
+      setError(createError instanceof Error ? createError.message : "Could not create the app");
     } finally {
       setIsCreating(false);
     }
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 p-8 text-slate-50">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <header className="flex flex-col gap-3 rounded-3xl border border-slate-800 bg-slate-900 p-8 md:flex-row md:items-center md:justify-between">
+    <WorkspaceShell>
+      <div className="w-full space-y-6">
+        <section className="border border-border bg-card p-6">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
-              Apps
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold text-white">
-              Create an app
-            </h1>
-            <p className="mt-2 text-sm text-slate-300">
+            <h1 className="text-3xl font-semibold">Create an app</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
               Creates a GitHub repo, Convex project, and Vercel deployment.
             </p>
           </div>
-          <Link
-            href="/setup"
-            className="inline-flex rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800"
-          >
-            Back to setup
-          </Link>
-        </header>
+        </section>
 
         <AppCreationSection
           error={error}
           githubInstallationId={githubInstallationId}
           githubInstallations={githubInstallations}
-          githubInstallUrl={githubInstallUrl}
           githubRepoVisibility={githubRepoVisibility}
           isCreating={isCreating}
-          isRefreshingGithub={isRefreshingGithub}
           name={name}
           onGithubInstallationChange={(value) => {
             setGithubInstallationId(value);
@@ -345,23 +227,6 @@ function AppsManager() {
             setName(value);
             setError(null);
           }}
-          onRefreshGithubInstallations={() => {
-            void (async () => {
-              setIsRefreshingGithub(true);
-              setError(null);
-              try {
-                await refreshGithubInstallations({});
-              } catch (refreshError) {
-                setError(
-                  refreshError instanceof Error
-                    ? refreshError.message
-                    : "Could not refresh GitHub installations",
-                );
-              } finally {
-                setIsRefreshingGithub(false);
-              }
-            })();
-          }}
           onSubmit={() => {
             void handleCreate();
           }}
@@ -373,144 +238,59 @@ function AppsManager() {
           vercelTeams={vercelTeams}
         />
 
-        <section className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
-          <h2 className="text-xl font-semibold text-white">Your apps</h2>
-          <div className="mt-4 space-y-3">
+        <section className="border border-border bg-card p-6">
+          <h2 className="text-xl font-semibold">Your apps</h2>
+          <div className="mt-4">
             {apps === undefined && (
-              <p className="text-sm text-slate-400">Loading existing apps...</p>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Spinner />
+                Loading existing apps...
+              </div>
             )}
             {apps?.length === 0 && (
-              <p className="text-sm text-slate-400">
-                No apps yet. Create your first one above.
-              </p>
+              <p className="text-sm text-muted-foreground">No apps yet. Create your first one above.</p>
             )}
-            {apps?.map((app) => (
-              <div
-                key={app._id}
-                className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <p className="font-medium text-white">{app.name}</p>
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[app.status] ?? "bg-slate-500/15 text-slate-300"}`}
-                    >
-                      {app.status}
-                    </span>
-                  </div>
-                  <button
-                    disabled={app.status === "deleting"}
-                    onClick={() => openDeleteDialog(app._id, app.name)}
-                    className="rounded-xl px-3 py-1.5 text-sm text-rose-400 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
-                </div>
-                <DeploymentUrl appId={app._id} />
-                <DashboardLinks appId={app._id} />
-                {app.status !== "ready" ? <StepProgress appId={app._id} /> : null}
-              </div>
-            ))}
+            <ItemGroup>
+              {apps?.map((app) => (
+                <Item key={app._id} variant="outline">
+                  <ItemHeader>
+                    <ItemContent>
+                      <ItemTitle>
+                        {app.status !== "ready" && <Spinner className="size-3.5" />}
+                        {app.name}
+                        <Badge variant={STATUS_VARIANT[app.status] ?? "secondary"}>{app.status}</Badge>
+                      </ItemTitle>
+                      <ItemDescription>
+                        <DeploymentUrl appId={app._id} />
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={app.status === "deleting"}
+                        onClick={() => setDeleteTarget({ id: app._id, name: app.name })}
+                      >
+                        Delete
+                      </Button>
+                    </ItemActions>
+                  </ItemHeader>
+                  <ItemFooter>
+                    <DashboardLinks appId={app._id} />
+                  </ItemFooter>
+                  {app.status !== "ready" ? (
+                    <div className="w-full pt-1">
+                      <StepProgress appId={app._id} />
+                    </div>
+                  ) : null}
+                </Item>
+              ))}
+            </ItemGroup>
           </div>
         </section>
       </div>
 
-      {/* Delete confirmation dialog */}
-      <Dialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) closeDeleteDialog();
-        }}
-      >
-        <DialogContent className="bg-slate-900 text-slate-50 border-slate-700">
-          <DialogHeader>
-            <DialogTitle>
-              Delete &ldquo;{deleteTarget?.name}&rdquo;
-            </DialogTitle>
-            <DialogDescription className="text-slate-400">
-              This will permanently delete the app and its resources.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-3 rounded-xl border border-slate-700 bg-slate-950 p-4">
-              <p className="text-xs uppercase tracking-widest text-slate-500">
-                Resources to delete
-              </p>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <Checkbox
-                  checked={deleteGithub}
-                  onCheckedChange={(checked) =>
-                    setDeleteGithub(checked === true)
-                  }
-                />
-                <span className="text-sm text-slate-300">Git repo</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <Checkbox
-                  checked={deleteConvex}
-                  onCheckedChange={(checked) =>
-                    setDeleteConvex(checked === true)
-                  }
-                />
-                <span className="text-sm text-slate-300">Convex project</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <Checkbox
-                  checked={deleteVercel}
-                  onCheckedChange={(checked) =>
-                    setDeleteVercel(checked === true)
-                  }
-                />
-                <span className="text-sm text-slate-300">Vercel project</span>
-              </label>
-            </div>
-
-            <label className="flex cursor-pointer items-start gap-3">
-              <Checkbox
-                className="mt-0.5"
-                checked={confirmChecked}
-                onCheckedChange={(checked) =>
-                  setConfirmChecked(checked === true)
-                }
-              />
-              <span className="text-sm font-medium leading-snug text-slate-200">
-                {deleteConfirmationSureLabel(
-                  deleteGithub,
-                  deleteConvex,
-                  deleteVercel,
-                )}
-              </span>
-            </label>
-
-            {deleteError && (
-              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-                {deleteError}
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="bg-slate-900 border-t border-slate-700 pt-4">
-            <Button
-              variant="outline"
-              onClick={closeDeleteDialog}
-              disabled={isDeleting}
-              className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={!confirmChecked || isDeleting}
-              onClick={() => {
-                void handleDelete();
-              }}
-            >
-              {isDeleting ? "Deleting..." : "Confirm delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </main>
+      <DeleteAppDialog target={deleteTarget} onClose={() => setDeleteTarget(null)} />
+    </WorkspaceShell>
   );
 }

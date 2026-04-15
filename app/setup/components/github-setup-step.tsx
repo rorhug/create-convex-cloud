@@ -23,7 +23,7 @@ export function GitHubSetupStep({
     <StepCard step="1" title="GitHub app" complete={complete}>
       {complete ? (
         <div className="space-y-3">
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-muted-foreground">
             Installed for {installations.length} account
             {installations.length === 1 ? "" : "s"}.
           </p>
@@ -31,17 +31,19 @@ export function GitHubSetupStep({
             {installations.map((installation) => (
               <div
                 key={installation.id}
-                className="rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm text-slate-200"
+                className="border border-border bg-muted/50 px-4 py-3 text-sm"
               >
-                <div className="font-medium text-white">
+                <div className="font-medium">
                   {installation.accountLogin}
                   {installation.accountType.toLowerCase() === "organization"
                     ? " (org)"
                     : " (personal)"}
                 </div>
-                <div className="text-slate-400">
-                  {installation.accountName ?? installation.repositorySelection}
-                </div>
+                {installation.accountName ? (
+                  <div className="text-muted-foreground">
+                    {installation.accountName}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
@@ -54,7 +56,7 @@ export function GitHubSetupStep({
         </div>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-muted-foreground">
             Install the GitHub App on your personal account or an organization
             before continuing.
           </p>

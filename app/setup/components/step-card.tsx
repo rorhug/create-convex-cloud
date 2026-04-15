@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Badge } from "@/components/ui/badge";
 
 export function StepCard({
   step,
@@ -14,23 +15,17 @@ export function StepCard({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-950 p-5">
+    <div className="border border-border bg-background p-5">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
             Step {step}
           </p>
-          <h3 className="mt-1 text-lg font-medium text-white">{title}</h3>
+          <h3 className="mt-1 text-lg font-medium">{title}</h3>
         </div>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-medium ${
-            complete
-              ? "bg-emerald-500/15 text-emerald-300"
-              : "bg-amber-500/15 text-amber-300"
-          }`}
-        >
+        <Badge variant={complete ? "default" : "outline"}>
           {complete ? "Complete" : "Required"}
-        </span>
+        </Badge>
       </div>
       <div className="mt-4">{children}</div>
     </div>

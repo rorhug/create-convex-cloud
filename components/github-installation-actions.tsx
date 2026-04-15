@@ -1,10 +1,14 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 type GitHubInstallationActionsProps = {
   installUrl: string;
   isRefreshing: boolean;
   disabled?: boolean;
   onRefresh: () => void;
+  layout?: "row" | "column";
+  size?: "default" | "sm";
 };
 
 export function GitHubInstallationActions({
@@ -12,25 +16,36 @@ export function GitHubInstallationActions({
   isRefreshing,
   disabled = false,
   onRefresh,
+  layout = "row",
+  size = "default",
 }: GitHubInstallationActionsProps) {
+  const buttonClassName =
+    layout === "column" ? "w-full justify-start" : undefined;
+
   return (
-    <div className="flex flex-wrap gap-3">
-      <button
-        type="button"
-        className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-500"
+    <div
+      className={
+        layout === "column" ? "flex flex-col gap-2" : "flex flex-wrap gap-3"
+      }
+    >
+      <Button
+        variant="outline"
+        size={size}
+        className={buttonClassName}
         disabled={disabled}
         onClick={onRefresh}
       >
         {isRefreshing ? "Refreshing..." : "Refresh"}
-      </button>
-      <a
-        href={installUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-slate-200"
-      >
-        Add orgs / repos
-      </a>
+      </Button>
+      <Button asChild size={size} className={buttonClassName}>
+        <a
+          href={installUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Add orgs / repos
+        </a>
+      </Button>
     </div>
   );
 }

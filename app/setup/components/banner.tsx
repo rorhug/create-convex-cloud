@@ -11,10 +11,10 @@ export function Banner({
 }) {
   return (
     <div
-      className={`rounded-2xl border px-4 py-3 text-sm ${
+      className={`border px-4 py-3 text-sm ${
         tone === "success"
-          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-          : "border-rose-500/30 bg-rose-500/10 text-rose-200"
+          ? "border-primary/30 bg-primary/10 text-primary"
+          : "border-destructive/30 bg-destructive/10 text-destructive"
       }`}
     >
       {children}

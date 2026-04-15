@@ -1,7 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { GitHubInstallationActions } from "@/components/github-installation-actions";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type AppsGithubInstallation = {
   id: string;
@@ -16,19 +29,18 @@ export type AppsVercelTeam = {
   slug: string;
 };
 
+const GO_TO_SETUP_VALUE = "__go-to-setup__";
+
 export function AppCreationSection({
   error,
   githubInstallationId,
   githubInstallations,
-  githubInstallUrl,
   githubRepoVisibility,
   isCreating,
-  isRefreshingGithub,
   name,
   onGithubInstallationChange,
   onGithubRepoVisibilityChange,
   onNameChange,
-  onRefreshGithubInstallations,
   onSubmit,
   onVercelTeamChange,
   vercelTeamId,
@@ -37,158 +49,184 @@ export function AppCreationSection({
   error: string | null;
   githubInstallationId: string;
   githubInstallations: AppsGithubInstallation[];
-  githubInstallUrl: string;
   githubRepoVisibility: "" | "public" | "private";
   isCreating: boolean;
-  isRefreshingGithub: boolean;
   name: string;
   onGithubInstallationChange: (value: string) => void;
   onGithubRepoVisibilityChange: (value: "" | "public" | "private") => void;
   onNameChange: (value: string) => void;
-  onRefreshGithubInstallations: () => void;
   onSubmit: () => void;
   onVercelTeamChange: (value: string) => void;
   vercelTeamId: string;
   vercelTeams: AppsVercelTeam[];
 }) {
+  const router = useRouter();
+  const personalGithubInstallations = githubInstallations.filter(
+    (installation) => installation.accountType.toLowerCase() !== "organization",
+  );
+  const organizationGithubInstallations = githubInstallations.filter(
+    (installation) => installation.accountType.toLowerCase() === "organization",
+  );
+  const isCreateDisabled =
+    isCreating ||
+    name.trim().length === 0 ||
+    githubInstallations.length === 0 ||
+    githubInstallationId === "" ||
+    vercelTeams.length === 0 ||
+    vercelTeamId === "" ||
+    (githubRepoVisibility !== "public" && githubRepoVisibility !== "private");
+
   return (
-    <section className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
-      <div className="space-y-4">
-        {githubInstallations.length === 0 ? (
-          <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            No GitHub App installations on file yet. Add your personal account or
-            an organization, then refresh.
-          </p>
-        ) : null}
-
+    <section className="border border-border bg-card p-6">
+      <div className="space-y-5">
         <div className="space-y-2">
-          <label
-            htmlFor="github-installation"
-            className="block text-sm font-medium text-slate-200"
-          >
-            GitHub installation
-          </label>
-          <select
-            id="github-installation"
-            value={githubInstallationId}
-            onChange={(event) => onGithubInstallationChange(event.target.value)}
-            className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-slate-500"
-          >
-            <option value="">Select an installation…</option>
-            {githubInstallations.map((installation) => (
-              <option key={installation.id} value={installation.id}>
-                {installation.accountLogin}
-                {installation.accountType.toLowerCase() === "organization"
-                  ? " (org)"
-                  : " (personal)"}
-                {installation.repositorySelection === "selected"
-                  ? " - selected repos"
-                  : ""}
-              </option>
-            ))}
-          </select>
-          <GitHubInstallationActions
-            installUrl={githubInstallUrl}
-            isRefreshing={isRefreshingGithub}
-            disabled={isCreating || isRefreshingGithub}
-            onRefresh={onRefreshGithubInstallations}
-          />
-          <p className="text-xs text-slate-500">
-            Choose the personal account or organization that should own and
-            authorize the new repo.
-          </p>
-        </div>
-
-        {vercelTeams.length === 0 ? (
-          <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            No Vercel teams on file (your personal team should appear after you{" "}
-            <Link href="/setup" className="underline hover:text-white">
-              verify your Vercel token again
-            </Link>
-            ).
-          </p>
-        ) : (
-          <div className="space-y-2">
-            <label
-              htmlFor="vercel-team"
-              className="block text-sm font-medium text-slate-200"
-            >
-              Vercel team
-            </label>
-            <select
-              id="vercel-team"
-              value={vercelTeamId}
-              onChange={(event) => onVercelTeamChange(event.target.value)}
-              className="w-full max-w-xs rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-slate-500"
-            >
-              <option value="">Select a team…</option>
-              {vercelTeams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <label
-            htmlFor="github-visibility"
-            className="block text-sm font-medium text-slate-200"
-          >
-            GitHub repository
-          </label>
-          <select
-            id="github-visibility"
-            value={githubRepoVisibility}
-            onChange={(event) => {
-              const value = event.target.value;
-              onGithubRepoVisibilityChange(
-                value === "public" || value === "private" ? value : "",
-              );
-            }}
-            className="w-full max-w-xs rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-slate-100 outline-none transition focus:border-slate-500"
-          >
-            <option value="">Public or private…</option>
-            <option value="public">Public</option>
-            <option value="private">Private</option>
-          </select>
-          <p className="text-xs text-slate-500">
-            New repos are created under the selected GitHub installation with
-            this visibility.
-          </p>
-        </div>
-
-        <label className="block text-sm font-medium text-slate-200">
-          App name
-        </label>
-        <div className="flex flex-col gap-3 md:flex-row">
-          <input
+          <Label htmlFor="app-name">App name</Label>
+          <Input
+            id="app-name"
             value={name}
             onChange={(event) => onNameChange(event.target.value)}
             placeholder="my-demo-app"
-            className="flex-1 rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
+            className="w-full"
           />
-          <button
-            className="rounded-2xl bg-white px-5 py-3 text-sm font-medium text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-            disabled={
-              isCreating ||
-              name.trim().length === 0 ||
-              githubInstallations.length === 0 ||
-              githubInstallationId === "" ||
-              vercelTeams.length === 0 ||
-              vercelTeamId === "" ||
-              (githubRepoVisibility !== "public" &&
-                githubRepoVisibility !== "private")
-            }
-            onClick={onSubmit}
-          >
+        </div>
+
+        <div className="flex flex-col gap-4 md:flex-row">
+          <div className="min-w-0 flex-1 space-y-2">
+            <Label htmlFor="github-installation">GitHub installation</Label>
+            <Select
+              value={githubInstallationId}
+              onValueChange={(value) => {
+                if (value === GO_TO_SETUP_VALUE) {
+                  router.push("/setup");
+                  return;
+                }
+                onGithubInstallationChange(value);
+              }}
+            >
+              <SelectTrigger id="github-installation" className="w-full">
+                <SelectValue placeholder="Select an installation…" />
+              </SelectTrigger>
+              <SelectContent>
+                {personalGithubInstallations.length > 0 ? (
+                  <SelectGroup>
+                    <SelectLabel>Personal</SelectLabel>
+                    {personalGithubInstallations.map((installation) => (
+                      <SelectItem key={installation.id} value={installation.id}>
+                        {installation.accountLogin}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ) : null}
+                {personalGithubInstallations.length > 0 &&
+                organizationGithubInstallations.length > 0 ? (
+                  <SelectSeparator />
+                ) : null}
+                {organizationGithubInstallations.length > 0 ? (
+                  <SelectGroup>
+                    <SelectLabel>Orgs</SelectLabel>
+                    {organizationGithubInstallations.map((installation) => (
+                      <SelectItem key={installation.id} value={installation.id}>
+                        {installation.accountLogin}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ) : null}
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel>GitHub Access</SelectLabel>
+                  <SelectItem value={GO_TO_SETUP_VALUE}>Go to setup</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-2">
+            <Label htmlFor="vercel-team">Vercel team</Label>
+            <Select
+              value={vercelTeamId}
+              onValueChange={(value) => {
+                if (value === GO_TO_SETUP_VALUE) {
+                  router.push("/setup");
+                  return;
+                }
+                onVercelTeamChange(value);
+              }}
+            >
+              <SelectTrigger id="vercel-team" className="w-full">
+                <SelectValue
+                  placeholder={
+                    vercelTeams.length === 0
+                      ? "No teams available"
+                      : "Select a team…"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {vercelTeams.map((team) => (
+                  <SelectItem key={team.id} value={team.id}>
+                    {team.name}
+                  </SelectItem>
+                ))}
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel>Vercel Access</SelectLabel>
+                  <SelectItem value={GO_TO_SETUP_VALUE}>Go to setup</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-2">
+            <Label htmlFor="github-visibility">GitHub repository</Label>
+            <Select
+              value={githubRepoVisibility}
+              onValueChange={(value) => {
+                onGithubRepoVisibilityChange(
+                  value === "public" || value === "private" ? value : "",
+                );
+              }}
+            >
+              <SelectTrigger id="github-visibility" className="w-full">
+                <SelectValue placeholder="Public or private…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="public">Public</SelectItem>
+                <SelectItem value="private">Private</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {githubInstallations.length === 0 ? (
+          <div className="border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm">
+            No GitHub App installations on file yet. Go to setup to add your
+            personal account or an organization.
+          </div>
+        ) : null}
+
+        {vercelTeams.length === 0 ? (
+          <div className="border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm">
+            No Vercel teams on file (your personal team should appear after you{" "}
+            <Link href="/setup" className="underline hover:text-foreground">
+              verify your Vercel token again
+            </Link>
+            ).
+          </div>
+        ) : null}
+
+        <p className="text-xs text-muted-foreground">
+          Choose the GitHub installation, Vercel team, and repo visibility for
+          the new app.
+        </p>
+
+        <div>
+          <Button className="w-full" disabled={isCreateDisabled} onClick={onSubmit}>
             {isCreating ? "Creating..." : "Create app"}
-          </button>
+          </Button>
         </div>
 
         {error && (
-          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <div className="border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
