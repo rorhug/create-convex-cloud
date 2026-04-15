@@ -1,3 +1,6 @@
+import { internal } from "../../../_generated/api";
+import type { ActionCtx } from "../../../_generated/server";
+
 /** Buffer before wall-clock expiry to refresh early (clock skew, network). */
 export const GITHUB_ACCESS_TOKEN_REFRESH_BUFFER_MS = 5 * 60_000;
 
@@ -9,6 +12,18 @@ export type GithubInstallation = {
   accountAvatarUrl?: string;
   repositorySelection: string;
 };
+
+export class GithubApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "GithubApiError";
+  }
+}
+
+type TokenInvalidationCtx = Pick<ActionCtx, "runMutation">;
 
 /**
  * Auth.js passes OAuth token fields on the `tokens` argument to `profile()`.
@@ -62,27 +77,67 @@ export function getGithubAppInstallUrl() {
   return `https://github.com/apps/${encodeURIComponent(appSlug)}/installations/new`;
 }
 
+export function isGithubConnectionInvalidError(error: unknown): boolean {
+  if (error instanceof GithubApiError) {
+    return error.status === 401 || error.status === 403;
+  }
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return (
+      message.includes("github token refresh failed") ||
+      message.includes("no refresh token is stored") ||
+      message.includes("http 401") ||
+      message.includes("http 403")
+    );
+  }
+  return false;
+}
+
+async function githubFetch(
+  accessToken: string,
+  url: string,
+  ctx?: TokenInvalidationCtx,
+) {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${accessToken}`,
+        "X-GitHub-Api-Version": "2026-03-10",
+      },
+    });
+
+    if (!response.ok) {
+      throw new GithubApiError(
+        `GitHub installations request failed: HTTP ${response.status}`,
+        response.status,
+      );
+    }
+
+    return response;
+  } catch (error) {
+    if (ctx && isGithubConnectionInvalidError(error)) {
+      await ctx.runMutation(internal.lib.providers.github.data.markGithubTokenInvalid, {
+        token: accessToken,
+      });
+    }
+    throw error;
+  }
+}
+
 export async function fetchGithubInstallationsForAccessToken(
   accessToken: string,
+  ctx?: TokenInvalidationCtx,
 ): Promise<GithubInstallation[]> {
   const installations: GithubInstallation[] = [];
   let page = 1;
 
   for (;;) {
-    const response = await fetch(
+    const response = await githubFetch(
+      accessToken,
       `https://api.github.com/user/installations?per_page=100&page=${page}`,
-      {
-        headers: {
-          Accept: "application/vnd.github+json",
-          Authorization: `Bearer ${accessToken}`,
-          "X-GitHub-Api-Version": "2026-03-10",
-        },
-      },
+      ctx,
     );
-
-    if (!response.ok) {
-      throw new Error(`GitHub installations request failed: HTTP ${response.status}`);
-    }
 
     const data = (await response.json()) as GithubUserInstallationsResponse;
     const pageInstallations: GithubInstallation[] = [];

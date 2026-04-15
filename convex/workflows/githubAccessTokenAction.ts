@@ -10,6 +10,7 @@ import {
   accessTokenExpiresAtMsFromOAuthTokens,
   fetchGithubInstallationsForAccessToken,
   githubAccessTokenNeedsRefresh,
+  isGithubConnectionInvalidError,
 } from "../lib/providers/github/platform";
 
 type GithubRefreshResponse = {
@@ -21,7 +22,11 @@ type GithubRefreshResponse = {
   error_description?: string;
 };
 
-async function exchangeGithubRefreshToken(refreshToken: string): Promise<GithubRefreshResponse> {
+async function exchangeGithubRefreshToken(
+  ctx: ActionCtx,
+  accessToken: string,
+  refreshToken: string,
+): Promise<GithubRefreshResponse> {
   const clientId = process.env.AUTH_GITHUB_ID;
   const clientSecret = process.env.AUTH_GITHUB_SECRET;
   if (!clientId || !clientSecret) {
@@ -33,29 +38,38 @@ async function exchangeGithubRefreshToken(refreshToken: string): Promise<GithubR
     grant_type: "refresh_token",
     refresh_token: refreshToken,
   });
-  const res = await fetch("https://github.com/login/oauth/access_token", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body,
-  });
-  const data = (await res.json()) as GithubRefreshResponse;
-  if (typeof data.error === "string" && data.error.length > 0) {
-    const desc =
-      typeof data.error_description === "string" && data.error_description.length > 0
-        ? data.error_description
-        : data.error;
-    throw new Error(`GitHub token refresh failed: ${desc}`);
+  try {
+    const res = await fetch("https://github.com/login/oauth/access_token", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    });
+    const data = (await res.json()) as GithubRefreshResponse;
+    if (typeof data.error === "string" && data.error.length > 0) {
+      const desc =
+        typeof data.error_description === "string" && data.error_description.length > 0
+          ? data.error_description
+          : data.error;
+      throw new Error(`GitHub token refresh failed: ${desc}`);
+    }
+    if (!res.ok) {
+      throw new Error(`GitHub token refresh failed: HTTP ${res.status}`);
+    }
+    if (typeof data.access_token !== "string" || data.access_token.length === 0) {
+      throw new Error("GitHub token refresh returned no access_token");
+    }
+    return data;
+  } catch (error) {
+    if (isGithubConnectionInvalidError(error)) {
+      await ctx.runMutation(internal.lib.providers.github.data.markGithubTokenInvalid, {
+        token: accessToken,
+      });
+    }
+    throw error;
   }
-  if (!res.ok) {
-    throw new Error(`GitHub token refresh failed: HTTP ${res.status}`);
-  }
-  if (typeof data.access_token !== "string" || data.access_token.length === 0) {
-    throw new Error("GitHub token refresh returned no access_token");
-  }
-  return data;
 }
 
 async function ensureFreshGithubAccessTokenImpl(
@@ -75,11 +89,15 @@ async function ensureFreshGithubAccessTokenImpl(
     };
   }
   if (!row.refreshToken) {
-    throw new Error(
+    const error = new Error(
       "GitHub access token expired or expiring and no refresh token is stored. Sign in with GitHub again.",
     );
+    await ctx.runMutation(internal.lib.providers.github.data.markGithubTokenInvalid, {
+      token: row.token,
+    });
+    throw error;
   }
-  const refreshed = await exchangeGithubRefreshToken(row.refreshToken);
+  const refreshed = await exchangeGithubRefreshToken(ctx, row.token, row.refreshToken);
   const accessTokenExpiresAt = accessTokenExpiresAtMsFromOAuthTokens(refreshed);
   await ctx.runMutation(internal.lib.providers.github.data.applyGithubOAuthRefresh, {
     githubUserId: row.githubUserId,
@@ -107,7 +125,7 @@ async function refreshGithubInstallationsImpl(
   }
 
   const { accessToken } = await ensureFreshGithubAccessTokenImpl(ctx, args);
-  const installations = await fetchGithubInstallationsForAccessToken(accessToken);
+  const installations = await fetchGithubInstallationsForAccessToken(accessToken, ctx);
   await ctx.runMutation(internal.lib.providers.github.data.updateGithubInstallations, {
     githubUserId: row.githubUserId,
     installations,

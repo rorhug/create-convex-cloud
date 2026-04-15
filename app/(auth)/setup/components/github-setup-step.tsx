@@ -1,6 +1,7 @@
 "use client";
 
 import { GitHubInstallationActions } from "@/components/github-installation-actions";
+import { Banner } from "./banner";
 import { StepCard } from "./step-card";
 import type { SetupGithubInstallation } from "./types";
 
@@ -8,6 +9,7 @@ export function GitHubSetupStep({
   complete,
   installations,
   installUrl,
+  issue,
   isRefreshing,
   disabled,
   onRefresh,
@@ -15,6 +17,7 @@ export function GitHubSetupStep({
   complete: boolean;
   installations: SetupGithubInstallation[];
   installUrl: string;
+  issue: string | null;
   isRefreshing: boolean;
   disabled: boolean;
   onRefresh: () => void;
@@ -23,6 +26,7 @@ export function GitHubSetupStep({
     <StepCard step="1" title="GitHub app" complete={complete}>
       {complete ? (
         <div className="space-y-3">
+          {issue ? <Banner tone="error">{issue}</Banner> : null}
           <p className="text-sm text-muted-foreground">
             Installed for {installations.length} account
             {installations.length === 1 ? "" : "s"}.
@@ -56,6 +60,7 @@ export function GitHubSetupStep({
         </div>
       ) : (
         <div className="space-y-3">
+          {issue ? <Banner tone="error">{issue}</Banner> : null}
           <p className="text-sm text-muted-foreground">
             Install the GitHub App on your personal account or an organization
             before continuing.

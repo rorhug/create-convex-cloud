@@ -89,6 +89,7 @@ export async function upsertGithubTokenForGithubUser(ctx: MutationCtx, fields: G
   const tokenDoc = {
     githubUserId: fields.githubUserId,
     token: fields.accessToken,
+    tokenStatus: "valid" as const,
     installations: fields.installations ?? [],
     ...(fields.accessTokenExpiresAt !== undefined
       ? { accessTokenExpiresAt: fields.accessTokenExpiresAt }
@@ -113,6 +114,7 @@ export const getGithubConnection = internalQuery({
       githubAccessTokenExpiresAt: v.union(v.number(), v.null()),
       githubAccessTokenNeedsRefresh: v.boolean(),
       githubUsername: v.union(v.string(), v.null()),
+      githubTokenStatus: v.union(v.literal("valid"), v.literal("invalid")),
       githubInstallations: v.array(githubInstallationValidator),
     }),
     v.null(),
@@ -126,6 +128,7 @@ export const getGithubConnection = internalQuery({
       githubAccessTokenExpiresAt: expiresAt ?? null,
       githubAccessTokenNeedsRefresh: githubAccessTokenNeedsRefresh(expiresAt),
       githubUsername: githubToken.username ?? null,
+      githubTokenStatus: githubToken.tokenStatus,
       githubInstallations: githubToken.installations,
     };
   },
@@ -196,7 +199,11 @@ export const applyGithubOAuthRefresh = internalMutation({
       token: string;
       accessTokenExpiresAt?: number;
       refreshToken?: string;
-    } = { token: args.accessToken };
+      tokenStatus: "valid";
+    } = {
+      token: args.accessToken,
+      tokenStatus: "valid",
+    };
     if (args.accessTokenExpiresAt !== undefined) {
       patch.accessTokenExpiresAt = args.accessTokenExpiresAt;
     }
@@ -224,6 +231,27 @@ export const updateGithubInstallations = internalMutation({
     }
     await ctx.db.patch(existing._id, {
       installations: args.installations,
+      tokenStatus: "valid",
+    });
+    return null;
+  },
+});
+
+export const markGithubTokenInvalid = internalMutation({
+  args: {
+    token: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("githubTokens")
+      .withIndex("by_token", (q) => q.eq("token", args.token.trim()))
+      .first();
+    if (!existing) {
+      return null;
+    }
+    await ctx.db.patch(existing._id, {
+      tokenStatus: "invalid",
     });
     return null;
   },

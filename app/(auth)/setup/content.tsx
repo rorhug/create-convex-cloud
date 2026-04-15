@@ -22,6 +22,9 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
   const verifyVercelToken = useAction(
     api.client.providers.vercel.clientActions.verifyVercelToken,
   );
+  const refreshVercelTeams = useAction(
+    api.client.providers.vercel.clientActions.refreshVercelTeams,
+  );
   const saveVercelToken = useAction(
     api.client.providers.vercel.clientActions.saveVercelToken,
   );
@@ -98,6 +101,22 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
     }
   }
 
+  async function handleRefreshVercelTeams() {
+    setBusy("vercel-refresh");
+    setError(null);
+    try {
+      await refreshVercelTeams({});
+    } catch (refreshError) {
+      setError(
+        refreshError instanceof Error
+          ? refreshError.message
+          : "Could not refresh the saved Vercel token",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function handleSaveVercelToken() {
     if (!vercelTeams) {
       setError("Verify the token first");
@@ -138,9 +157,10 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
       {error && <Banner tone="error">{error}</Banner>}
 
       <GitHubSetupStep
-        complete={viewer.onboarding.hasGitHubConnection}
+        complete={viewer.onboarding.hasGitHubConnection && !viewer.github.needsAttention}
         installations={viewer.github.installations}
         installUrl={viewer.github.installUrl}
+        issue={viewer.github.issue}
         isRefreshing={busy === "github-refresh"}
         disabled={busy !== null}
         onRefresh={() => {
@@ -149,15 +169,19 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
       />
 
       <VercelSetupStep
-        complete={viewer.onboarding.hasVercelConnection}
+        complete={viewer.vercel?.isValid === true}
         vercel={viewer.vercel}
         vercelToken={vercelToken}
         vercelTeams={vercelTeams}
         busy={busy}
+        issue={viewer.vercel?.issue ?? null}
         onTokenChange={(value) => {
           setVercelToken(value);
           setVercelTeams(null);
           setError(null);
+        }}
+        onRefresh={() => {
+          void handleRefreshVercelTeams();
         }}
         onVerify={() => {
           void handleVerifyVercelToken();
@@ -168,9 +192,10 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
       />
 
       <ConvexSetupStep
-        complete={viewer.onboarding.hasConvexToken}
+        complete={viewer.convex?.isValid === true}
         convex={viewer.convex}
         busy={busy}
+        issue={viewer.convex?.issue ?? null}
         onLink={() => {
           void (async () => {
             setBusy("convex");

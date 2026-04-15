@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "../../../_generated/server";
+import { Doc } from "../../../_generated/dataModel";
 
 export const teamValidator = v.object({
   id: v.string(),
@@ -12,6 +13,9 @@ export type VercelTeam = {
   name: string | undefined;
   slug: string;
 };
+
+type TokenFields = Doc<"vercelTokens">;
+type TokenTeams = TokenFields["teams"];
 
 export const upsertVercelToken = internalMutation({
   args: {
@@ -26,12 +30,18 @@ export const upsertVercelToken = internalMutation({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
     if (existing) {
-      await ctx.db.delete(existing._id);
+      await ctx.db.patch(existing._id, {
+        token: args.token.trim(),
+        teams: args.teams,
+        tokenStatus: "valid",
+      });
+      return null;
     }
     await ctx.db.insert("vercelTokens", {
       userId: args.userId,
       token: args.token.trim(),
       teams: args.teams,
+      tokenStatus: "valid",
     });
     return null;
   },
@@ -43,6 +53,7 @@ export const getVercelTokenForUser = internalQuery({
     v.object({
       token: v.string(),
       teams: v.array(teamValidator),
+      tokenStatus: v.union(v.literal("valid"), v.literal("invalid")),
     }),
     v.null(),
   ),
@@ -52,7 +63,31 @@ export const getVercelTokenForUser = internalQuery({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
     if (!tokenDoc) return null;
-    return { token: tokenDoc.token, teams: tokenDoc.teams };
+    return {
+      token: tokenDoc.token,
+      teams: tokenDoc.teams,
+      tokenStatus: tokenDoc.tokenStatus,
+    };
+  },
+});
+
+export const markVercelTokenInvalid = internalMutation({
+  args: {
+    token: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const tokenDoc = await ctx.db
+      .query("vercelTokens")
+      .withIndex("by_token", (q) => q.eq("token", args.token.trim()))
+      .first();
+    if (!tokenDoc) {
+      return null;
+    }
+    await ctx.db.patch(tokenDoc._id, {
+      tokenStatus: "invalid",
+    });
+    return null;
   },
 });
 

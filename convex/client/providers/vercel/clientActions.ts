@@ -14,7 +14,7 @@ export const verifyVercelToken = action({
   }),
   handler: async (ctx, args) => {
     await requireCurrentUserId(ctx);
-    const teams = await fetchVercelTeamsForToken(args.token);
+    const teams = await fetchVercelTeamsForToken(args.token, ctx);
     return { teams };
   },
 });
@@ -26,12 +26,37 @@ export const saveVercelToken = action({
   returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await requireCurrentUserId(ctx);
-    const teams = await fetchVercelTeamsForToken(args.token);
+    const teams = await fetchVercelTeamsForToken(args.token, ctx);
     await ctx.runMutation(internal.lib.providers.vercel.data.upsertVercelToken, {
       userId,
       token: args.token,
       teams,
     });
     return null;
+  },
+});
+
+export const refreshVercelTeams = action({
+  args: {},
+  returns: v.object({
+    teams: v.array(teamValidator),
+  }),
+  handler: async (ctx) => {
+    const userId = await requireCurrentUserId(ctx);
+    const existing = await ctx.runQuery(
+      internal.lib.providers.vercel.data.getVercelTokenForUser,
+      { userId },
+    );
+    if (!existing) {
+      throw new Error("Save a Vercel token first");
+    }
+
+    const teams = await fetchVercelTeamsForToken(existing.token, ctx);
+    await ctx.runMutation(internal.lib.providers.vercel.data.upsertVercelToken, {
+      userId,
+      token: existing.token,
+      teams,
+    });
+    return { teams };
   },
 });

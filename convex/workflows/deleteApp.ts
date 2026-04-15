@@ -6,7 +6,12 @@ import { ActionCtx, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { Octokit } from "octokit";
-import { deleteVercelProject } from "../lib/providers/vercel/platform";
+import {
+  deleteVercelProject,
+} from "../lib/providers/vercel/platform";
+import {
+  assertConvexPlatformResultOk,
+} from "../lib/providers/convex/platform";
 import type { StepService, StepStatus } from "./stepTypes";
 
 async function setStep(
@@ -22,16 +27,6 @@ async function setStep(
     status,
     message,
   });
-}
-
-function formatPlatformError(response: Response, error: unknown) {
-  if (typeof error === "string") {
-    return error;
-  }
-  if (error && typeof error === "object") {
-    return JSON.stringify(error);
-  }
-  return response.statusText || `Request failed with status ${response.status}`;
 }
 
 function isFiniteNumber(value: number) {
@@ -126,22 +121,13 @@ export const runDeleteAppWorkflow = internalAction({
                   params: { path: { project_id: projectId } },
                 },
               );
-              if (!deleteProjectResult.response.ok) {
-                const platformError =
-                  "error" in deleteProjectResult ? deleteProjectResult.error : undefined;
-                await setStep(
-                  ctx,
-                  args.appId,
-                  "convex",
-                  "error",
-                  `API error: ${formatPlatformError(
-                    deleteProjectResult.response,
-                    platformError,
-                  )}`,
-                );
-              } else {
-                await setStep(ctx, args.appId, "convex", "done", "Deleted Convex project");
-              }
+              await assertConvexPlatformResultOk(
+                ctx,
+                convexToken.token,
+                deleteProjectResult,
+                "Failed to delete project",
+              );
+              await setStep(ctx, args.appId, "convex", "done", "Deleted Convex project");
             } catch (error) {
               const msg = error instanceof Error ? error.message : "Unknown error";
               await setStep(ctx, args.appId, "convex", "error", msg);
@@ -169,6 +155,7 @@ export const runDeleteAppWorkflow = internalAction({
           if (vercelToken) {
             try {
               await deleteVercelProject(
+                ctx,
                 vercelToken.token,
                 vercelProject.projectId,
                 vercelProject.teamId,

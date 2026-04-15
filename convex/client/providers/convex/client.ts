@@ -12,7 +12,7 @@ export const verifyConvexToken = action({
   }),
   handler: async (ctx, args) => {
     await requireCurrentUserId(ctx);
-    const details = await getConvexTokenDetails(args.token);
+    const details = await getConvexTokenDetails(args.token, ctx);
     return {
       teamId: details.teamId,
       teamName: details.teamName,

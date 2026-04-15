@@ -28,11 +28,15 @@ const viewerStateValidator = v.object({
   github: v.object({
     installations: v.array(githubInstallationValidator),
     installUrl: v.string(),
+    needsAttention: v.boolean(),
+    issue: v.union(v.string(), v.null()),
   }),
   vercel: v.union(
     v.object({
       teams: v.array(teamValidator),
       tokenPreview: v.string(),
+      isValid: v.boolean(),
+      issue: v.union(v.string(), v.null()),
     }),
     v.null(),
   ),
@@ -40,6 +44,8 @@ const viewerStateValidator = v.object({
     v.object({
       teamId: v.string(),
       tokenPreview: v.string(),
+      isValid: v.boolean(),
+      issue: v.union(v.string(), v.null()),
     }),
     v.null(),
   ),
@@ -48,6 +54,7 @@ const viewerStateValidator = v.object({
     hasVercelConnection: v.boolean(),
     hasConvexToken: v.boolean(),
     canAccessApps: v.boolean(),
+    requiredActions: v.array(v.string()),
   }),
 });
 

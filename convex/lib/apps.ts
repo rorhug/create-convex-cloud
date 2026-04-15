@@ -39,6 +39,11 @@ export async function validateCreateAppSelections(
   if (!vercelToken) {
     throw new Error("Connect your Vercel account before creating apps");
   }
+  if (vercelToken.tokenStatus === "invalid") {
+    throw new Error(
+      "The saved Vercel token is no longer valid. Paste a new token on the setup page.",
+    );
+  }
 
   const vercelTeamId = args.vercelTeamId.trim();
   if (!vercelTeamId) {
@@ -57,10 +62,20 @@ export async function validateCreateAppSelections(
   if (!convexToken) {
     throw new Error("Connect your Convex account before creating apps");
   }
+  if (convexToken.tokenStatus === "invalid") {
+    throw new Error(
+      "The saved Convex token is no longer valid. Reconnect Convex on the setup page.",
+    );
+  }
 
   const githubToken = await getGithubTokenDocForUser(ctx, userId);
   if (!githubToken) {
     throw new Error("GitHub access token not available. Please sign out and sign in again.");
+  }
+  if (githubToken.tokenStatus === "invalid") {
+    throw new Error(
+      "GitHub access needs attention. Sign in with GitHub again.",
+    );
   }
   if (
     githubAccessTokenNeedsRefresh(githubToken.accessTokenExpiresAt) &&

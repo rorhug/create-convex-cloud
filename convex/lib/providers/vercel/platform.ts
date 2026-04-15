@@ -1,5 +1,7 @@
 "use node";
 
+import { internal } from "../../../_generated/api";
+import type { ActionCtx } from "../../../_generated/server";
 import type { VercelTeam } from "./data";
 
 const VERCEL_API_BASE_URL = "https://api.vercel.com";
@@ -55,6 +57,11 @@ type VercelErrorPayload = {
   message?: string;
 };
 
+type ParsedVercelError = {
+  code?: string;
+  message: string;
+};
+
 type VercelTeamsPage = {
   teams: Array<{
     id: string;
@@ -81,22 +88,40 @@ function buildVercelUrl(path: string, params?: Record<string, string | number | 
 async function readVercelError(response: Response) {
   const text = await response.text();
   if (!text.trim()) {
-    return response.statusText || `Request failed with status ${response.status}`;
+    return {
+      message: response.statusText || `Request failed with status ${response.status}`,
+    } satisfies ParsedVercelError;
   }
   try {
     const payload = JSON.parse(text) as VercelErrorPayload;
-    return (
-      payload.error?.message ??
-      payload.message ??
-      response.statusText ??
-      `Request failed with status ${response.status}`
-    );
+    return {
+      code: payload.error?.code,
+      message:
+        payload.error?.message ??
+        payload.message ??
+        response.statusText ??
+        `Request failed with status ${response.status}`,
+    } satisfies ParsedVercelError;
   } catch {
-    return text;
+    return { message: text } satisfies ParsedVercelError;
   }
 }
 
+export class VercelApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = "VercelApiError";
+  }
+}
+
+type TokenInvalidationCtx = Pick<ActionCtx, "runMutation">;
+
 async function vercelFetch<TResponse>(
+  ctx: TokenInvalidationCtx | undefined,
   token: string,
   path: string,
   options?: {
@@ -125,7 +150,8 @@ async function vercelFetch<TResponse>(
     });
 
     if (!response.ok) {
-      throw new Error(await readVercelError(response));
+      const error = await readVercelError(response);
+      throw new VercelApiError(error.message, response.status, error.code);
     }
 
     if (response.status === 204) {
@@ -137,13 +163,21 @@ async function vercelFetch<TResponse>(
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error("Vercel request timed out");
     }
+    if (ctx && isVercelTokenInvalidError(error)) {
+      await ctx.runMutation(internal.lib.providers.vercel.data.markVercelTokenInvalid, {
+        token: token.trim(),
+      });
+    }
     throw error;
   } finally {
     clearTimeout(timeout);
   }
 }
 
-export async function fetchVercelTeamsForToken(token: string): Promise<VercelTeam[]> {
+export async function fetchVercelTeamsForToken(
+  token: string,
+  ctx?: TokenInvalidationCtx,
+): Promise<VercelTeam[]> {
   const trimmed = token.trim();
   if (trimmed.length < 10) {
     throw new Error("Vercel token looks too short");
@@ -152,28 +186,24 @@ export async function fetchVercelTeamsForToken(token: string): Promise<VercelTea
   const teams: VercelTeam[] = [];
   let until: number | undefined;
 
-  try {
-    for (;;) {
-      const page = await vercelFetch<VercelTeamsPage>(trimmed, "/v2/teams", {
-        params: {
-          limit: 100,
-          until,
-        },
+  for (;;) {
+    const page = await vercelFetch<VercelTeamsPage>(ctx, trimmed, "/v2/teams", {
+      params: {
+        limit: 100,
+        until,
+      },
+    });
+    for (const team of page.teams) {
+      teams.push({
+        id: team.id,
+        name: team.name ?? team.slug,
+        slug: team.slug,
       });
-      for (const team of page.teams) {
-        teams.push({
-          id: team.id,
-          name: team.name ?? team.slug,
-          slug: team.slug,
-        });
-      }
-      if (page.pagination?.next == null) {
-        break;
-      }
-      until = page.pagination.next;
     }
-  } catch {
-    throw new Error("Vercel token is invalid or expired");
+    if (page.pagination?.next == null) {
+      break;
+    }
+    until = page.pagination.next;
   }
 
   if (teams.length === 0) {
@@ -184,11 +214,12 @@ export async function fetchVercelTeamsForToken(token: string): Promise<VercelTea
 }
 
 export async function createVercelProject(
+  ctx: TokenInvalidationCtx,
   token: string,
   teamId: string,
   requestBody: VercelCreateProjectRequest,
 ) {
-  return await vercelFetch<VercelProjectResponse>(token, "/v10/projects", {
+  return await vercelFetch<VercelProjectResponse>(ctx, token, "/v10/projects", {
     method: "POST",
     params: { teamId },
     body: requestBody,
@@ -196,11 +227,12 @@ export async function createVercelProject(
 }
 
 export async function createVercelDeployment(
+  ctx: TokenInvalidationCtx,
   token: string,
   teamId: string,
   requestBody: VercelCreateDeploymentRequest,
 ) {
-  return await vercelFetch<VercelCreateDeploymentResponse>(token, "/v13/deployments", {
+  return await vercelFetch<VercelCreateDeploymentResponse>(ctx, token, "/v13/deployments", {
     method: "POST",
     params: { teamId },
     body: requestBody,
@@ -208,11 +240,13 @@ export async function createVercelDeployment(
 }
 
 export async function getVercelDeployment(
+  ctx: TokenInvalidationCtx,
   token: string,
   deploymentId: string,
   teamId: string,
 ) {
   return await vercelFetch<VercelDeploymentResponse>(
+    ctx,
     token,
     `/v13/deployments/${encodeURIComponent(deploymentId)}`,
     {
@@ -221,14 +255,22 @@ export async function getVercelDeployment(
   );
 }
 
-export async function deleteVercelProject(token: string, projectId: string, teamId: string) {
-  await vercelFetch<void>(token, `/v9/projects/${encodeURIComponent(projectId)}`, {
+export async function deleteVercelProject(
+  ctx: TokenInvalidationCtx,
+  token: string,
+  projectId: string,
+  teamId: string,
+) {
+  await vercelFetch<void>(ctx, token, `/v9/projects/${encodeURIComponent(projectId)}`, {
     method: "DELETE",
     params: { teamId },
   });
 }
 
 export function getVercelErrorMessage(error: unknown): string {
+  if (error instanceof VercelApiError && error.message.trim().length > 0) {
+    return error.message.trim();
+  }
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message.trim();
   }
@@ -242,6 +284,18 @@ export function getVercelErrorMessage(error: unknown): string {
     }
   }
   return "Unknown Vercel error";
+}
+
+export function isVercelTokenInvalidError(error: unknown): boolean {
+  if (error instanceof VercelApiError) {
+    return error.status === 401 || error.status === 403;
+  }
+  const message = getVercelErrorMessage(error).toLowerCase();
+  return (
+    message.includes("invalid or expired") ||
+    message.includes("unauthorized") ||
+    message.includes("forbidden")
+  );
 }
 
 export function isRetryableVercelGitError(error: unknown): boolean {

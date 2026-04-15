@@ -5,29 +5,9 @@ import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { setStep } from "./stepUtils";
 import { createManagementClient } from "@convex-dev/platform";
-
-function formatPlatformError(response: Response, error: unknown) {
-  if (typeof error === "string") {
-    return error;
-  }
-  if (error && typeof error === "object") {
-    return JSON.stringify(error);
-  }
-  return response.statusText || `Request failed with status ${response.status}`;
-}
-
-function unwrapPlatformResult<T>(
-  result: { data: T; error?: never; response: Response } | { data?: never; error: unknown; response: Response },
-  message: string,
-): T {
-  if ("error" in result && result.error !== undefined) {
-    throw new Error(`${message}: ${formatPlatformError(result.response, result.error)}`);
-  }
-  if (result.data === undefined) {
-    throw new Error(`${message}: Missing response data`);
-  }
-  return result.data;
-}
+import {
+  unwrapConvexPlatformResult,
+} from "../lib/providers/convex/platform";
 
 export const stepCreateConvexProject = internalAction({
   args: { appId: v.id("apps") },
@@ -73,7 +53,15 @@ export const stepCreateConvexProject = internalAction({
         params: { path: { team_id: teamId } },
         body: { projectName: app.name },
       });
-      const project = unwrapPlatformResult(createProjectResult, "Failed to create project")!;
+      const project = await unwrapConvexPlatformResult(
+        ctx,
+        convexToken.token,
+        createProjectResult,
+        "Failed to create project",
+      );
+      if (!project) {
+        throw new Error("Failed to create project: missing project");
+      }
       const projectId = project.projectId;
       const projectIdString = String(projectId);
 
@@ -83,7 +71,15 @@ export const stepCreateConvexProject = internalAction({
         params: { path: { project_id: projectId } },
         body: { type: "prod" },
       });
-      const deployment = unwrapPlatformResult(createDeploymentResult, "Failed to create deployment")!;
+      const deployment = await unwrapConvexPlatformResult(
+        ctx,
+        convexToken.token,
+        createDeploymentResult,
+        "Failed to create deployment",
+      );
+      if (!deployment) {
+        throw new Error("Failed to create deployment: missing deployment");
+      }
       const prodDeploymentName = deployment.name;
 
       // 3. Create production deploy key
@@ -92,7 +88,15 @@ export const stepCreateConvexProject = internalAction({
         params: { path: { deployment_name: prodDeploymentName } },
         body: { name: `ccc-vercel-prod` },
       });
-      const deployKey = unwrapPlatformResult(createDeployKeyResult, "Failed to create deploy key")!;
+      const deployKey = await unwrapConvexPlatformResult(
+        ctx,
+        convexToken.token,
+        createDeployKeyResult,
+        "Failed to create deploy key",
+      );
+      if (!deployKey) {
+        throw new Error("Failed to create deploy key: missing deploy key");
+      }
       const prodDeployKey = deployKey.deployKey;
 
       // 4. Create preview deploy key
@@ -100,13 +104,26 @@ export const stepCreateConvexProject = internalAction({
         params: { path: { project_id: projectId } },
         body: { name: `ccc-vercel-preview` },
       });
-      const previewKey = unwrapPlatformResult(createPreviewKeyResult, "Failed to create preview deploy key")!;
+      const previewKey = await unwrapConvexPlatformResult(
+        ctx,
+        convexToken.token,
+        createPreviewKeyResult,
+        "Failed to create preview deploy key",
+      );
+      if (!previewKey) {
+        throw new Error("Failed to create preview deploy key: missing preview deploy key");
+      }
       const previewDeployKey = previewKey.previewDeployKey;
 
       const projectDetailsResult = await convexPlatform.GET("/projects/{project_id}", {
         params: { path: { project_id: projectId } },
       });
-      const projectDetails = unwrapPlatformResult(projectDetailsResult, "Failed to get project details");
+      const projectDetails = await unwrapConvexPlatformResult(
+        ctx,
+        convexToken.token,
+        projectDetailsResult,
+        "Failed to get project details",
+      );
       if (!projectDetails) {
         throw new Error("Failed to get project details: missing project");
       }

@@ -19,23 +19,5 @@ export default function SetupPage() {
     );
   }
 
-  return (
-    <>
-      <section className="border border-border bg-card p-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-semibold">
-            Connect GitHub, Vercel, and Convex
-          </h1>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Finish the three onboarding steps below, then head to <code>/apps</code>{" "}
-            to create apps.
-          </p>
-        </div>
-      </section>
-
-      <div className="space-y-6">
-        <Content viewer={viewer} />
-      </div>
-    </>
-  );
+  return <Content viewer={viewer} />;
 }

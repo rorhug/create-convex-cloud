@@ -7,18 +7,49 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
   const githubToken = await getGithubTokenDocForUser(ctx, user._id);
   const githubInstallations = githubToken?.installations ?? [];
   const hasGitHubConnection = githubInstallations.length > 0;
+  const githubIssue =
+    githubToken?.tokenStatus === "invalid"
+      ? "GitHub access needs attention. Sign in with GitHub again."
+      : null;
 
   const vercelToken = await ctx.db
     .query("vercelTokens")
     .withIndex("by_user", (q) => q.eq("userId", user._id))
     .first();
   const hasVercelConnection = vercelToken !== null;
+  const vercelIssue =
+    vercelToken?.tokenStatus === "invalid"
+      ? "The saved Vercel token is no longer valid. Paste a new token on the setup page."
+      : null;
 
   const convexToken = await ctx.db
     .query("convexTokens")
     .withIndex("by_user", (q) => q.eq("userId", user._id))
     .first();
   const hasConvexToken = convexToken !== null;
+  const convexIssue =
+    convexToken?.tokenStatus === "invalid"
+      ? "The saved Convex token is no longer valid. Reconnect Convex on the setup page."
+      : null;
+
+  const requiredActions: string[] = [];
+  if (!hasGitHubConnection) {
+    requiredActions.push(
+      "Install the GitHub App and refresh your installations on the setup page.",
+    );
+  } else if (githubIssue) {
+    requiredActions.push(githubIssue);
+  }
+  if (!hasVercelConnection) {
+    requiredActions.push("Add a Vercel access token on the setup page.");
+  } else if (vercelIssue) {
+    requiredActions.push(vercelIssue);
+  }
+  if (!hasConvexToken) {
+    requiredActions.push("Connect a Convex team on the setup page.");
+  } else if (convexIssue) {
+    requiredActions.push(convexIssue);
+  }
 
   return {
     user: {
@@ -30,25 +61,37 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
     github: {
       installations: githubInstallations,
       installUrl: getGithubAppInstallUrl(),
+      needsAttention: githubIssue !== null,
+      issue: githubIssue,
     },
     vercel: hasVercelConnection
       ? {
           teams: vercelToken.teams,
           tokenPreview: maskSecret(vercelToken.token),
+          isValid: vercelIssue === null,
+          issue: vercelIssue,
         }
       : null,
     convex: hasConvexToken
       ? {
           teamId: convexToken.teamId,
           tokenPreview: maskSecret(convexToken.token),
+          isValid: convexIssue === null,
+          issue: convexIssue,
         }
       : null,
     onboarding: {
       hasGitHubConnection,
       hasVercelConnection,
       hasConvexToken,
+      requiredActions,
       canAccessApps:
-        hasGitHubConnection && hasVercelConnection && hasConvexToken,
+        hasGitHubConnection &&
+        hasVercelConnection &&
+        hasConvexToken &&
+        githubIssue === null &&
+        vercelIssue === null &&
+        convexIssue === null,
     },
   };
 }

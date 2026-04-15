@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Banner } from "./banner";
 import { StepCard } from "./step-card";
 import type { SetupBusyState } from "./types";
 
@@ -8,6 +9,7 @@ export function ConvexSetupStep({
   complete,
   convex,
   busy,
+  issue,
   onLink,
 }: {
   complete: boolean;
@@ -16,12 +18,14 @@ export function ConvexSetupStep({
     tokenPreview: string;
   } | null;
   busy: SetupBusyState;
+  issue: string | null;
   onLink: () => void;
 }) {
   return (
     <StepCard step="3" title="Link Convex team" complete={complete}>
       {convex ? (
-        <div className="space-y-2 text-sm text-muted-foreground">
+        <div className="space-y-4 text-sm text-muted-foreground">
+          {issue ? <Banner tone="error">{issue}</Banner> : null}
           <p>Connected with Convex OAuth.</p>
           <p>
             Team: <span className="font-medium text-foreground">{convex.teamId}</span>
@@ -32,6 +36,13 @@ export function ConvexSetupStep({
               {convex.tokenPreview}
             </span>
           </p>
+          {issue ? (
+            <div>
+              <Button disabled={busy !== null} onClick={onLink}>
+                {busy === "convex" ? "Redirecting..." : "Reconnect Convex"}
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className="space-y-4">

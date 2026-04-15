@@ -8,6 +8,7 @@ import {
   createVercelProject,
   getVercelErrorMessage,
   getVercelDeployment,
+  isVercelTokenInvalidError,
   isRetryableVercelGitError,
   sleepMs,
 } from "../lib/providers/vercel/platform";
@@ -76,7 +77,7 @@ export const stepCreateVercelProject = internalAction({
           await sleepMs(delayMs);
         }
         try {
-          project = await createVercelProject(vercelToken.token, teamId, {
+          project = await createVercelProject(ctx, vercelToken.token, teamId, {
             name: app.name,
             framework: "nextjs",
             gitRepository: {
@@ -130,7 +131,11 @@ export const stepCreateVercelProject = internalAction({
           await sleepMs(delayMs);
         }
         try {
-          const deployData = await createVercelDeployment(vercelToken.token, teamId, {
+          const deployData = await createVercelDeployment(
+            ctx,
+            vercelToken.token,
+            teamId,
+            {
             name: project.name,
             target: "production",
             gitSource: {
@@ -139,7 +144,8 @@ export const stepCreateVercelProject = internalAction({
               repo: repoName,
               ref: "main",
             },
-          });
+            },
+          );
           deploymentId = deployData.id;
           break;
         } catch (error) {
@@ -187,11 +193,16 @@ export const stepWaitForDeployment = internalAction({
   returns: v.object({ status: v.string() }),
   handler: async (ctx, args): Promise<{ status: string }> => {
     await setStep(ctx, args.appId, "vercel", "running", "Waiting for deployment to finish...");
+    const app = await ctx.runQuery(internal.client.apps.internalGetApp, { id: args.appId });
+    if (!app) {
+      throw new Error("App not found");
+    }
 
     const maxAttempts = 30; // ~5 minutes (10s intervals)
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const data = await getVercelDeployment(
+          ctx,
           args.vercelToken,
           args.deploymentId,
           args.teamId,
@@ -220,7 +231,17 @@ export const stepWaitForDeployment = internalAction({
 
         // Still building — update the step message
         await setStep(ctx, args.appId, "vercel", "running", `Building... (${state})`);
-      } catch {
+      } catch (error) {
+        if (isVercelTokenInvalidError(error)) {
+          await setStep(
+            ctx,
+            args.appId,
+            "vercel",
+            "error",
+            getVercelErrorMessage(error),
+          );
+          return { status: "ERROR" };
+        }
         // Transient API errors — keep polling
       }
 

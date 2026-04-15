@@ -19,6 +19,7 @@ export async function upsertConvexTokenForUser(
     providerAccountId,
     teamId,
     token: token.trim(),
+    tokenStatus: "valid" as const,
     userId,
   };
 
@@ -36,6 +37,7 @@ export const getConvexTokenForUser = internalQuery({
     v.object({
       token: v.string(),
       teamId: v.string(),
+      tokenStatus: v.union(v.literal("valid"), v.literal("invalid")),
     }),
     v.null(),
   ),
@@ -45,7 +47,31 @@ export const getConvexTokenForUser = internalQuery({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
     if (!tokenDoc) return null;
-    return { token: tokenDoc.token, teamId: tokenDoc.teamId };
+    return {
+      token: tokenDoc.token,
+      teamId: tokenDoc.teamId,
+      tokenStatus: tokenDoc.tokenStatus,
+    };
+  },
+});
+
+export const markConvexTokenInvalid = internalMutation({
+  args: {
+    token: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const tokenDoc = await ctx.db
+      .query("convexTokens")
+      .withIndex("by_token", (q) => q.eq("token", args.token.trim()))
+      .first();
+    if (!tokenDoc) {
+      return null;
+    }
+    await ctx.db.patch(tokenDoc._id, {
+      tokenStatus: "invalid",
+    });
+    return null;
   },
 });
 

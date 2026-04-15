@@ -13,6 +13,7 @@ export default defineSchema({
     accessTokenExpiresAt: v.optional(v.number()),
     refreshToken: v.optional(v.string()),
     username: v.optional(v.string()),
+    tokenStatus: v.union(v.literal("valid"), v.literal("invalid")),
     installations: v.array(
       v.object({
         id: v.string(),
@@ -23,12 +24,15 @@ export default defineSchema({
         repositorySelection: v.string(),
       }),
     ),
-  }).index("by_github_user_id", ["githubUserId"]),
+  })
+    .index("by_github_user_id", ["githubUserId"])
+    .index("by_token", ["token"]),
 
   // Vercel personal access token (pasted by user)
   vercelTokens: defineTable({
     userId: v.id("users"),
     token: v.string(),
+    tokenStatus: v.union(v.literal("valid"), v.literal("invalid")),
     teams: v.array(
       v.object({
         id: v.string(),
@@ -36,7 +40,9 @@ export default defineSchema({
         slug: v.string(),
       }),
     ),
-  }).index("by_user", ["userId"]),
+  })
+    .index("by_user", ["userId"])
+    .index("by_token", ["token"]),
 
   // Convex OAuth team-scoped application token
   convexTokens: defineTable({
@@ -44,7 +50,10 @@ export default defineSchema({
     providerAccountId: v.optional(v.string()),
     token: v.string(),
     teamId: v.string(),
-  }).index("by_user", ["userId"]),
+    tokenStatus: v.union(v.literal("valid"), v.literal("invalid")),
+  })
+    .index("by_user", ["userId"])
+    .index("by_token", ["token"]),
 
   // Apps
   apps: defineTable({

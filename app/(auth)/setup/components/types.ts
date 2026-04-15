@@ -17,6 +17,7 @@ export type SetupVercelTeam = {
 
 export type SetupBusyState =
   | "github-refresh"
+  | "vercel-refresh"
   | "vercel-verify"
   | "vercel-save"
   | "convex"
@@ -32,19 +33,26 @@ export type SetupViewerState = {
   github: {
     installations: SetupGithubInstallation[];
     installUrl: string;
+    needsAttention: boolean;
+    issue: string | null;
   };
   vercel: {
     teams: SetupVercelTeam[];
     tokenPreview: string;
+    isValid: boolean;
+    issue: string | null;
   } | null;
   convex: {
     teamId: string;
     tokenPreview: string;
+    isValid: boolean;
+    issue: string | null;
   } | null;
   onboarding: {
     hasGitHubConnection: boolean;
     hasVercelConnection: boolean;
     hasConvexToken: boolean;
     canAccessApps: boolean;
+    requiredActions: string[];
   };
 };

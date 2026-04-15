@@ -19,11 +19,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  AppCreationSection,
-  type AppsGithubInstallation,
-  type AppsVercelTeam,
-} from "./components";
+import { AppCreationSection, type AppsGithubInstallation, type AppsVercelTeam } from "./components";
 import { DeleteAppDialog } from "./delete-app-dialog";
 
 export default function AppsPage() {
@@ -40,30 +36,10 @@ export default function AppsPage() {
     );
   }
 
-  if (!viewer.onboarding.canAccessApps) {
-    return (
-      <div className="mx-auto max-w-3xl border border-border bg-card p-8">
-        <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">
-          Apps locked
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold">Finish onboarding first</h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Connect GitHub, Vercel, and Convex before creating apps.
-        </p>
-        <Button asChild className="mt-6">
-          <Link href="/setup">Back to setup</Link>
-        </Button>
-      </div>
-    );
-  }
-
   return <AppsManager />;
 }
 
-const STATUS_VARIANT: Record<
-  string,
-  "default" | "secondary" | "outline" | "destructive"
-> = {
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   creating: "secondary",
   ready: "default",
   deleting: "outline",
@@ -138,27 +114,25 @@ function StepProgress({ appId }: { appId: Id<"apps"> }) {
 
   return (
     <div className="space-y-1">
-      {steps.map(
-        (s: FunctionReturnType<typeof api.client.apps.getAppSteps>[number]) => (
-          <div key={s.step} className="flex items-start gap-2 text-xs">
-            <StepIcon status={s.status} />
-            <span
-              className={
-                s.status === "error"
-                  ? "text-destructive"
-                  : s.status === "done"
-                    ? "text-muted-foreground"
-                    : s.status === "running"
-                      ? "text-foreground"
-                      : "text-muted-foreground/50"
-              }
-            >
-              {STEP_LABELS[s.step] ?? s.step}
-              {s.message ? ` — ${s.message}` : ""}
-            </span>
-          </div>
-        ),
-      )}
+      {steps.map((s: FunctionReturnType<typeof api.client.apps.getAppSteps>[number]) => (
+        <div key={s.step} className="flex items-start gap-2 text-xs">
+          <StepIcon status={s.status} />
+          <span
+            className={
+              s.status === "error"
+                ? "text-destructive"
+                : s.status === "done"
+                  ? "text-muted-foreground"
+                  : s.status === "running"
+                    ? "text-foreground"
+                    : "text-muted-foreground/50"
+            }
+          >
+            {STEP_LABELS[s.step] ?? s.step}
+            {s.message ? ` — ${s.message}` : ""}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -167,14 +141,13 @@ function AppsManager() {
   const viewer = useQuery(api.client.viewer.getViewer);
   const apps = useQuery(api.client.apps.listApps);
   const createApp = useMutation(api.client.apps.createApp);
-  const githubInstallations: AppsGithubInstallation[] =
-    viewer?.github.installations ?? [];
+  const githubInstallations: AppsGithubInstallation[] = viewer?.github.installations ?? [];
   const vercelTeams: AppsVercelTeam[] = viewer?.vercel?.teams ?? [];
+  const canAccessApps = viewer?.onboarding.canAccessApps ?? false;
+  const requiredActions = viewer?.onboarding.requiredActions ?? [];
   const [githubInstallationId, setGithubInstallationId] = useState("");
   const [vercelTeamId, setVercelTeamId] = useState("");
-  const [githubRepoVisibility, setGithubRepoVisibility] = useState<
-    "" | "public" | "private"
-  >("");
+  const [githubRepoVisibility, setGithubRepoVisibility] = useState<"" | "public" | "private">("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -185,10 +158,7 @@ function AppsManager() {
   } | null>(null);
 
   async function handleCreate() {
-    if (
-      githubRepoVisibility !== "public" &&
-      githubRepoVisibility !== "private"
-    ) {
+    if (githubRepoVisibility !== "public" && githubRepoVisibility !== "private") {
       return;
     }
     setIsCreating(true);
@@ -204,11 +174,7 @@ function AppsManager() {
       setGithubInstallationId("");
       setGithubRepoVisibility("");
     } catch (createError) {
-      setError(
-        createError instanceof Error
-          ? createError.message
-          : "Could not create the app",
-      );
+      setError(createError instanceof Error ? createError.message : "Could not create the app");
     } finally {
       setIsCreating(false);
     }
@@ -217,44 +183,55 @@ function AppsManager() {
   return (
     <>
       <div className="w-full space-y-6">
-        <section className="border border-border bg-card p-6">
-          <div>
-            <h1 className="text-3xl font-semibold">Create an app</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Creates a GitHub repo, Convex project, and Vercel deployment.
+        {canAccessApps ? (
+          <AppCreationSection
+            error={error}
+            githubInstallationId={githubInstallationId}
+            githubInstallations={githubInstallations}
+            githubRepoVisibility={githubRepoVisibility}
+            isCreating={isCreating}
+            name={name}
+            onGithubInstallationChange={(value) => {
+              setGithubInstallationId(value);
+              setError(null);
+            }}
+            onGithubRepoVisibilityChange={(value) => {
+              setGithubRepoVisibility(value);
+              setError(null);
+            }}
+            onNameChange={(value) => {
+              setName(value);
+              setError(null);
+            }}
+            onSubmit={() => {
+              void handleCreate();
+            }}
+            onVercelTeamChange={(value) => {
+              setVercelTeamId(value);
+              setError(null);
+            }}
+            vercelTeamId={vercelTeamId}
+            vercelTeams={vercelTeams}
+          />
+        ) : (
+          <section className="border border-border bg-card p-6">
+            <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Setup required</p>
+            <h1 className="mt-2 text-3xl font-semibold">Finish setup before creating more apps</h1>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Existing apps remain visible here, but setup needs attention before new app creation can continue.
             </p>
-          </div>
-        </section>
-
-        <AppCreationSection
-          error={error}
-          githubInstallationId={githubInstallationId}
-          githubInstallations={githubInstallations}
-          githubRepoVisibility={githubRepoVisibility}
-          isCreating={isCreating}
-          name={name}
-          onGithubInstallationChange={(value) => {
-            setGithubInstallationId(value);
-            setError(null);
-          }}
-          onGithubRepoVisibilityChange={(value) => {
-            setGithubRepoVisibility(value);
-            setError(null);
-          }}
-          onNameChange={(value) => {
-            setName(value);
-            setError(null);
-          }}
-          onSubmit={() => {
-            void handleCreate();
-          }}
-          onVercelTeamChange={(value) => {
-            setVercelTeamId(value);
-            setError(null);
-          }}
-          vercelTeamId={vercelTeamId}
-          vercelTeams={vercelTeams}
-        />
+            {requiredActions.length > 0 ? (
+              <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+                {requiredActions.map((action) => (
+                  <li key={action}>{action}</li>
+                ))}
+              </ul>
+            ) : null}
+            <Button asChild className="mt-6">
+              <Link href="/setup">Go to setup</Link>
+            </Button>
+          </section>
+        )}
 
         <section className="border border-border bg-card p-6">
           <h2 className="text-xl font-semibold">Your apps</h2>
@@ -266,9 +243,7 @@ function AppsManager() {
               </div>
             )}
             {apps?.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No apps yet. Create your first one above.
-              </p>
+              <p className="text-sm text-muted-foreground">No apps yet. Create your first one above.</p>
             )}
             <ItemGroup>
               {apps?.map((app) => (
@@ -278,9 +253,7 @@ function AppsManager() {
                       <ItemTitle>
                         {app.status !== "ready" && <Spinner className="size-3.5" />}
                         {app.name}
-                        <Badge variant={STATUS_VARIANT[app.status] ?? "secondary"}>
-                          {app.status}
-                        </Badge>
+                        <Badge variant={STATUS_VARIANT[app.status] ?? "secondary"}>{app.status}</Badge>
                       </ItemTitle>
                       <ItemDescription>
                         <DeploymentUrl appId={app._id} />
@@ -291,9 +264,7 @@ function AppsManager() {
                         variant="destructive"
                         size="sm"
                         disabled={app.status === "deleting"}
-                        onClick={() =>
-                          setDeleteTarget({ id: app._id, name: app.name })
-                        }
+                        onClick={() => setDeleteTarget({ id: app._id, name: app.name })}
                       >
                         Delete
                       </Button>
@@ -314,10 +285,7 @@ function AppsManager() {
         </section>
       </div>
 
-      <DeleteAppDialog
-        target={deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-      />
+      <DeleteAppDialog target={deleteTarget} onClose={() => setDeleteTarget(null)} />
     </>
   );
 }
