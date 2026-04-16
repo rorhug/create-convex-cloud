@@ -80,7 +80,7 @@ export function AppCreationSection({
     <section className="border border-border bg-card p-6">
       <div className="space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="app-name">App name</Label>
+          <Label htmlFor="app-name">New App</Label>
           <Input
             id="app-name"
             value={name}
@@ -92,7 +92,7 @@ export function AppCreationSection({
 
         <div className="flex flex-col gap-4 md:flex-row">
           <div className="min-w-0 flex-1 space-y-2">
-            <Label htmlFor="github-installation">GitHub installation</Label>
+            <Label htmlFor="github-installation">GitHub Profile / Org</Label>
             <Select
               value={githubInstallationId}
               onValueChange={(value) => {
@@ -209,10 +209,6 @@ export function AppCreationSection({
             ).
           </div>
         ) : null}
-
-        <p className="text-xs text-muted-foreground">
-          Choose the GitHub installation, Vercel team, and repo visibility for the new app.
-        </p>
 
         <div>
           <Button className="w-full" disabled={isCreateDisabled} onClick={onSubmit}>
