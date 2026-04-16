@@ -74,7 +74,11 @@ export const deleteApp = action({
       throw new Error("You do not own this app");
     }
 
-    // Set status to deleting
+    await ctx.runMutation(internal.client.apps.internalSetAppWorkflowKind, {
+      id: args.id,
+      workflowKind: "delete",
+    });
+
     await ctx.runMutation(internal.client.apps.internalUpdateAppStatus, {
       id: args.id,
       status: "deleting",

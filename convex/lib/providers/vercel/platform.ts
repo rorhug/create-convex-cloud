@@ -3,6 +3,7 @@
 import { internal } from "../../../_generated/api";
 import type { ActionCtx } from "../../../_generated/server";
 import type { VercelTeam } from "./data";
+import { VERCEL_GITHUB_APP_ACCESS_URL } from "../../vercelLinks";
 
 const VERCEL_API_BASE_URL = "https://api.vercel.com";
 const VERCEL_REQUEST_TIMEOUT_MS = 10_000;
@@ -132,10 +133,7 @@ async function vercelFetch<TResponse>(
   },
 ) {
   const controller = new AbortController();
-  const timeout = setTimeout(
-    () => controller.abort(),
-    options?.timeoutMs ?? VERCEL_REQUEST_TIMEOUT_MS,
-  );
+  const timeout = setTimeout(() => controller.abort(), options?.timeoutMs ?? VERCEL_REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetch(buildVercelUrl(path, options?.params), {
@@ -174,10 +172,7 @@ async function vercelFetch<TResponse>(
   }
 }
 
-export async function fetchVercelTeamsForToken(
-  token: string,
-  ctx?: TokenInvalidationCtx,
-): Promise<VercelTeam[]> {
+export async function fetchVercelTeamsForToken(token: string, ctx?: TokenInvalidationCtx): Promise<VercelTeam[]> {
   const trimmed = token.trim();
   if (trimmed.length < 10) {
     throw new Error("Vercel token looks too short");
@@ -255,12 +250,7 @@ export async function getVercelDeployment(
   );
 }
 
-export async function deleteVercelProject(
-  ctx: TokenInvalidationCtx,
-  token: string,
-  projectId: string,
-  teamId: string,
-) {
+export async function deleteVercelProject(ctx: TokenInvalidationCtx, token: string, projectId: string, teamId: string) {
   await vercelFetch<void>(ctx, token, `/v9/projects/${encodeURIComponent(projectId)}`, {
     method: "DELETE",
     params: { teamId },
@@ -291,11 +281,7 @@ export function isVercelTokenInvalidError(error: unknown): boolean {
     return error.status === 401 || error.status === 403;
   }
   const message = getVercelErrorMessage(error).toLowerCase();
-  return (
-    message.includes("invalid or expired") ||
-    message.includes("unauthorized") ||
-    message.includes("forbidden")
-  );
+  return message.includes("invalid or expired") || message.includes("unauthorized") || message.includes("forbidden");
 }
 
 export function isRetryableVercelGitError(error: unknown): boolean {
@@ -306,6 +292,45 @@ export function isRetryableVercelGitError(error: unknown): boolean {
     message.includes("could not create project") ||
     message.includes("internal_server_error")
   );
+}
+
+export { VERCEL_GITHUB_APP_ACCESS_URL } from "../../vercelLinks";
+
+/** Log structured Vercel API errors (status/code/message) for debugging in Convex dashboards. */
+export function logVercelErrorDetail(context: string, error: unknown): void {
+  if (error instanceof VercelApiError) {
+    console.error(`[Vercel] ${context}`, {
+      status: error.status,
+      code: error.code,
+      message: error.message,
+    });
+    return;
+  }
+  console.error(`[Vercel] ${context}`, error);
+}
+
+export function isVercelGithubAppRepoAccessError(error: unknown): boolean {
+  if (!(error instanceof VercelApiError)) {
+    return false;
+  }
+  const message = getVercelErrorMessage(error).toLowerCase();
+  // full message from vercel: "To link a GitHub repository, you need to install the GitHub integration first. Make sure there aren't any typos and that you have access to the repository if it's private."
+  const isGithub = message.includes("install the github");
+  return isGithub;
+}
+
+export function formatVercelCreateProjectUserMessage(
+  error: unknown,
+  context: { teamLabel: string; repoFullName: string },
+): string {
+  if (isVercelGithubAppRepoAccessError(error)) {
+    return (
+      `The Vercel team ${context.teamLabel} is unable to access the new repo ${context.repoFullName}. ` +
+      `Either add it to the selected access list or grant access to all repositories. ` +
+      `Update Vercel access: ${VERCEL_GITHUB_APP_ACCESS_URL}`
+    );
+  }
+  return getVercelErrorMessage(error);
 }
 
 export async function sleepMs(ms: number): Promise<void> {

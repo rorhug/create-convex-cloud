@@ -6,10 +6,12 @@ import { v } from "convex/values";
 import {
   createVercelDeployment,
   createVercelProject,
+  formatVercelCreateProjectUserMessage,
   getVercelErrorMessage,
   getVercelDeployment,
   isVercelTokenInvalidError,
   isRetryableVercelGitError,
+  logVercelErrorDetail,
   sleepMs,
 } from "../lib/providers/vercel/platform";
 import { setStep } from "./stepUtils";
@@ -54,12 +56,15 @@ export const stepCreateVercelProject = internalAction({
       throw new Error("Vercel token not found for user");
     }
 
+    let vercelTeamLabel = app.vercelTeamId;
+
     try {
       const teamId: string = app.vercelTeamId;
       const team = vercelToken.teams.find((t: { id: string; slug: string }) => t.id === teamId);
       if (!team) {
         throw new Error("Selected Vercel team not found for this token; re-save your Vercel token on the setup page.");
       }
+      vercelTeamLabel = team.name ?? team.slug;
       const teamSlug = team.slug;
 
       let project: Awaited<ReturnType<typeof createVercelProject>> | undefined;
@@ -175,7 +180,11 @@ export const stepCreateVercelProject = internalAction({
         teamId,
       };
     } catch (error) {
-      const msg = getVercelErrorMessage(error);
+      logVercelErrorDetail("stepCreateVercelProject (raw)", error);
+      const msg = formatVercelCreateProjectUserMessage(error, {
+        teamLabel: vercelTeamLabel,
+        repoFullName: args.repoFullName,
+      });
       await setStep(ctx, args.appId, "vercel", "error", msg);
       throw error;
     }

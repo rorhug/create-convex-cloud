@@ -127,6 +127,7 @@ export async function createAppForUser(
     githubRepoPrivate: options.githubRepoPrivate,
     githubRepoCreationMethod: "template",
     status: "creating",
+    workflowKind: "create",
     createdAt: Date.now(),
   });
 }

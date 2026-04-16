@@ -74,6 +74,11 @@ export const deleteApp = action({
       throw new Error("You do not own this app");
     }
 
+    await ctx.runMutation(internal.client.apps.internalSetAppWorkflowKind, {
+      id: args.id,
+      workflowKind: "delete",
+    });
+
     await ctx.runMutation(internal.client.apps.internalUpdateAppStatus, {
       id: args.id,
       status: "deleting",
@@ -87,6 +92,46 @@ export const deleteApp = action({
       deleteVercelProject: args.deleteVercelProject,
     });
 
+    return null;
+  },
+});
+
+export const retryFailedCreateStep = action({
+  args: {
+    appId: v.id("apps"),
+    step: stepServiceValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await requireCurrentUserId(ctx);
+    const app = await ctx.runQuery(internal.client.apps.internalGetApp, {
+      id: args.appId,
+    });
+    if (!app || app.ownerId !== userId) {
+      throw new Error("App not found");
+    }
+    if ((app.workflowKind ?? "create") !== "create") {
+      throw new Error("Retry is only available for app creation.");
+    }
+    if (app.status !== "error") {
+      throw new Error("Retry is only available when app creation has failed.");
+    }
+    const steps = await ctx.runQuery(internal.client.apps.getAppStepsInternal, {
+      appId: args.appId,
+    });
+    const row = steps.find((s) => s.step === args.step);
+    if (!row || row.status !== "error") {
+      throw new Error("This step is not in a failed state.");
+    }
+    console.error("[retryFailedCreateStep] scheduling resume pipeline", {
+      appId: args.appId,
+      step: args.step,
+      workflowKind: app.workflowKind,
+    });
+    await ctx.scheduler.runAfter(0, internal.workflows.retryCreateApp.resumePipelineFromStep, {
+      appId: args.appId,
+      fromStep: args.step,
+    });
     return null;
   },
 });
@@ -194,6 +239,18 @@ export const internalUpdateAppStatus = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await ctx.db.patch(args.id, { status: args.status });
+    return null;
+  },
+});
+
+export const internalSetAppWorkflowKind = internalMutation({
+  args: {
+    id: v.id("apps"),
+    workflowKind: v.union(v.literal("create"), v.literal("delete")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { workflowKind: args.workflowKind });
     return null;
   },
 });

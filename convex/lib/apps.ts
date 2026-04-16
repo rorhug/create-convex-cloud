@@ -12,6 +12,7 @@ export const appSummaryValidator = v.object({
   _id: v.id("apps"),
   name: v.string(),
   status: appStatusValidator,
+  workflowKind: v.optional(v.union(v.literal("create"), v.literal("delete"))),
   createdAt: v.number(),
 });
 
@@ -24,6 +25,7 @@ export const internalAppValidator = v.object({
   githubInstallationId: v.string(),
   githubRepoPrivate: v.boolean(),
   githubRepoCreationMethod: v.union(v.literal("clone"), v.literal("template")),
+  workflowKind: v.optional(v.union(v.literal("create"), v.literal("delete"))),
 });
 
 export async function validateCreateAppSelections(
@@ -116,6 +118,7 @@ export function mapAppSummary(app: Doc<"apps">) {
     _id: app._id,
     name: app.name,
     status: app.status,
+    workflowKind: app.workflowKind,
     createdAt: app.createdAt,
   };
 }
@@ -130,5 +133,6 @@ export function mapInternalApp(app: Doc<"apps">) {
     githubInstallationId: app.githubInstallationId,
     githubRepoPrivate: app.githubRepoPrivate ?? false,
     githubRepoCreationMethod: app.githubRepoCreationMethod,
+    workflowKind: app.workflowKind,
   };
 }

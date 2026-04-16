@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { AppStatus } from "@/convex/lib/appStatus";
+import { VERCEL_GITHUB_APP_ACCESS_URL } from "@/convex/lib/vercelLinks";
 import type { FunctionReturnType } from "convex/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ type AppSummary = {
   _id: Id<"apps">;
   name: string;
   status: AppStatus;
+  workflowKind?: "create" | "delete";
   createdAt: number;
 };
 
@@ -103,7 +105,7 @@ function AppCard({ app, onDelete }: { app: AppSummary; onDelete: (app: { id: Id<
       </ItemFooter>
       {app.status !== "ready" ? (
         <div className="w-full pt-1">
-          <StepProgress appId={app._id} />
+          <StepProgress app={app} />
         </div>
       ) : null}
     </Item>
@@ -172,32 +174,96 @@ function StepIcon({ status }: { status: AppStatus }) {
   }
 }
 
-function StepProgress({ appId }: { appId: Id<"apps"> }) {
-  const steps = useQuery(api.client.apps.getAppSteps, { appId });
+function StepProgress({ app }: { app: AppSummary }) {
+  const steps = useQuery(api.client.apps.getAppSteps, { appId: app._id });
+  const retryFailedCreateStep = useAction(api.client.apps.retryFailedCreateStep);
+  const [retryingStep, setRetryingStep] = useState<string | null>(null);
 
   if (!steps || steps.length === 0) return null;
+
+  const showRetry = (s: { status: AppStatus; step: string }) =>
+    app.status === "error" &&
+    (app.workflowKind ?? "create") === "create" &&
+    s.status === "error";
 
   return (
     <div className="space-y-1">
       {steps.map((s: FunctionReturnType<typeof api.client.apps.getAppSteps>[number]) => (
-        <div key={s.step} className="flex items-start gap-2 text-xs">
-          <StepIcon status={s.status} />
-          <span
-            className={
-              s.status === "error"
-                ? "text-destructive"
-                : s.status === "ready"
-                  ? "text-muted-foreground"
-                  : s.status === "creating" || s.status === "deleting"
-                    ? "text-foreground"
-                    : "text-muted-foreground/50"
-            }
-          >
-            {STEP_LABELS[s.step] ?? s.step}
-            {s.message ? ` — ${s.message}` : ""}
-          </span>
+        <div
+          key={s.step}
+          className="flex w-full items-start justify-between gap-2 text-xs"
+        >
+          <div className="flex min-w-0 flex-1 items-start gap-2">
+            <StepIcon status={s.status} />
+            <span
+              className={
+                s.status === "error"
+                  ? "text-destructive"
+                  : s.status === "ready"
+                    ? "text-muted-foreground"
+                    : s.status === "creating" || s.status === "deleting"
+                      ? "text-foreground"
+                      : "text-muted-foreground/50"
+              }
+            >
+              {STEP_LABELS[s.step] ?? s.step}
+              {s.message ? (
+                <>
+                  {" — "}
+                  <StepMessage step={s.step} message={s.message} />
+                </>
+              ) : null}
+            </span>
+          </div>
+          {showRetry(s) ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 shrink-0 px-2 text-xs"
+              disabled={retryingStep === s.step}
+              onClick={async () => {
+                setRetryingStep(s.step);
+                try {
+                  await retryFailedCreateStep({ appId: app._id, step: s.step });
+                } finally {
+                  setRetryingStep(null);
+                }
+              }}
+            >
+              {retryingStep === s.step ? "…" : "Retry"}
+            </Button>
+          ) : null}
         </div>
       ))}
     </div>
   );
+}
+
+function StepMessage({ step, message }: { step: string; message: string }) {
+  if (step === "vercel" && message.includes(VERCEL_GITHUB_APP_ACCESS_URL)) {
+    const url = VERCEL_GITHUB_APP_ACCESS_URL;
+    const idx = message.indexOf(url);
+    if (idx !== -1) {
+      const beforeUrl = message
+        .slice(0, idx)
+        .replace(/\s*Update Vercel access:\s*$/i, "")
+        .trimEnd();
+      return (
+        <>
+          {beforeUrl}
+          {" "}
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary underline underline-offset-2"
+          >
+            Update Vercel access
+          </a>
+        </>
+      );
+    }
+  }
+  return <>{message}</>;
 }

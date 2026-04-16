@@ -70,6 +70,8 @@ export default defineSchema({
     githubRepoCreationMethod: v.union(v.literal("clone"), v.literal("template")),
     status: appStatusValidator,
     workflowId: v.optional(v.string()),
+    /** Last scheduled workflow: create vs delete (retry only applies to create). */
+    workflowKind: v.optional(v.union(v.literal("create"), v.literal("delete"))),
     createdAt: v.number(),
   }).index("by_owner", ["ownerId"]),
 

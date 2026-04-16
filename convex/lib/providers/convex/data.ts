@@ -137,6 +137,28 @@ export const getConvexProjectByAppId = internalQuery({
   },
 });
 
+export const getConvexDeployKeysByAppId = internalQuery({
+  args: { appId: v.id("apps") },
+  returns: v.union(
+    v.object({
+      prodDeployKey: v.string(),
+      previewDeployKey: v.string(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const project = await ctx.db
+      .query("convexProjects")
+      .withIndex("by_app", (q) => q.eq("appId", args.appId))
+      .first();
+    if (!project) return null;
+    return {
+      prodDeployKey: project.prodDeployKey,
+      previewDeployKey: project.previewDeployKey,
+    };
+  },
+});
+
 export const insertConvexProject = internalMutation({
   args: {
     appId: v.id("apps"),

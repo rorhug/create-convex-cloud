@@ -2,7 +2,7 @@ import { WorkflowManager } from "@convex-dev/workflow";
 import { components, internal } from "../_generated/api";
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
-import { stepServiceValidator, stepStatusValidator } from "./stepTypes";
+import { type StepService, stepServiceValidator, stepStatusValidator } from "./stepTypes";
 
 const workflow = new WorkflowManager(components.workflow, {
   workpoolOptions: {
@@ -63,6 +63,38 @@ export const updateStep = internalMutation({
   },
 });
 
+const STEP_ORDER: StepService[] = ["github", "convex", "vercel"];
+
+/** Reset this step and all following steps to pending (for retry from a failed step). */
+export const resetStepsFrom = internalMutation({
+  args: {
+    appId: v.id("apps"),
+    fromStep: stepServiceValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const start = STEP_ORDER.indexOf(args.fromStep);
+    if (start === -1) {
+      return null;
+    }
+    const existingSteps = await ctx.db
+      .query("appSteps")
+      .withIndex("by_app", (q) => q.eq("appId", args.appId))
+      .collect();
+    for (let i = start; i < STEP_ORDER.length; i++) {
+      const name = STEP_ORDER[i]!;
+      const row = existingSteps.find((s) => s.step === name);
+      if (row) {
+        await ctx.db.patch(row._id, {
+          status: "pending",
+          message: undefined,
+        });
+      }
+    }
+    return null;
+  },
+});
+
 // --- Workflow definition (must be in non-node file since it's a mutation) ---
 
 export const createApp = workflow.define({
@@ -89,12 +121,12 @@ export const createApp = workflow.define({
         step.runAction(
           internal.workflows.stepGithubRepoTemplate.stepCreateGithubRepoTemplate,
           { appId: args.appId },
-          { name: "createGithubRepoTemplate", retry: true },
+          { name: "createGithubRepoTemplate" },
         ),
         step.runAction(
           internal.workflows.stepConvex.stepCreateConvexProject,
           { appId: args.appId },
-          { name: "createConvexProject", retry: true },
+          { name: "createConvexProject" },
         ),
       ]);
 
@@ -107,7 +139,7 @@ export const createApp = workflow.define({
           prodDeployKey: convexResult.prodDeployKey,
           previewDeployKey: convexResult.previewDeployKey,
         },
-        { name: "createVercelProject", retry: true },
+        { name: "createVercelProject" },
       );
 
       // Step 4: Wait for deployment to finish
