@@ -18,8 +18,9 @@ export default defineSchema({
     installations: v.array(
       v.object({
         id: v.string(),
+        /** GitHub user or organization id (`account.id` on installation). */
+        accountId: v.number(),
         accountLogin: v.string(),
-        accountName: v.optional(v.string()),
         accountType: v.string(),
         accountAvatarUrl: v.optional(v.string()),
         repositorySelection: v.string(),

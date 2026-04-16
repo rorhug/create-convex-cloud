@@ -7,8 +7,8 @@ import { type GithubInstallation, githubAccessTokenNeedsRefresh } from "./platfo
 
 export const githubInstallationValidator = v.object({
   id: v.string(),
+  accountId: v.number(),
   accountLogin: v.string(),
-  accountName: v.optional(v.string()),
   accountType: v.string(),
   accountAvatarUrl: v.optional(v.string()),
   repositorySelection: v.string(),

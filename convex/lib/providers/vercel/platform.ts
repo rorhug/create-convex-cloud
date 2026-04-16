@@ -3,7 +3,7 @@
 import { internal } from "../../../_generated/api";
 import type { ActionCtx } from "../../../_generated/server";
 import type { VercelTeam } from "./data";
-import { VERCEL_GITHUB_APP_ACCESS_URL } from "../../vercelLinks";
+import { getGithubAppInstallUrl, vercelGithubAppPermissionsUrlForAccount } from "../github/platform";
 
 const VERCEL_API_BASE_URL = "https://api.vercel.com";
 const VERCEL_REQUEST_TIMEOUT_MS = 10_000;
@@ -189,6 +189,14 @@ export async function fetchVercelTeamsForToken(token: string, ctx?: TokenInvalid
       },
     });
     for (const team of page.teams) {
+      // @ts-expect-error okm
+      delete team.billing;
+    }
+    console.log(
+      "[refreshVercelTeams] API /v2/teams full list (includes personal + org teams):",
+      JSON.stringify(page.teams, null, 2),
+    );
+    for (const team of page.teams) {
       teams.push({
         id: team.id,
         name: team.name ?? team.slug,
@@ -294,8 +302,6 @@ export function isRetryableVercelGitError(error: unknown): boolean {
   );
 }
 
-export { VERCEL_GITHUB_APP_ACCESS_URL } from "../../vercelLinks";
-
 /** Log structured Vercel API errors (status/code/message) for debugging in Convex dashboards. */
 export function logVercelErrorDetail(context: string, error: unknown): void {
   if (error instanceof VercelApiError) {
@@ -321,13 +327,24 @@ export function isVercelGithubAppRepoAccessError(error: unknown): boolean {
 
 export function formatVercelCreateProjectUserMessage(
   error: unknown,
-  context: { teamLabel: string; repoFullName: string },
+  context: {
+    teamLabel: string;
+    repoFullName: string;
+    githubInstallation?: { accountId: number; accountType: string } | null;
+  },
 ): string {
   if (isVercelGithubAppRepoAccessError(error)) {
+    const accessUrl =
+      context.githubInstallation != null
+        ? vercelGithubAppPermissionsUrlForAccount(
+            context.githubInstallation.accountId,
+            context.githubInstallation.accountType,
+          )
+        : getGithubAppInstallUrl();
     return (
       `The Vercel team ${context.teamLabel} is unable to access the new repo ${context.repoFullName}. ` +
       `Either add it to the selected access list or grant access to all repositories. ` +
-      `Update Vercel access: ${VERCEL_GITHUB_APP_ACCESS_URL}`
+      `Update GitHub access: ${accessUrl}`
     );
   }
   return getVercelErrorMessage(error);

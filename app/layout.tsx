@@ -6,7 +6,7 @@ import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,16 +34,17 @@ export default function RootLayout({
   return (
     <ConvexAuthNextjsServerProvider>
       <html lang="en" suppressHydrationWarning className={cn("font-sans", inter.variable)}>
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <ConvexClientProvider>{children}</ConvexClientProvider>
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+            <ConvexClientProvider>
+              <header className="pt-6 px-6">
+                <p className=" max-w-5xl mx-auto text-sm uppercase tracking-[0.2em] text-muted-foreground">
+                  Create Convex Cloud
+                </p>
+              </header>
+
+              {children}
+            </ConvexClientProvider>
           </ThemeProvider>
         </body>
       </html>

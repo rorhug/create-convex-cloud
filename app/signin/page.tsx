@@ -12,11 +12,10 @@ export default function SignIn() {
     <main className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
       <div className="w-full max-w-lg rounded-3xl border border-border bg-card p-8 shadow-2xl">
         <div className="space-y-4 text-center">
-          <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">Create Convex Cloud</p>
           <h1 className="text-3xl font-semibold">Sign in with GitHub</h1>
           <p className="text-sm text-muted-foreground">
-            GitHub is the only login method enabled. Sign in first, then install the
-            GitHub App on the setup page before creating apps.
+            GitHub is the only login method enabled. Sign in first, then install the GitHub App on the setup page before
+            creating apps.
           </p>
         </div>
 

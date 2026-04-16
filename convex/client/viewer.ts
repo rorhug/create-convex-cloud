@@ -1,21 +1,13 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { requireCurrentUser } from "../lib/auth";
+import { githubInstallationValidator } from "../lib/providers/github/data";
 import { getViewerState } from "../lib/onboarding";
 
 const teamValidator = v.object({
   id: v.string(),
   name: v.optional(v.string()),
   slug: v.string(),
-});
-
-const githubInstallationValidator = v.object({
-  id: v.string(),
-  accountLogin: v.string(),
-  accountName: v.optional(v.string()),
-  accountType: v.string(),
-  accountAvatarUrl: v.optional(v.string()),
-  repositorySelection: v.string(),
 });
 
 const viewerStateValidator = v.object({

@@ -41,9 +41,6 @@ export function GitHubSetupStep({
                     {installation.accountLogin}
                     {installation.accountType.toLowerCase() === "organization" ? " (org)" : " (personal)"}
                   </div>
-                  {installation.accountName ? (
-                    <div className="text-muted-foreground">{installation.accountName}</div>
-                  ) : null}
                 </div>
               ))}
             </div>

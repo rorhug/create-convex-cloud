@@ -1,13 +1,17 @@
 "use client";
 
-export type SetupGithubInstallation = {
-  id: string;
-  accountLogin: string;
-  accountName?: string | undefined;
-  accountType: string;
-  accountAvatarUrl?: string | undefined;
-  repositorySelection: string;
-};
+import { githubInstallationValidator } from "@/convex/lib/providers/github/data";
+import { Infer } from "convex/values";
+
+// export type SetupGithubInstallation = {
+//   id: string;
+//   accountId: number;
+//   accountLogin: string;
+//   accountType: string;
+//   accountAvatarUrl?: string | undefined;
+//   repositorySelection: string;
+// };
+export type SetupGithubInstallation = Infer<typeof githubInstallationValidator>;
 
 export type SetupVercelTeam = {
   id: string;
@@ -15,13 +19,7 @@ export type SetupVercelTeam = {
   slug: string;
 };
 
-export type SetupBusyState =
-  | "github-refresh"
-  | "vercel-refresh"
-  | "vercel-save"
-  | "convex-refresh"
-  | "convex"
-  | null;
+export type SetupBusyState = "github-refresh" | "vercel-refresh" | "vercel-save" | "convex-refresh" | "convex" | null;
 
 export type SetupViewerState = {
   user: {

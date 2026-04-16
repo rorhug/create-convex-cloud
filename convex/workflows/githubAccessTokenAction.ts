@@ -113,10 +113,7 @@ async function ensureFreshGithubAccessTokenImpl(
   };
 }
 
-async function refreshGithubInstallationsImpl(
-  ctx: ActionCtx,
-  args: { userId: Id<"users"> },
-) {
+async function refreshGithubInstallationsImpl(ctx: ActionCtx, args: { userId: Id<"users"> }) {
   const row = await ctx.runQuery(internal.lib.providers.github.data.getGithubTokenRowForRefresh, {
     userId: args.userId,
   });

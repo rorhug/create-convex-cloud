@@ -6,8 +6,8 @@ export const GITHUB_ACCESS_TOKEN_REFRESH_BUFFER_MS = 5 * 60_000;
 
 export type GithubInstallation = {
   id: string;
+  accountId: number;
   accountLogin: string;
-  accountName?: string;
   accountType: string;
   accountAvatarUrl?: string;
   repositorySelection: string;
@@ -55,19 +55,6 @@ export function githubAccessTokenNeedsRefresh(
   return nowMs >= accessTokenExpiresAtMs - bufferMs;
 }
 
-type GithubUserInstallationsResponse = {
-  installations?: Array<{
-    id: number;
-    repository_selection: string;
-    account?: {
-      login?: string;
-      name?: string | null;
-      type?: string;
-      avatar_url?: string;
-    } | null;
-  }>;
-};
-
 export function getGithubAppSlug() {
   return process.env.AUTH_GITHUB_APP_SLUG?.trim() || "create-convex-cloud";
 }
@@ -77,9 +64,33 @@ export function getGithubAppInstallUrl() {
   return `https://github.com/apps/${encodeURIComponent(appSlug)}/installations/new`;
 }
 
+/**
+ * Deep-link to this app's GitHub App permissions for a specific user or org account
+ * (matches `account.id` / `account.type` from installation listings).
+ */
+export function vercelGithubAppPermissionsUrlForAccount(accountId: number, accountType: string): string {
+  const targetType = accountType.toLowerCase() === "organization" ? "Organization" : "User";
+  const url = new URL(`https://github.com/apps/vercel/installations/new/permissions`);
+  url.searchParams.set("target_id", String(accountId));
+  url.searchParams.set("target_type", targetType);
+  return url.href;
+}
+
+function httpStatusFromUnknown(error: unknown): number | undefined {
+  if (typeof error === "object" && error !== null && "status" in error) {
+    const s = (error as { status?: number }).status;
+    return typeof s === "number" ? s : undefined;
+  }
+  return undefined;
+}
+
 export function isGithubConnectionInvalidError(error: unknown): boolean {
   if (error instanceof GithubApiError) {
     return error.status === 401 || error.status === 403;
+  }
+  const status = httpStatusFromUnknown(error);
+  if (status === 401 || status === 403) {
+    return true;
   }
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
@@ -93,11 +104,20 @@ export function isGithubConnectionInvalidError(error: unknown): boolean {
   return false;
 }
 
-async function githubFetch(
-  accessToken: string,
-  url: string,
-  ctx?: TokenInvalidationCtx,
-) {
+type GithubUserInstallationsResponse = {
+  installations?: Array<{
+    id: number;
+    repository_selection: string;
+    account?: {
+      id?: number;
+      login?: string;
+      type?: string;
+      avatar_url?: string;
+    } | null;
+  }>;
+};
+
+async function githubFetch(accessToken: string, url: string, ctx?: TokenInvalidationCtx) {
   try {
     const response = await fetch(url, {
       headers: {
@@ -108,10 +128,7 @@ async function githubFetch(
     });
 
     if (!response.ok) {
-      throw new GithubApiError(
-        `GitHub installations request failed: HTTP ${response.status}`,
-        response.status,
-      );
+      throw new GithubApiError(`GitHub installations request failed: HTTP ${response.status}`, response.status);
     }
 
     return response;
@@ -140,17 +157,20 @@ export async function fetchGithubInstallationsForAccessToken(
     );
 
     const data = (await response.json()) as GithubUserInstallationsResponse;
+    console.log("[refreshGithubInstallations] API user/installations full list:", JSON.stringify(data, null, 2));
+
     const pageInstallations: GithubInstallation[] = [];
     for (const installation of data.installations ?? []) {
+      const accountId = installation.account?.id;
       const accountLogin = installation.account?.login?.trim();
       const accountType = installation.account?.type?.trim();
-      if (!accountLogin || !accountType) {
+      if (accountId === undefined || !Number.isFinite(accountId) || !accountLogin || !accountType) {
         continue;
       }
       pageInstallations.push({
         id: String(installation.id),
+        accountId,
         accountLogin,
-        accountName: installation.account?.name ?? undefined,
         accountType,
         accountAvatarUrl: installation.account?.avatar_url,
         repositorySelection: installation.repository_selection,

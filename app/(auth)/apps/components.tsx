@@ -18,6 +18,7 @@ import {
 
 export type AppsGithubInstallation = {
   id: string;
+  accountId: number;
   accountLogin: string;
   accountType: string;
   repositorySelection: string;

@@ -28,7 +28,6 @@ import type * as lib_providers_github_data from "../lib/providers/github/data.js
 import type * as lib_providers_github_platform from "../lib/providers/github/platform.js";
 import type * as lib_providers_vercel_data from "../lib/providers/vercel/data.js";
 import type * as lib_providers_vercel_platform from "../lib/providers/vercel/platform.js";
-import type * as lib_vercelLinks from "../lib/vercelLinks.js";
 import type * as workflows_createApp from "../workflows/createApp.js";
 import type * as workflows_createAppHelpers from "../workflows/createAppHelpers.js";
 import type * as workflows_deleteApp from "../workflows/deleteApp.js";
@@ -69,7 +68,6 @@ declare const fullApi: ApiFromModules<{
   "lib/providers/github/platform": typeof lib_providers_github_platform;
   "lib/providers/vercel/data": typeof lib_providers_vercel_data;
   "lib/providers/vercel/platform": typeof lib_providers_vercel_platform;
-  "lib/vercelLinks": typeof lib_vercelLinks;
   "workflows/createApp": typeof workflows_createApp;
   "workflows/createAppHelpers": typeof workflows_createAppHelpers;
   "workflows/deleteApp": typeof workflows_deleteApp;

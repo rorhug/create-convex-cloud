@@ -5,7 +5,9 @@ import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { AppStatus } from "@/convex/lib/appStatus";
-import { VERCEL_GITHUB_APP_ACCESS_URL } from "@/convex/lib/vercelLinks";
+/** Matches GitHub App install / permissions URLs embedded in Convex step messages. */
+const GITHUB_APP_ACCESS_URL_IN_MESSAGE =
+  /https:\/\/github\.com\/apps\/[^/\s]+\/installations\/new[^\s]*/;
 import type { FunctionReturnType } from "convex/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -241,28 +243,31 @@ function StepProgress({ app }: { app: AppSummary }) {
 }
 
 function StepMessage({ step, message }: { step: string; message: string }) {
-  if (step === "vercel" && message.includes(VERCEL_GITHUB_APP_ACCESS_URL)) {
-    const url = VERCEL_GITHUB_APP_ACCESS_URL;
-    const idx = message.indexOf(url);
-    if (idx !== -1) {
-      const beforeUrl = message
-        .slice(0, idx)
-        .replace(/\s*Update Vercel access:\s*$/i, "")
-        .trimEnd();
-      return (
-        <>
-          {beforeUrl}
-          {" "}
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-primary underline underline-offset-2"
-          >
-            Update Vercel access
-          </a>
-        </>
-      );
+  if (step === "vercel") {
+    const match = message.match(GITHUB_APP_ACCESS_URL_IN_MESSAGE);
+    if (match) {
+      const url = match[0];
+      const idx = message.indexOf(url);
+      if (idx !== -1) {
+        const beforeUrl = message
+          .slice(0, idx)
+          .replace(/\s*Update GitHub access:\s*$/i, "")
+          .trimEnd();
+        return (
+          <>
+            {beforeUrl}
+            {" "}
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-primary underline underline-offset-2"
+            >
+              Update GitHub access
+            </a>
+          </>
+        );
+      }
     }
   }
   return <>{message}</>;

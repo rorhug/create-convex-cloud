@@ -48,6 +48,20 @@ export const stepCreateVercelProject = internalAction({
     const app = await ctx.runQuery(internal.client.apps.internalGetApp, { id: args.appId });
     if (!app) throw new Error("App not found");
 
+    const githubConnection = await ctx.runQuery(internal.lib.providers.github.data.getGithubConnection, {
+      userId: app.ownerId,
+    });
+    const selectedGithubInstallation = githubConnection?.githubInstallations.find(
+      (i) => i.id === app.githubInstallationId,
+    );
+    const githubInstallationForMessage =
+      selectedGithubInstallation !== undefined
+        ? {
+            accountId: selectedGithubInstallation.accountId,
+            accountType: selectedGithubInstallation.accountType,
+          }
+        : null;
+
     const vercelToken = await ctx.runQuery(internal.lib.providers.vercel.data.getVercelTokenForUser, {
       userId: app.ownerId,
     });
@@ -184,6 +198,7 @@ export const stepCreateVercelProject = internalAction({
       const msg = formatVercelCreateProjectUserMessage(error, {
         teamLabel: vercelTeamLabel,
         repoFullName: args.repoFullName,
+        githubInstallation: githubInstallationForMessage,
       });
       await setStep(ctx, args.appId, "vercel", "error", msg);
       throw error;

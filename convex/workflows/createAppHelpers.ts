@@ -85,7 +85,7 @@ export const resetStepsFrom = internalMutation({
       const name = STEP_ORDER[i]!;
       const row = existingSteps.find((s) => s.step === name);
       if (row) {
-        await ctx.db.patch(row._id, {
+        await ctx.db.patch("appSteps", row._id, {
           status: "pending",
           message: undefined,
         });

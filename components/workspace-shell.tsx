@@ -5,12 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
 import { useTheme } from "next-themes";
-import {
-  SunIcon,
-  MoonIcon,
-  MonitorIcon,
-  SignOutIcon,
-} from "@phosphor-icons/react";
+import { SunIcon, MoonIcon, MonitorIcon, SignOutIcon } from "@phosphor-icons/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -32,10 +27,9 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
 
   return (
-    <main className="min-h-screen p-6 md:p-8">
+    <main className="min-h-screen p-6">
       <div className="mx-auto max-w-5xl space-y-6">
         <header className="flex gap-4 border border-border bg-card p-6 flex-col">
-          <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Create Convex Cloud</p>
           <div className="flex items-center justify-between w-full">
             <nav className="flex flex-wrap gap-2">
               <Button asChild variant={pathname.startsWith("/setup") ? "default" : "outline"}>
@@ -49,16 +43,9 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <button className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
                   <Avatar>
-                    {viewer?.user.image && (
-                      <AvatarImage
-                        src={viewer.user.image}
-                        alt={viewer.user.name ?? "User"}
-                      />
-                    )}
+                    {viewer?.user.image && <AvatarImage src={viewer.user.image} alt={viewer.user.name ?? "User"} />}
                     <AvatarFallback>
-                      {(viewer?.user.name ?? viewer?.user.githubUsername ?? "?")
-                        .charAt(0)
-                        .toUpperCase()}
+                      {(viewer?.user.name ?? viewer?.user.githubUsername ?? "?").charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </button>
@@ -67,26 +54,15 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex items-center gap-3">
                     <Avatar size="sm">
-                      {viewer?.user.image && (
-                        <AvatarImage
-                          src={viewer.user.image}
-                          alt={viewer.user.name ?? "User"}
-                        />
-                      )}
+                      {viewer?.user.image && <AvatarImage src={viewer.user.image} alt={viewer.user.name ?? "User"} />}
                       <AvatarFallback>
-                        {(viewer?.user.name ?? viewer?.user.githubUsername ?? "?")
-                          .charAt(0)
-                          .toUpperCase()}
+                        {(viewer?.user.name ?? viewer?.user.githubUsername ?? "?").charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col gap-0.5 leading-none">
-                      {viewer?.user.name && (
-                        <span className="font-medium">{viewer.user.name}</span>
-                      )}
+                      {viewer?.user.name && <span className="font-medium">{viewer.user.name}</span>}
                       {viewer?.user.githubUsername && (
-                        <span className="text-xs text-muted-foreground">
-                          @{viewer.user.githubUsername}
-                        </span>
+                        <span className="text-xs text-muted-foreground">@{viewer.user.githubUsername}</span>
                       )}
                     </div>
                   </div>
