@@ -75,6 +75,28 @@ export const markConvexTokenInvalid = internalMutation({
   },
 });
 
+export const markConvexTokenValid = internalMutation({
+  args: {
+    token: v.string(),
+    teamId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const tokenDoc = await ctx.db
+      .query("convexTokens")
+      .withIndex("by_token", (q) => q.eq("token", args.token.trim()))
+      .first();
+    if (!tokenDoc) {
+      return null;
+    }
+    await ctx.db.patch(tokenDoc._id, {
+      teamId: args.teamId,
+      tokenStatus: "valid",
+    });
+    return null;
+  },
+});
+
 export const getConvexProjectByAppId = internalQuery({
   args: { appId: v.id("apps") },
   returns: v.union(

@@ -1,7 +1,6 @@
 "use client";
 
 import { ArrowCircleDownIcon, ArrowCircleRightIcon, ArrowCircleUpRightIcon } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Banner } from "./banner";
@@ -13,12 +12,14 @@ export function VercelSetupStep({
   vercel,
   vercelToken,
   vercelTeams,
+  showReplaceToken,
   busy,
   issue,
   onTokenChange,
   onRefresh,
   onVerify,
   onSave,
+  onToggleReplaceToken,
 }: {
   complete: boolean;
   vercel: {
@@ -29,22 +30,16 @@ export function VercelSetupStep({
   } | null;
   vercelToken: string;
   vercelTeams: SetupVercelTeam[] | null;
+  showReplaceToken: boolean;
   busy: SetupBusyState;
   issue: string | null;
   onTokenChange: (value: string) => void;
   onRefresh: () => void;
   onVerify: () => void;
   onSave: () => void;
+  onToggleReplaceToken: () => void;
 }) {
-  const [showReplaceToken, setShowReplaceToken] = useState(false);
   const showTokenEntryFields = vercel === null || !vercel.isValid || showReplaceToken;
-
-  const [lastVercelToken, setLastVercelToken] = useState(vercelToken);
-  console.log("lastVercelToken", lastVercelToken !== vercelToken, vercelToken.length === 0);
-  if (lastVercelToken !== vercelToken && vercelToken.length === 0) {
-    setLastVercelToken(vercelToken);
-    setShowReplaceToken(false);
-  }
 
   return (
     <StepCard step="2" title="Vercel access token" complete={complete}>
@@ -58,7 +53,7 @@ export function VercelSetupStep({
               <button
                 type="button"
                 className="inline-flex items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground"
-                onClick={() => setShowReplaceToken((value) => !value)}
+                onClick={onToggleReplaceToken}
               >
                 {showReplaceToken ? (
                   <ArrowCircleDownIcon className="size-3.5" weight="fill" />

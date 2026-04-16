@@ -10,6 +10,7 @@ export function ConvexSetupStep({
   convex,
   busy,
   issue,
+  onRefresh,
   onLink,
 }: {
   complete: boolean;
@@ -19,6 +20,7 @@ export function ConvexSetupStep({
   } | null;
   busy: SetupBusyState;
   issue: string | null;
+  onRefresh: () => void;
   onLink: () => void;
 }) {
   return (
@@ -36,13 +38,14 @@ export function ConvexSetupStep({
               {convex.tokenPreview}
             </span>
           </p>
-          {issue ? (
-            <div>
-              <Button disabled={busy !== null} onClick={onLink}>
-                {busy === "convex" ? "Redirecting..." : "Reconnect Convex"}
-              </Button>
-            </div>
-          ) : null}
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" disabled={busy !== null} onClick={onRefresh}>
+              {busy === "convex-refresh" ? "Refreshing..." : "Refresh Convex"}
+            </Button>
+            <Button disabled={busy !== null} onClick={onLink}>
+              {busy === "convex" ? "Redirecting..." : "Reconnect Convex"}
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

@@ -13,7 +13,7 @@ import type * as auth from "../auth.js";
 import type * as authProviders_convexPlatform from "../authProviders/convexPlatform.js";
 import type * as authProviders_github from "../authProviders/github.js";
 import type * as client_apps from "../client/apps.js";
-import type * as client_providers_convex_client from "../client/providers/convex/client.js";
+import type * as client_providers_convex_clientActions from "../client/providers/convex/clientActions.js";
 import type * as client_providers_github_clientActions from "../client/providers/github/clientActions.js";
 import type * as client_providers_vercel_clientActions from "../client/providers/vercel/clientActions.js";
 import type * as client_viewer from "../client/viewer.js";
@@ -51,7 +51,7 @@ declare const fullApi: ApiFromModules<{
   "authProviders/convexPlatform": typeof authProviders_convexPlatform;
   "authProviders/github": typeof authProviders_github;
   "client/apps": typeof client_apps;
-  "client/providers/convex/client": typeof client_providers_convex_client;
+  "client/providers/convex/clientActions": typeof client_providers_convex_clientActions;
   "client/providers/github/clientActions": typeof client_providers_github_clientActions;
   "client/providers/vercel/clientActions": typeof client_providers_vercel_clientActions;
   "client/viewer": typeof client_viewer;

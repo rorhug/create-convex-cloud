@@ -20,6 +20,7 @@ export type SetupBusyState =
   | "vercel-refresh"
   | "vercel-verify"
   | "vercel-save"
+  | "convex-refresh"
   | "convex"
   | null;
 

@@ -28,9 +28,13 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
   const saveVercelToken = useAction(
     api.client.providers.vercel.clientActions.saveVercelToken,
   );
+  const refreshConvexToken = useAction(
+    api.client.providers.convex.clientActions.refreshConvexToken,
+  );
 
   const [vercelToken, setVercelToken] = useState("");
   const [vercelTeams, setVercelTeams] = useState<SetupVercelTeam[] | null>(null);
+  const [showReplaceVercelToken, setShowReplaceVercelToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<SetupBusyState>(null);
   const hasHandledRefreshGithubInstallationsParam = useRef(false);
@@ -130,11 +134,28 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
       });
       setVercelToken("");
       setVercelTeams(null);
+      setShowReplaceVercelToken(false);
     } catch (saveError) {
       setError(
         saveError instanceof Error
           ? saveError.message
           : "Could not save the Vercel token",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleRefreshConvexToken() {
+    setBusy("convex-refresh");
+    setError(null);
+    try {
+      await refreshConvexToken({});
+    } catch (refreshError) {
+      setError(
+        refreshError instanceof Error
+          ? refreshError.message
+          : "Could not refresh the saved Convex token",
       );
     } finally {
       setBusy(null);
@@ -173,6 +194,7 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
         vercel={viewer.vercel}
         vercelToken={vercelToken}
         vercelTeams={vercelTeams}
+        showReplaceToken={showReplaceVercelToken}
         busy={busy}
         issue={viewer.vercel?.issue ?? null}
         onTokenChange={(value) => {
@@ -189,6 +211,9 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
         onSave={() => {
           void handleSaveVercelToken();
         }}
+        onToggleReplaceToken={() => {
+          setShowReplaceVercelToken((value) => !value);
+        }}
       />
 
       <ConvexSetupStep
@@ -196,6 +221,9 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
         convex={viewer.convex}
         busy={busy}
         issue={viewer.convex?.issue ?? null}
+        onRefresh={() => {
+          void handleRefreshConvexToken();
+        }}
         onLink={() => {
           void (async () => {
             setBusy("convex");
