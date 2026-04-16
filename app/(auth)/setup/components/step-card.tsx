@@ -16,7 +16,7 @@ export function StepCard({
   children: ReactNode;
 }) {
   return (
-    <div className="border border-border bg-background p-5">
+    <div className="border border-border bg-background p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Step {step}</p>
@@ -24,7 +24,7 @@ export function StepCard({
         </div>
         <Badge variant={complete ? "default" : "outline"}>{complete ? "Complete" : "Required"}</Badge>
       </div>
-      <div className="mt-4">{children}</div>
+      <div className="mt-3">{children}</div>
     </div>
   );
 }

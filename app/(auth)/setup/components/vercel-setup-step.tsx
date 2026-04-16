@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowCircleDownIcon, ArrowCircleRightIcon, ArrowCircleUpRightIcon } from "@phosphor-icons/react";
+import { ArrowCircleUpRightIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Banner } from "./banner";
@@ -50,20 +50,6 @@ export function VercelSetupStep({
             <p>
               Token saved: <span className="font-medium text-foreground">{vercel.tokenPreview}</span>
             </p>
-            {vercel.isValid ? (
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground"
-                onClick={onToggleReplaceToken}
-              >
-                {showReplaceToken ? (
-                  <ArrowCircleDownIcon className="size-3.5" weight="fill" />
-                ) : (
-                  <ArrowCircleRightIcon className="size-3.5" weight="fill" />
-                )}
-                Replace token
-              </button>
-            ) : null}
           </>
         ) : null}
 
@@ -100,10 +86,15 @@ export function VercelSetupStep({
         ) : null}
 
         {vercel && !showTokenEntryFields ? (
-          <div>
+          <div className="flex flex-wrap gap-3">
             <Button variant="outline" className="text-foreground" disabled={busy !== null} onClick={onRefresh}>
               {busy === "vercel-refresh" ? "Refreshing..." : "Refresh Vercel"}
             </Button>
+            {vercel.isValid ? (
+              <Button variant="outline" className="text-foreground" onClick={onToggleReplaceToken}>
+                {showReplaceToken ? "Hide replace token" : "Replace token"}
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </div>

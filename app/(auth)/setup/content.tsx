@@ -11,6 +11,7 @@ import { ConvexSetupStep } from "./components/convex-setup-step";
 import { GitHubSetupStep } from "./components/github-setup-step";
 import type { SetupBusyState, SetupVercelTeam, SetupViewerState } from "./components/types";
 import { VercelSetupStep } from "./components/vercel-setup-step";
+import { ArrowRightIcon } from "@phosphor-icons/react";
 
 export function Content({ viewer }: { viewer: SetupViewerState }) {
   const { signIn } = useAuthActions();
@@ -128,17 +129,12 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
   }
 
   return (
-    <section className="space-y-6 border border-border bg-card p-6">
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Signed in as {viewer.user.githubUsername ?? viewer.user.email ?? viewer.user.name ?? "GitHub user"}
-        </p>
-        <h2 className="text-2xl font-semibold">Onboarding checklist</h2>
-      </div>
-
+    <section className="space-y-6">
       {isSetupComplete ? (
         <Button asChild className="w-full">
-          <Link href="/apps">Go to apps</Link>
+          <Link href="/apps">
+            Create an app <ArrowRightIcon />
+          </Link>
         </Button>
       ) : null}
 
@@ -211,7 +207,9 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
 
       {isSetupComplete ? (
         <Button asChild className="w-full">
-          <Link href="/apps">Go to apps</Link>
+          <Link href="/apps">
+            Create an app <ArrowRightIcon />
+          </Link>
         </Button>
       ) : null}
     </section>

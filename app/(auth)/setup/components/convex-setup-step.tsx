@@ -40,7 +40,7 @@ export function ConvexSetupStep({
             <Button variant="outline" className="text-foreground" disabled={busy !== null} onClick={onRefresh}>
               {busy === "convex-refresh" ? "Refreshing..." : "Refresh Convex"}
             </Button>
-            <Button disabled={busy !== null} onClick={onLink}>
+            <Button variant="outline" className="text-foreground" disabled={busy !== null} onClick={onLink}>
               {busy === "convex" ? "Redirecting..." : "Reconnect Convex"}
             </Button>
           </div>

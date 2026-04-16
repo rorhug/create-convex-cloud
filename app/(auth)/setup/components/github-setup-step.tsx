@@ -26,7 +26,7 @@ export function GitHubSetupStep({
   return (
     <StepCard step="1" provider={ProviderLogoName.GitHub} complete={complete}>
       {complete ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {issue ? <Banner tone="error">{issue}</Banner> : null}
           <p className="text-sm text-muted-foreground">
             Installed for {installations.length} account
@@ -53,15 +53,16 @@ export function GitHubSetupStep({
           />
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {issue ? <Banner tone="error">{issue}</Banner> : null}
           <p className="text-sm text-muted-foreground">
             Install the GitHub App on your personal account or an organization before continuing.
           </p>
           <div className="border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
             Either <span className="font-medium text-foreground">All repositories</span> or{" "}
-            <span className="font-medium text-foreground">Only select repositories</span> is fine. If you choose
-            selected repos, make sure at least one repository is selected before installing the app.
+            <span className="font-medium text-foreground">Only select repositories</span> will work. If you choose
+            selected repos, at least one repository must be selected. Create convex cloud will not use it, but it is
+            required by Github to install.
           </div>
           <GitHubInstallationActions
             installUrl={installUrl}
