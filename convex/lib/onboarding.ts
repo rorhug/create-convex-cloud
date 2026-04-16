@@ -1,6 +1,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { getGithubTokenDocForUser } from "./providers/github/data";
+import { findConvexAuthAccountForUser } from "./providers/convex/data";
 import { getGithubAppInstallUrl } from "./providers/github/platform";
 
 export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
@@ -22,10 +23,13 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
       ? "The saved Vercel token is no longer valid. Paste a new token on the setup page."
       : null;
 
-  const convexToken = await ctx.db
-    .query("convexTokens")
-    .withIndex("by_user", (q) => q.eq("userId", user._id))
-    .first();
+  const convexAccount = await findConvexAuthAccountForUser(ctx, user._id);
+  const convexToken = convexAccount
+    ? await ctx.db
+        .query("convexTokens")
+        .withIndex("by_provider_account", (q) => q.eq("providerAccountId", convexAccount.providerAccountId))
+        .first()
+    : null;
   const hasConvexToken = convexToken !== null;
   const convexIssue =
     convexToken?.tokenStatus === "invalid"
@@ -75,6 +79,7 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
     convex: hasConvexToken
       ? {
           teamId: convexToken.teamId,
+          teamSlug: convexToken.teamSlug,
           tokenPreview: maskSecret(convexToken.token),
           isValid: convexIssue === null,
           issue: convexIssue,

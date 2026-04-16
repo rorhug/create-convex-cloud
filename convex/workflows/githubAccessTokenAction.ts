@@ -100,7 +100,7 @@ async function ensureFreshGithubAccessTokenImpl(
   const refreshed = await exchangeGithubRefreshToken(ctx, row.token, row.refreshToken);
   const accessTokenExpiresAt = accessTokenExpiresAtMsFromOAuthTokens(refreshed);
   await ctx.runMutation(internal.lib.providers.github.data.applyGithubOAuthRefresh, {
-    githubUserId: row.githubUserId,
+    providerAccountId: row.providerAccountId,
     accessToken: refreshed.access_token,
     ...(accessTokenExpiresAt !== undefined ? { accessTokenExpiresAt } : {}),
     ...(refreshed.refresh_token !== undefined && refreshed.refresh_token.length > 0
@@ -127,7 +127,7 @@ async function refreshGithubInstallationsImpl(
   const { accessToken } = await ensureFreshGithubAccessTokenImpl(ctx, args);
   const installations = await fetchGithubInstallationsForAccessToken(accessToken, ctx);
   await ctx.runMutation(internal.lib.providers.github.data.updateGithubInstallations, {
-    githubUserId: row.githubUserId,
+    providerAccountId: row.providerAccountId,
     installations,
   });
   return { installations };

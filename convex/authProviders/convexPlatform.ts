@@ -12,6 +12,7 @@ interface ConvexPlatformUserInfo {
 export type ConvexPlatformProfile = {
   convexAccessToken?: string | null;
   convexTeamId?: string | null;
+  convexTeamSlug?: string | null;
   email?: string | null;
   id?: string;
   image?: string | null;
@@ -64,6 +65,7 @@ export default function ConvexPlatform(
         image: null,
         convexAccessToken: accessToken,
         convexTeamId: teamId,
+        convexTeamSlug: teamSlug || null,
       };
     },
     style: {

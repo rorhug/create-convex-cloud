@@ -8,7 +8,8 @@ import {
   githubTokenFieldsFromProfile,
   upsertGithubTokenForGithubUser,
 } from "./lib/providers/github/data";
-import { upsertConvexTokenForUser } from "./lib/providers/convex/data";
+import { upsertConvexToken } from "./lib/providers/convex/data";
+import { extractTeamSlugFromToken } from "./lib/providers/convex/platform";
 import { fetchGithubInstallationsForAccessToken } from "./lib/providers/github/platform";
 
 type CreateOrUpdateUserArgs = {
@@ -24,13 +25,24 @@ function getProviderAccountId(profile: GithubProfileWithTokens | ConvexPlatformP
   return providerAccountId === undefined || providerAccountId === null ? undefined : String(providerAccountId);
 }
 
-async function upsertConvexToken(ctx: MutationCtx, userId: Id<"users">, profile: ConvexPlatformProfile) {
+async function upsertConvexTokenFromProfile(ctx: MutationCtx, userId: Id<"users">, profile: ConvexPlatformProfile) {
   const token = profile.convexAccessToken;
   const teamId = profile.convexTeamId;
   if (typeof token !== "string" || token.length === 0 || typeof teamId !== "string" || teamId.length === 0) {
     throw new Error("Convex OAuth did not return the expected team token");
   }
-  await upsertConvexTokenForUser(ctx, userId, token, teamId, getProviderAccountId(profile));
+  const providerAccountId = getProviderAccountId(profile);
+  if (!providerAccountId) {
+    throw new Error("Convex OAuth profile is missing provider account ID");
+  }
+  const teamSlug = typeof profile.convexTeamSlug === "string" ? profile.convexTeamSlug : extractTeamSlugFromToken(token);
+
+  await upsertConvexToken(ctx, {
+    providerAccountId,
+    token,
+    teamId,
+    teamSlug,
+  });
 }
 
 async function createOrUpdateGithubUser(ctx: MutationCtx, args: CreateOrUpdateUserArgs) {
@@ -83,7 +95,7 @@ async function createOrUpdateConvexUser(ctx: MutationCtx, args: CreateOrUpdateUs
     throw new Error("This Convex account is already linked to a different user");
   }
 
-  await upsertConvexToken(ctx, authUserId, profile);
+  await upsertConvexTokenFromProfile(ctx, authUserId, profile);
   return authUserId;
 }
 

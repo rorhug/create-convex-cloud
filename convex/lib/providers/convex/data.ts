@@ -1,30 +1,49 @@
 import { v } from "convex/values";
-import type { Id } from "../../../_generated/dataModel";
+import type { Doc, Id } from "../../../_generated/dataModel";
 import { internalMutation, internalQuery } from "../../../_generated/server";
-import type { MutationCtx } from "../../../_generated/server";
+import type { MutationCtx, QueryCtx } from "../../../_generated/server";
 
-export async function upsertConvexTokenForUser(
-  ctx: MutationCtx,
+export async function findConvexAuthAccountForUser(
+  ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
-  token: string,
-  teamId: string,
-  providerAccountId?: string,
-) {
-  const existingToken = await ctx.db
+): Promise<Doc<"authAccounts"> | null> {
+  return await ctx.db
+    .query("authAccounts")
+    .withIndex("userIdAndProvider", (q) => q.eq("userId", userId).eq("provider", "convex"))
+    .unique();
+}
+
+async function getConvexTokenByProviderAccount(
+  ctx: QueryCtx | MutationCtx,
+  providerAccountId: string,
+): Promise<Doc<"convexTokens"> | null> {
+  return await ctx.db
     .query("convexTokens")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .withIndex("by_provider_account", (q) => q.eq("providerAccountId", providerAccountId))
     .first();
+}
+
+export async function upsertConvexToken(
+  ctx: MutationCtx,
+  fields: {
+    providerAccountId: string;
+    token: string;
+    teamId: string;
+    teamSlug: string;
+  },
+) {
+  const existing = await getConvexTokenByProviderAccount(ctx, fields.providerAccountId);
 
   const tokenDoc = {
-    providerAccountId,
-    teamId,
-    token: token.trim(),
+    providerAccountId: fields.providerAccountId,
+    teamId: fields.teamId,
+    teamSlug: fields.teamSlug,
+    token: fields.token.trim(),
     tokenStatus: "valid" as const,
-    userId,
   };
 
-  if (existingToken) {
-    await ctx.db.patch(existingToken._id, tokenDoc);
+  if (existing) {
+    await ctx.db.patch(existing._id, tokenDoc);
     return;
   }
 
@@ -37,19 +56,20 @@ export const getConvexTokenForUser = internalQuery({
     v.object({
       token: v.string(),
       teamId: v.string(),
+      teamSlug: v.string(),
       tokenStatus: v.union(v.literal("valid"), v.literal("invalid")),
     }),
     v.null(),
   ),
   handler: async (ctx, args) => {
-    const tokenDoc = await ctx.db
-      .query("convexTokens")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .first();
+    const account = await findConvexAuthAccountForUser(ctx, args.userId);
+    if (!account) return null;
+    const tokenDoc = await getConvexTokenByProviderAccount(ctx, account.providerAccountId);
     if (!tokenDoc) return null;
     return {
       token: tokenDoc.token,
       teamId: tokenDoc.teamId,
+      teamSlug: tokenDoc.teamSlug,
       tokenStatus: tokenDoc.tokenStatus,
     };
   },
@@ -79,6 +99,7 @@ export const markConvexTokenValid = internalMutation({
   args: {
     token: v.string(),
     teamId: v.string(),
+    teamSlug: v.string(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -91,6 +112,7 @@ export const markConvexTokenValid = internalMutation({
     }
     await ctx.db.patch(tokenDoc._id, {
       teamId: args.teamId,
+      teamSlug: args.teamSlug,
       tokenStatus: "valid",
     });
     return null;

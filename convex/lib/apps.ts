@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { getGithubTokenDocForUser } from "./providers/github/data";
+import { findConvexAuthAccountForUser } from "./providers/convex/data";
 import { githubAccessTokenNeedsRefresh } from "./providers/github/platform";
 
 export const appSummaryValidator = v.object({
@@ -55,10 +56,13 @@ export async function validateCreateAppSelections(
     );
   }
 
-  const convexToken = await ctx.db
-    .query("convexTokens")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .first();
+  const convexAccount = await findConvexAuthAccountForUser(ctx, userId);
+  const convexToken = convexAccount
+    ? await ctx.db
+        .query("convexTokens")
+        .withIndex("by_provider_account", (q) => q.eq("providerAccountId", convexAccount.providerAccountId))
+        .first()
+    : null;
   if (!convexToken) {
     throw new Error("Connect your Convex account before creating apps");
   }

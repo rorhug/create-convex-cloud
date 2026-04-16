@@ -17,6 +17,7 @@ export function ConvexSetupStep({
   complete: boolean;
   convex: {
     teamId: string;
+    teamSlug: string;
     tokenPreview: string;
   } | null;
   busy: SetupBusyState;
@@ -31,7 +32,7 @@ export function ConvexSetupStep({
           {issue ? <Banner tone="error">{issue}</Banner> : null}
           <p>Connected with Convex OAuth.</p>
           <p>
-            Team: <span className="font-medium text-foreground">{convex.teamId}</span>
+            Team: <span className="font-medium text-foreground">{convex.teamSlug || convex.teamId}</span>
           </p>
           <p>
             Token preview: <span className="font-medium text-foreground">{convex.tokenPreview}</span>

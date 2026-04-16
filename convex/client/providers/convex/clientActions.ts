@@ -10,6 +10,7 @@ export const refreshConvexToken = action({
   args: {},
   returns: v.object({
     teamId: v.string(),
+    teamSlug: v.string(),
   }),
   handler: async (ctx) => {
     const userId = await requireCurrentUserId(ctx);
@@ -25,7 +26,8 @@ export const refreshConvexToken = action({
     await ctx.runMutation(internal.lib.providers.convex.data.markConvexTokenValid, {
       token: existing.token,
       teamId: details.teamId,
+      teamSlug: details.teamSlug,
     });
-    return { teamId: details.teamId };
+    return { teamId: details.teamId, teamSlug: details.teamSlug };
   },
 });

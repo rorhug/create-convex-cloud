@@ -127,12 +127,13 @@ export async function getConvexTokenDetails(
       name?: string;
     };
     const teamSlug = extractTeamSlugFromToken(trimmed);
-    const teamId = teamSlug || String(data.teamId ?? "");
-    const teamName = data.name ?? teamId;
+    const teamId = String(data.teamId ?? "");
 
     if (!teamId) {
       throw new Error("Could not determine team ID from token");
     }
+
+    const teamName = data.name ?? (teamSlug || teamId);
 
     return { teamId, teamName, teamSlug };
   } catch (error) {

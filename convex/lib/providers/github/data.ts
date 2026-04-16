@@ -25,8 +25,7 @@ export async function findGithubAuthAccountForUser(
 }
 
 /**
- * GitHub OAuth token row for this user: resolve `authAccounts.providerAccountId` (GitHub user id string),
- * then load `githubTokens` by `githubUserId`.
+ * GitHub OAuth token row for this user: resolve via `authAccounts` → `providerAccountId` → `githubTokens`.
  */
 export async function getGithubTokenDocForUser(
   ctx: QueryCtx | MutationCtx,
@@ -36,12 +35,12 @@ export async function getGithubTokenDocForUser(
   if (account === null) return null;
   return await ctx.db
     .query("githubTokens")
-    .withIndex("by_github_user_id", (q) => q.eq("githubUserId", account.providerAccountId))
+    .withIndex("by_provider_account", (q) => q.eq("providerAccountId", account.providerAccountId))
     .first();
 }
 
 export type GithubTokenFields = {
-  githubUserId: string;
+  providerAccountId: string;
   accessToken: string;
   accessTokenExpiresAt?: number;
   refreshToken?: string;
@@ -49,14 +48,14 @@ export type GithubTokenFields = {
   installations?: GithubInstallation[];
 };
 
-export function githubTokenFieldsFromProfile(profile: GithubProfileWithTokens): GithubTokenFields {
-  const githubUserId =
+export function githubTokenFieldsFromProfile(profile: GithubProfileWithTokens): Omit<GithubTokenFields, "authAccountId"> {
+  const providerAccountId =
     typeof profile.githubUserId === "string" && profile.githubUserId.length > 0
       ? profile.githubUserId
       : typeof profile.id === "string" && profile.id.length > 0
         ? profile.id
         : "";
-  if (githubUserId.length === 0) {
+  if (providerAccountId.length === 0) {
     throw new Error("GitHub profile is missing githubUserId (and id was stripped by Convex Auth)");
   }
 
@@ -66,7 +65,7 @@ export function githubTokenFieldsFromProfile(profile: GithubProfileWithTokens): 
   }
 
   return {
-    githubUserId,
+    providerAccountId,
     accessToken,
     accessTokenExpiresAt:
       typeof profile.accessTokenExpiresAt === "number" && Number.isFinite(profile.accessTokenExpiresAt)
@@ -83,11 +82,11 @@ export function githubTokenFieldsFromProfile(profile: GithubProfileWithTokens): 
 export async function upsertGithubTokenForGithubUser(ctx: MutationCtx, fields: GithubTokenFields) {
   const existing = await ctx.db
     .query("githubTokens")
-    .withIndex("by_github_user_id", (q) => q.eq("githubUserId", fields.githubUserId))
+    .withIndex("by_provider_account", (q) => q.eq("providerAccountId", fields.providerAccountId))
     .first();
 
   const tokenDoc = {
-    githubUserId: fields.githubUserId,
+    providerAccountId: fields.providerAccountId,
     token: fields.accessToken,
     tokenStatus: "valid" as const,
     installations: fields.installations ?? [],
@@ -157,7 +156,7 @@ export const getGithubTokenRowForRefresh = internalQuery({
   returns: v.union(
     v.null(),
     v.object({
-      githubUserId: v.string(),
+      providerAccountId: v.string(),
       token: v.string(),
       accessTokenExpiresAt: v.optional(v.number()),
       refreshToken: v.optional(v.string()),
@@ -169,7 +168,7 @@ export const getGithubTokenRowForRefresh = internalQuery({
     const doc = await getGithubTokenDocForUser(ctx, args.userId);
     if (!doc) return null;
     return {
-      githubUserId: doc.githubUserId,
+      providerAccountId: doc.providerAccountId,
       token: doc.token,
       accessTokenExpiresAt: doc.accessTokenExpiresAt,
       refreshToken: doc.refreshToken,
@@ -181,7 +180,7 @@ export const getGithubTokenRowForRefresh = internalQuery({
 
 export const applyGithubOAuthRefresh = internalMutation({
   args: {
-    githubUserId: v.string(),
+    providerAccountId: v.string(),
     accessToken: v.string(),
     accessTokenExpiresAt: v.optional(v.number()),
     refreshToken: v.optional(v.string()),
@@ -190,7 +189,7 @@ export const applyGithubOAuthRefresh = internalMutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("githubTokens")
-      .withIndex("by_github_user_id", (q) => q.eq("githubUserId", args.githubUserId))
+      .withIndex("by_provider_account", (q) => q.eq("providerAccountId", args.providerAccountId))
       .first();
     if (!existing) {
       throw new Error("githubTokens row not found for GitHub user");
@@ -217,14 +216,14 @@ export const applyGithubOAuthRefresh = internalMutation({
 
 export const updateGithubInstallations = internalMutation({
   args: {
-    githubUserId: v.string(),
+    providerAccountId: v.string(),
     installations: v.array(githubInstallationValidator),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("githubTokens")
-      .withIndex("by_github_user_id", (q) => q.eq("githubUserId", args.githubUserId))
+      .withIndex("by_provider_account", (q) => q.eq("providerAccountId", args.providerAccountId))
       .first();
     if (!existing) {
       throw new Error("githubTokens row not found for GitHub user");
