@@ -45,6 +45,7 @@ export type SetupViewerState = {
   } | null;
   convex: {
     teamId: string;
+    teamSlug: string;
     tokenPreview: string;
     isValid: boolean;
     issue: string | null;
