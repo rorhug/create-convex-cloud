@@ -75,7 +75,7 @@ export function AppList({
 
 function AppCard({ app, onDelete }: { app: AppSummary; onDelete: (app: { id: Id<"apps">; name: string }) => void }) {
   return (
-    <Item variant="outline">
+    <Item variant="outline" className=" p-6">
       <ItemHeader className="items-start">
         <ItemContent>
           <ItemTitle>
