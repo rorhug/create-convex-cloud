@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { authTables } from "@convex-dev/auth/server";
+import { appStatusValidator } from "./lib/appStatus";
 
 export default defineSchema({
   ...authTables,
@@ -67,7 +68,7 @@ export default defineSchema({
     githubRepoPrivate: v.boolean(),
     /** GitHub repo setup strategy. */
     githubRepoCreationMethod: v.union(v.literal("clone"), v.literal("template")),
-    status: v.string(), // "creating" | "ready" | "deleting" | "error"
+    status: appStatusValidator,
     workflowId: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_owner", ["ownerId"]),
@@ -76,7 +77,7 @@ export default defineSchema({
   appSteps: defineTable({
     appId: v.id("apps"),
     step: v.string(), // "github" | "convex" | "vercel"
-    status: v.string(), // "pending" | "running" | "done" | "error"
+    status: appStatusValidator,
     message: v.optional(v.string()),
   }).index("by_app", ["appId"]),
 

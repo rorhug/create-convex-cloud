@@ -24,7 +24,7 @@ export const stepCreateConvexProject = internalAction({
     prodDeployKey: string;
     previewDeployKey: string;
   }> => {
-    await setStep(ctx, args.appId, "convex", "running", "Creating Convex project...");
+    await setStep(ctx, args.appId, "convex", "creating", "Creating Convex project...");
 
     const app = await ctx.runQuery(internal.client.apps.internalGetApp, {
       id: args.appId,
@@ -48,7 +48,7 @@ export const stepCreateConvexProject = internalAction({
       const convexPlatform = createManagementClient(convexToken.token);
 
       // 1. Create project
-      await setStep(ctx, args.appId, "convex", "running", "Creating project...");
+      await setStep(ctx, args.appId, "convex", "creating", "Creating project...");
       const createProjectResult = await convexPlatform.POST("/teams/{team_id}/create_project", {
         params: { path: { team_id: teamId } },
         body: { projectName: app.name },
@@ -66,7 +66,7 @@ export const stepCreateConvexProject = internalAction({
       const projectIdString = String(projectId);
 
       // 2. Create production deployment
-      await setStep(ctx, args.appId, "convex", "running", "Creating prod deployment...");
+      await setStep(ctx, args.appId, "convex", "creating", "Creating prod deployment...");
       const createDeploymentResult = await convexPlatform.POST("/projects/{project_id}/create_deployment", {
         params: { path: { project_id: projectId } },
         body: { type: "prod" },
@@ -83,7 +83,7 @@ export const stepCreateConvexProject = internalAction({
       const prodDeploymentName = deployment.name;
 
       // 3. Create production deploy key
-      await setStep(ctx, args.appId, "convex", "running", "Creating deploy keys...");
+      await setStep(ctx, args.appId, "convex", "creating", "Creating deploy keys...");
       const createDeployKeyResult = await convexPlatform.POST("/deployments/{deployment_name}/create_deploy_key", {
         params: { path: { deployment_name: prodDeploymentName } },
         body: { name: `ccc-vercel-prod` },
@@ -143,7 +143,7 @@ export const stepCreateConvexProject = internalAction({
         previewDeployKey,
       });
 
-      await setStep(ctx, args.appId, "convex", "done", `Created project ${projectIdString}`);
+      await setStep(ctx, args.appId, "convex", "ready", `Created project ${projectIdString}`);
       return { projectId: projectIdString, prodDeployKey, previewDeployKey };
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error";

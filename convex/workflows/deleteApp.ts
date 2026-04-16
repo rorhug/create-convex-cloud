@@ -57,7 +57,7 @@ export const runDeleteAppWorkflow = internalAction({
     try {
       // Delete GitHub repo
       if (args.deleteGithubRepo) {
-        await setStep(ctx, args.appId, "github", "running", "Deleting GitHub repo...");
+        await setStep(ctx, args.appId, "github", "deleting", "Deleting GitHub repo...");
         const githubRepo = await ctx.runQuery(
           internal.lib.providers.github.data.getGithubRepoByAppId,
           { appId: args.appId },
@@ -82,22 +82,22 @@ export const runDeleteAppWorkflow = internalAction({
                 repo,
                 headers: { "X-GitHub-Api-Version": "2022-11-28" },
               });
-              await setStep(ctx, args.appId, "github", "done", `Deleted ${githubRepo.repoFullName}`);
+              await setStep(ctx, args.appId, "github", "ready", `Deleted ${githubRepo.repoFullName}`);
             } catch (error) {
               const msg = error instanceof Error ? error.message : "Unknown error";
               await setStep(ctx, args.appId, "github", "error", msg);
             }
           } else {
-            await setStep(ctx, args.appId, "github", "done", "No GitHub token, skipped API deletion");
+            await setStep(ctx, args.appId, "github", "ready", "No GitHub token, skipped API deletion");
           }
         } else {
-          await setStep(ctx, args.appId, "github", "done", "No repo record found, skipped");
+          await setStep(ctx, args.appId, "github", "ready", "No repo record found, skipped");
         }
       }
 
       // Delete Convex project
       if (args.deleteConvexProject) {
-        await setStep(ctx, args.appId, "convex", "running", "Deleting Convex project...");
+        await setStep(ctx, args.appId, "convex", "deleting", "Deleting Convex project...");
         const convexProject = await ctx.runQuery(
           internal.lib.providers.convex.data.getConvexProjectByAppId,
           { appId: args.appId },
@@ -127,22 +127,22 @@ export const runDeleteAppWorkflow = internalAction({
                 deleteProjectResult,
                 "Failed to delete project",
               );
-              await setStep(ctx, args.appId, "convex", "done", "Deleted Convex project");
+              await setStep(ctx, args.appId, "convex", "ready", "Deleted Convex project");
             } catch (error) {
               const msg = error instanceof Error ? error.message : "Unknown error";
               await setStep(ctx, args.appId, "convex", "error", msg);
             }
           } else {
-            await setStep(ctx, args.appId, "convex", "done", "No Convex token, skipped API deletion");
+            await setStep(ctx, args.appId, "convex", "ready", "No Convex token, skipped API deletion");
           }
         } else {
-          await setStep(ctx, args.appId, "convex", "done", "No project record found, skipped");
+          await setStep(ctx, args.appId, "convex", "ready", "No project record found, skipped");
         }
       }
 
       // Delete Vercel project
       if (args.deleteVercelProject) {
-        await setStep(ctx, args.appId, "vercel", "running", "Deleting Vercel project...");
+        await setStep(ctx, args.appId, "vercel", "deleting", "Deleting Vercel project...");
         const vercelProject = await ctx.runQuery(
           internal.lib.providers.vercel.data.getVercelProjectByAppId,
           { appId: args.appId },
@@ -160,16 +160,16 @@ export const runDeleteAppWorkflow = internalAction({
                 vercelProject.projectId,
                 vercelProject.teamId,
               );
-              await setStep(ctx, args.appId, "vercel", "done", "Deleted Vercel project");
+              await setStep(ctx, args.appId, "vercel", "ready", "Deleted Vercel project");
             } catch (error) {
               const msg = error instanceof Error ? error.message : "Unknown error";
               await setStep(ctx, args.appId, "vercel", "error", msg);
             }
           } else {
-            await setStep(ctx, args.appId, "vercel", "done", "No Vercel token, skipped API deletion");
+            await setStep(ctx, args.appId, "vercel", "ready", "No Vercel token, skipped API deletion");
           }
         } else {
-          await setStep(ctx, args.appId, "vercel", "done", "No project record found, skipped");
+          await setStep(ctx, args.appId, "vercel", "ready", "No project record found, skipped");
         }
       }
 

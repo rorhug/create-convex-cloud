@@ -1,13 +1,13 @@
-import { v, Infer } from "convex/values";
+import { v, type Infer } from "convex/values";
+import { appStatusValidator, type AppStatus } from "../lib/appStatus";
 
-export const stepStatusValidator = v.union(
-  v.literal("pending"),
-  v.literal("running"),
-  v.literal("done"),
-  v.literal("error"),
-);
+export { appStatusValidator, APP_STATUS_VALUES, type AppStatus } from "../lib/appStatus";
+
+/** Same as `appStatusValidator` — use either name. */
+export const stepStatusValidator = appStatusValidator;
+
+export type StepStatus = AppStatus;
 
 export const stepServiceValidator = v.union(v.literal("github"), v.literal("convex"), v.literal("vercel"));
 
 export type StepService = Infer<typeof stepServiceValidator>;
-export type StepStatus = Infer<typeof stepStatusValidator>;

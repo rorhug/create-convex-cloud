@@ -11,10 +11,8 @@ import {
 } from "../lib/apps";
 import { createAppForUser, deleteAppForUser, listAppsForUser } from "../lib/onboarding";
 import type { StepService, StepStatus } from "../workflows/stepTypes";
-import {
-  stepServiceValidator,
-  stepStatusValidator,
-} from "../workflows/stepTypes";
+import { appStatusValidator } from "../lib/appStatus";
+import { stepServiceValidator } from "../workflows/stepTypes";
 
 export const listApps = query({
   args: {},
@@ -95,7 +93,7 @@ export const deleteApp = action({
 
 const stepValidator = v.object({
   step: stepServiceValidator,
-  status: stepStatusValidator,
+  status: appStatusValidator,
   message: v.union(v.string(), v.null()),
 });
 
@@ -191,7 +189,7 @@ export const internalGetApp = internalQuery({
 export const internalUpdateAppStatus = internalMutation({
   args: {
     id: v.id("apps"),
-    status: v.string(),
+    status: appStatusValidator,
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -202,7 +200,7 @@ export const internalUpdateAppStatus = internalMutation({
 
 export const getAppStepsInternal = internalQuery({
   args: { appId: v.id("apps") },
-  returns: v.array(v.object({ step: stepServiceValidator, status: stepStatusValidator })),
+  returns: v.array(v.object({ step: stepServiceValidator, status: appStatusValidator })),
   handler: async (ctx, args) => {
     const steps = await ctx.db
       .query("appSteps")

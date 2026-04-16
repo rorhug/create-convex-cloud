@@ -9,6 +9,7 @@ import {
   mapInternalApp,
   validateCreateAppSelections,
 } from "./lib/apps";
+import { appStatusValidator } from "./lib/appStatus";
 import { createAppForUser, deleteAppForUser, listAppsForUser } from "./lib/onboarding";
 
 export const listApps = query({
@@ -94,7 +95,7 @@ export const deleteApp = action({
 
 const stepValidator = v.object({
   step: v.string(),
-  status: v.string(),
+  status: appStatusValidator,
   message: v.union(v.string(), v.null()),
 });
 
@@ -191,7 +192,7 @@ export const internalGetApp = internalQuery({
 export const internalUpdateAppStatus = internalMutation({
   args: {
     id: v.id("apps"),
-    status: v.string(),
+    status: appStatusValidator,
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -202,7 +203,7 @@ export const internalUpdateAppStatus = internalMutation({
 
 export const getAppStepsInternal = internalQuery({
   args: { appId: v.id("apps") },
-  returns: v.array(v.object({ step: v.string(), status: v.string() })),
+  returns: v.array(v.object({ step: v.string(), status: appStatusValidator })),
   handler: async (ctx, args) => {
     const steps = await ctx.db
       .query("appSteps")

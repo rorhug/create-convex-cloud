@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import type { AppStatus } from "@/convex/lib/appStatus";
 import type { FunctionReturnType } from "convex/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,12 +20,15 @@ import {
 } from "@/components/ui/item";
 import { Spinner } from "@/components/ui/spinner";
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+const STATUS_VARIANT: Record<AppStatus, "default" | "secondary" | "outline" | "destructive"> = {
+  pending: "secondary",
   creating: "secondary",
   ready: "default",
   deleting: "outline",
   error: "destructive",
 };
+
+const APP_TITLE_SPINNER_STATUSES = new Set<AppStatus>(["pending", "creating", "deleting"]);
 
 const STEP_LABELS: Record<string, string> = {
   github: "GitHub repo",
@@ -35,7 +39,7 @@ const STEP_LABELS: Record<string, string> = {
 type AppSummary = {
   _id: Id<"apps">;
   name: string;
-  status: string;
+  status: AppStatus;
   createdAt: number;
 };
 
@@ -75,9 +79,9 @@ function AppCard({ app, onDelete }: { app: AppSummary; onDelete: (app: { id: Id<
       <ItemHeader className="items-start">
         <ItemContent>
           <ItemTitle>
-            {app.status !== "ready" && <Spinner className="size-3.5" />}
+            {APP_TITLE_SPINNER_STATUSES.has(app.status) && <Spinner className="size-3.5" />}
             {app.name}
-            <Badge variant={STATUS_VARIANT[app.status] ?? "secondary"}>{app.status}</Badge>
+            <Badge variant={STATUS_VARIANT[app.status]}>{app.status}</Badge>
           </ItemTitle>
           <ItemDescription>
             <DeploymentUrl appId={app._id} />
@@ -154,11 +158,12 @@ function DashboardLinks({ appId }: { appId: Id<"apps"> }) {
   );
 }
 
-function StepIcon({ status }: { status: string }) {
+function StepIcon({ status }: { status: AppStatus }) {
   switch (status) {
-    case "done":
+    case "ready":
       return <span className="text-primary">&#10003;</span>;
-    case "running":
+    case "creating":
+    case "deleting":
       return <Spinner className="size-3" />;
     case "error":
       return <span className="text-destructive">&#10007;</span>;
@@ -181,9 +186,9 @@ function StepProgress({ appId }: { appId: Id<"apps"> }) {
             className={
               s.status === "error"
                 ? "text-destructive"
-                : s.status === "done"
+                : s.status === "ready"
                   ? "text-muted-foreground"
-                  : s.status === "running"
+                  : s.status === "creating" || s.status === "deleting"
                     ? "text-foreground"
                     : "text-muted-foreground/50"
             }

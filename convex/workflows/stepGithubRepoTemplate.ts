@@ -14,7 +14,7 @@ export const stepCreateGithubRepoTemplate = internalAction({
     repoUrl: v.string(),
   }),
   handler: async (ctx, args): Promise<{ repoFullName: string; repoUrl: string }> => {
-    await setStep(ctx, args.appId, "github", "running", "Creating GitHub repo from template...");
+    await setStep(ctx, args.appId, "github", "creating", "Creating GitHub repo from template...");
 
     const app = await ctx.runQuery(internal.client.apps.internalGetApp, { id: args.appId });
     if (!app) throw new Error("App not found");
@@ -48,7 +48,7 @@ export const stepCreateGithubRepoTemplate = internalAction({
         ctx,
         args.appId,
         "github",
-        "running",
+        "creating",
         `Creating repo in ${owner} from template ${DEFAULT_TEMPLATE_OWNER}/${DEFAULT_TEMPLATE_REPO}...`,
       );
 
@@ -73,7 +73,7 @@ export const stepCreateGithubRepoTemplate = internalAction({
         repoUrl,
       });
 
-      await setStep(ctx, args.appId, "github", "done", `Created ${repoFullName}`);
+      await setStep(ctx, args.appId, "github", "ready", `Created ${repoFullName}`);
       return { repoFullName, repoUrl };
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error";

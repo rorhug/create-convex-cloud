@@ -3,6 +3,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { appStatusValidator } from "./appStatus";
 import { getGithubTokenDocForUser } from "./providers/github/data";
 import { findConvexAuthAccountForUser } from "./providers/convex/data";
 import { githubAccessTokenNeedsRefresh } from "./providers/github/platform";
@@ -10,7 +11,7 @@ import { githubAccessTokenNeedsRefresh } from "./providers/github/platform";
 export const appSummaryValidator = v.object({
   _id: v.id("apps"),
   name: v.string(),
-  status: v.string(),
+  status: appStatusValidator,
   createdAt: v.number(),
 });
 
@@ -18,7 +19,7 @@ export const internalAppValidator = v.object({
   _id: v.id("apps"),
   ownerId: v.id("users"),
   name: v.string(),
-  status: v.string(),
+  status: appStatusValidator,
   vercelTeamId: v.string(),
   githubInstallationId: v.string(),
   githubRepoPrivate: v.boolean(),

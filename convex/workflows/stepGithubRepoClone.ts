@@ -23,7 +23,7 @@ export const stepCreateGithubRepoClone = internalAction({
     repoUrl: v.string(),
   }),
   handler: async (ctx, args): Promise<{ repoFullName: string; repoUrl: string }> => {
-    await setStep(ctx, args.appId, "github", "running", "Creating GitHub repo...");
+    await setStep(ctx, args.appId, "github", "creating", "Creating GitHub repo...");
 
     const app = await ctx.runQuery(internal.client.apps.internalGetApp, { id: args.appId });
     if (!app) throw new Error("App not found");
@@ -53,7 +53,7 @@ export const stepCreateGithubRepoClone = internalAction({
     let repoCreated = false;
 
     try {
-      await setStep(ctx, args.appId, "github", "running", "Fetching template from get-convex/templates...");
+      await setStep(ctx, args.appId, "github", "creating", "Fetching template from get-convex/templates...");
 
       const upstreamTreeRes = await octokit.request("GET /repos/{owner}/{repo}/git/trees/{tree_sha}", {
         owner: CLONE_TEMPLATE_SOURCE_OWNER,
@@ -77,7 +77,7 @@ export const stepCreateGithubRepoClone = internalAction({
           mode: entry.mode as string,
         }));
 
-      await setStep(ctx, args.appId, "github", "running", "Downloading template files...");
+      await setStep(ctx, args.appId, "github", "creating", "Downloading template files...");
 
       const upstreamFiles = await Promise.all(
         upstreamEntries.map(async (entry) => {
@@ -107,7 +107,7 @@ export const stepCreateGithubRepoClone = internalAction({
         })),
       ];
 
-      await setStep(ctx, args.appId, "github", "running", "Creating GitHub repo...");
+      await setStep(ctx, args.appId, "github", "creating", "Creating GitHub repo...");
 
       const createRepoRes = installation.accountType.toLowerCase() === "organization"
         ? await octokit.request("POST /orgs/{org}/repos", {
@@ -131,7 +131,7 @@ export const stepCreateGithubRepoClone = internalAction({
       const repoUrl: string = createRepoRes.data.html_url;
       const defaultBranch: string = createRepoRes.data.default_branch ?? "main";
 
-      await setStep(ctx, args.appId, "github", "running", "Uploading files...");
+      await setStep(ctx, args.appId, "github", "creating", "Uploading files...");
 
       const blobShas: string[] = await Promise.all(
         allFiles.map(async (file) => {
@@ -146,7 +146,7 @@ export const stepCreateGithubRepoClone = internalAction({
         }),
       );
 
-      await setStep(ctx, args.appId, "github", "running", "Building file tree...");
+      await setStep(ctx, args.appId, "github", "creating", "Building file tree...");
 
       const tree = allFiles.map((file, index) => ({
         path: file.path,
@@ -188,7 +188,7 @@ export const stepCreateGithubRepoClone = internalAction({
         repoUrl,
       });
 
-      await setStep(ctx, args.appId, "github", "done", `Created ${repoFullName}`);
+      await setStep(ctx, args.appId, "github", "ready", `Created ${repoFullName}`);
       return { repoFullName, repoUrl };
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error";

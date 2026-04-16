@@ -41,7 +41,7 @@ export const stepCreateVercelProject = internalAction({
     vercelToken: string;
     teamId: string;
   }> => {
-    await setStep(ctx, args.appId, "vercel", "running", "Creating Vercel project...");
+    await setStep(ctx, args.appId, "vercel", "creating", "Creating Vercel project...");
 
     const app = await ctx.runQuery(internal.client.apps.internalGetApp, { id: args.appId });
     if (!app) throw new Error("App not found");
@@ -71,7 +71,7 @@ export const stepCreateVercelProject = internalAction({
             ctx,
             args.appId,
             "vercel",
-            "running",
+            "creating",
             `Waiting for GitHub repo to propagate to Vercel... (${Math.round(delayMs / 1000)}s)`,
           );
           await sleepMs(delayMs);
@@ -113,7 +113,7 @@ export const stepCreateVercelProject = internalAction({
       // const deploymentUrl = `https://${project.name}.vercel.app`;
 
       // Trigger initial deployment
-      await setStep(ctx, args.appId, "vercel", "running", "Triggering first deployment...");
+      await setStep(ctx, args.appId, "vercel", "creating", "Triggering first deployment...");
       const [repoOrg, repoName] = args.repoFullName.split("/");
 
       let deploymentId: string | undefined;
@@ -125,7 +125,7 @@ export const stepCreateVercelProject = internalAction({
             ctx,
             args.appId,
             "vercel",
-            "running",
+            "creating",
             `Waiting before triggering deployment... (${Math.round(delayMs / 1000)}s)`,
           );
           await sleepMs(delayMs);
@@ -165,7 +165,7 @@ export const stepCreateVercelProject = internalAction({
         // deploymentUrl,
       });
 
-      await setStep(ctx, args.appId, "vercel", "running", "Deploying...");
+      await setStep(ctx, args.appId, "vercel", "creating", "Deploying...");
       return {
         projectId,
         projectName: project.name,
@@ -192,7 +192,7 @@ export const stepWaitForDeployment = internalAction({
   },
   returns: v.object({ status: v.string() }),
   handler: async (ctx, args): Promise<{ status: string }> => {
-    await setStep(ctx, args.appId, "vercel", "running", "Waiting for deployment to finish...");
+    await setStep(ctx, args.appId, "vercel", "creating", "Waiting for deployment to finish...");
     const app = await ctx.runQuery(internal.client.apps.internalGetApp, { id: args.appId });
     if (!app) {
       throw new Error("App not found");
@@ -213,13 +213,13 @@ export const stepWaitForDeployment = internalAction({
         if (state === "READY") {
           if (deploymentAlias) {
             const deploymentUrl = deploymentAlias ? `https://${deploymentAlias}` : undefined;
-            await setStep(ctx, args.appId, "vercel", "done", deploymentUrl);
+            await setStep(ctx, args.appId, "vercel", "ready", deploymentUrl);
             await ctx.runMutation(internal.lib.providers.vercel.data.updateVercelProject, {
               projectId: args.projectId,
               deploymentUrl,
             });
           } else {
-            await setStep(ctx, args.appId, "vercel", "done", "no deployment alias found");
+            await setStep(ctx, args.appId, "vercel", "ready", "no deployment alias found");
           }
           return { status: "READY" };
         }
@@ -230,7 +230,7 @@ export const stepWaitForDeployment = internalAction({
         }
 
         // Still building — update the step message
-        await setStep(ctx, args.appId, "vercel", "running", `Building... (${state})`);
+        await setStep(ctx, args.appId, "vercel", "creating", `Building... (${state})`);
       } catch (error) {
         if (isVercelTokenInvalidError(error)) {
           await setStep(
@@ -249,8 +249,8 @@ export const stepWaitForDeployment = internalAction({
       await new Promise((resolve) => setTimeout(resolve, 10_000));
     }
 
-    // Timed out — still mark vercel step as done so the UI doesn't hang
-    await setStep(ctx, args.appId, "vercel", "done", "Deployment timed out");
+    // Timed out — still mark vercel step as ready so the UI doesn't hang
+    await setStep(ctx, args.appId, "vercel", "ready", "Deployment timed out");
     return { status: "TIMEOUT" };
   },
 });

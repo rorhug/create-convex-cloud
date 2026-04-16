@@ -70,64 +70,71 @@ export const createApp = workflow.define({
     appId: v.id("apps"),
   },
   handler: async (step, args): Promise<void> => {
-    // Initialize step records
-    await step.runMutation(internal.workflows.createAppHelpers.initSteps, {
-      appId: args.appId,
-      steps: ["github", "convex", "vercel"],
-    });
-
-    const app = await step.runQuery(internal.client.apps.internalGetApp, {
-      id: args.appId,
-    });
-    if (!app) {
-      throw new Error("App not found");
-    }
-
-    // Steps 1 & 2 in parallel: GitHub repo + Convex project
-    const [githubResult, convexResult] = await Promise.all([
-      step.runAction(
-        internal.workflows.stepGithubRepoTemplate.stepCreateGithubRepoTemplate,
-        { appId: args.appId },
-        { name: "createGithubRepoTemplate", retry: true },
-      ),
-      step.runAction(
-        internal.workflows.stepConvex.stepCreateConvexProject,
-        { appId: args.appId },
-        { name: "createConvexProject", retry: true },
-      ),
-    ]);
-
-    // Step 3: Create Vercel project (depends on both previous steps)
-    const vercelResult = await step.runAction(
-      internal.workflows.stepVercel.stepCreateVercelProject,
-      {
+    try {
+      // Initialize step records
+      await step.runMutation(internal.workflows.createAppHelpers.initSteps, {
         appId: args.appId,
-        repoFullName: githubResult.repoFullName,
-        prodDeployKey: convexResult.prodDeployKey,
-        previewDeployKey: convexResult.previewDeployKey,
-      },
-      { name: "createVercelProject", retry: true },
-    );
+        steps: ["github", "convex", "vercel"],
+      });
 
-    // Step 4: Wait for deployment to finish
-    if (vercelResult.deploymentId) {
-      await step.runAction(
-        internal.workflows.stepVercel.stepWaitForDeployment,
+      const app = await step.runQuery(internal.client.apps.internalGetApp, {
+        id: args.appId,
+      });
+      if (!app) {
+        throw new Error("App not found");
+      }
+
+      // Steps 1 & 2 in parallel: GitHub repo + Convex project
+      const [githubResult, convexResult] = await Promise.all([
+        step.runAction(
+          internal.workflows.stepGithubRepoTemplate.stepCreateGithubRepoTemplate,
+          { appId: args.appId },
+          { name: "createGithubRepoTemplate", retry: true },
+        ),
+        step.runAction(
+          internal.workflows.stepConvex.stepCreateConvexProject,
+          { appId: args.appId },
+          { name: "createConvexProject", retry: true },
+        ),
+      ]);
+
+      // Step 3: Create Vercel project (depends on both previous steps)
+      const vercelResult = await step.runAction(
+        internal.workflows.stepVercel.stepCreateVercelProject,
         {
           appId: args.appId,
-          deploymentId: vercelResult.deploymentId,
-          vercelToken: vercelResult.vercelToken,
-          teamId: vercelResult.teamId,
-          projectId: vercelResult.projectId,
+          repoFullName: githubResult.repoFullName,
+          prodDeployKey: convexResult.prodDeployKey,
+          previewDeployKey: convexResult.previewDeployKey,
         },
-        { name: "waitForDeployment" },
+        { name: "createVercelProject", retry: true },
       );
-    }
 
-    // Mark app as ready
-    await step.runMutation(internal.client.apps.internalUpdateAppStatus, {
-      id: args.appId,
-      status: "ready",
-    });
+      // Step 4: Wait for deployment to finish
+      if (vercelResult.deploymentId) {
+        await step.runAction(
+          internal.workflows.stepVercel.stepWaitForDeployment,
+          {
+            appId: args.appId,
+            deploymentId: vercelResult.deploymentId,
+            vercelToken: vercelResult.vercelToken,
+            teamId: vercelResult.teamId,
+            projectId: vercelResult.projectId,
+          },
+          { name: "waitForDeployment" },
+        );
+      }
+
+      await step.runMutation(internal.client.apps.internalUpdateAppStatus, {
+        id: args.appId,
+        status: "ready",
+      });
+    } catch (error) {
+      console.error("Create app workflow failed:", error);
+      await step.runMutation(internal.client.apps.internalUpdateAppStatus, {
+        id: args.appId,
+        status: "error",
+      });
+    }
   },
 });
