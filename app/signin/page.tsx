@@ -9,12 +9,12 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-slate-50">
-      <div className="w-full max-w-lg rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-2xl shadow-slate-950/40">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
+      <div className="w-full max-w-lg rounded-3xl border border-border bg-card p-8 shadow-2xl">
         <div className="space-y-4 text-center">
-          <p className="text-sm uppercase tracking-[0.3em] text-slate-400">Create Convex Cloud</p>
-          <h1 className="text-3xl font-semibold text-white">Sign in with GitHub</h1>
-          <p className="text-sm text-slate-300">
+          <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">Create Convex Cloud</p>
+          <h1 className="text-3xl font-semibold">Sign in with GitHub</h1>
+          <p className="text-sm text-muted-foreground">
             GitHub is the only login method enabled. Sign in first, then install the
             GitHub App on the setup page before creating apps.
           </p>
@@ -22,7 +22,7 @@ export default function SignIn() {
 
         <div className="mt-8 space-y-4">
           <button
-            className="flex w-full items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+            className="flex w-full items-center justify-center rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={loading}
             onClick={() => {
               setError(null);
@@ -45,7 +45,7 @@ export default function SignIn() {
           </button>
 
           {error && (
-            <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+            <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               {error}
             </div>
           )}

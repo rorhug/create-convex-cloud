@@ -9,20 +9,18 @@ import { api } from "@/convex/_generated/api";
 import { Banner } from "./components/banner";
 import { ConvexSetupStep } from "./components/convex-setup-step";
 import { GitHubSetupStep } from "./components/github-setup-step";
-import type { SetupBusyState, SetupVercelTeam, SetupViewerState } from "./components/types";
+import type { SetupBusyState, SetupViewerState } from "./components/types";
 import { VercelSetupStep } from "./components/vercel-setup-step";
 import { ArrowRightIcon } from "@phosphor-icons/react";
 
 export function Content({ viewer }: { viewer: SetupViewerState }) {
   const { signIn } = useAuthActions();
   const refreshGithubInstallations = useAction(api.client.providers.github.clientActions.refreshGithubInstallations);
-  const verifyVercelToken = useAction(api.client.providers.vercel.clientActions.verifyVercelToken);
   const refreshVercelTeams = useAction(api.client.providers.vercel.clientActions.refreshVercelTeams);
   const saveVercelToken = useAction(api.client.providers.vercel.clientActions.saveVercelToken);
   const refreshConvexToken = useAction(api.client.providers.convex.clientActions.refreshConvexToken);
 
   const [vercelToken, setVercelToken] = useState("");
-  const [vercelTeams, setVercelTeams] = useState<SetupVercelTeam[] | null>(null);
   const [showReplaceVercelToken, setShowReplaceVercelToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<SetupBusyState>(null);
@@ -69,20 +67,6 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
     }
   }
 
-  async function handleVerifyVercelToken() {
-    setBusy("vercel-verify");
-    setError(null);
-    try {
-      const result = await verifyVercelToken({ token: vercelToken.trim() });
-      setVercelTeams(result.teams);
-    } catch (verifyError) {
-      setVercelTeams(null);
-      setError(verifyError instanceof Error ? verifyError.message : "Could not verify the Vercel token");
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function handleRefreshVercelTeams() {
     setBusy("vercel-refresh");
     setError(null);
@@ -96,18 +80,11 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
   }
 
   async function handleSaveVercelToken() {
-    if (!vercelTeams) {
-      setError("Verify the token first");
-      return;
-    }
     setBusy("vercel-save");
     setError(null);
     try {
-      await saveVercelToken({
-        token: vercelToken.trim(),
-      });
+      await saveVercelToken({ token: vercelToken.trim() });
       setVercelToken("");
-      setVercelTeams(null);
       setShowReplaceVercelToken(false);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Could not save the Vercel token");
@@ -156,20 +133,15 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
         complete={viewer.vercel?.isValid === true}
         vercel={viewer.vercel}
         vercelToken={vercelToken}
-        vercelTeams={vercelTeams}
         showReplaceToken={showReplaceVercelToken}
         busy={busy}
         issue={viewer.vercel?.issue ?? null}
         onTokenChange={(value) => {
           setVercelToken(value);
-          setVercelTeams(null);
           setError(null);
         }}
         onRefresh={() => {
           void handleRefreshVercelTeams();
-        }}
-        onVerify={() => {
-          void handleVerifyVercelToken();
         }}
         onSave={() => {
           void handleSaveVercelToken();

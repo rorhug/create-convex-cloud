@@ -18,7 +18,7 @@ export function StepCard({
   return (
     <div className="border border-border bg-background p-4">
       <div className="flex items-start justify-between gap-4">
-        <div className="space-y-3step">
+        <div className="space-y-3">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Step {step}</p>
           <ProviderLogo provider={provider} />
         </div>

@@ -20,22 +20,15 @@ type CreateOrUpdateUserArgs = {
   type: "oauth" | "credentials" | "email" | "phone" | "verification";
 };
 
-function getProviderAccountId(profile: GithubProfileWithTokens | ConvexPlatformProfile) {
-  const providerAccountId = profile.id;
-  return providerAccountId === undefined || providerAccountId === null ? undefined : String(providerAccountId);
-}
-
-async function upsertConvexTokenFromProfile(ctx: MutationCtx, userId: Id<"users">, profile: ConvexPlatformProfile) {
+async function upsertConvexTokenFromProfile(ctx: MutationCtx, profile: ConvexPlatformProfile) {
   const token = profile.convexAccessToken;
   const teamId = profile.convexTeamId;
   if (typeof token !== "string" || token.length === 0 || typeof teamId !== "string" || teamId.length === 0) {
     throw new Error("Convex OAuth did not return the expected team token");
   }
-  const providerAccountId = getProviderAccountId(profile);
-  if (!providerAccountId) {
-    throw new Error("Convex OAuth profile is missing provider account ID");
-  }
-  const teamSlug = typeof profile.convexTeamSlug === "string" ? profile.convexTeamSlug : extractTeamSlugFromToken(token);
+  const providerAccountId = `convex-team-${teamId}`;
+  const teamSlug =
+    typeof profile.convexTeamSlug === "string" ? profile.convexTeamSlug : extractTeamSlugFromToken(token);
 
   await upsertConvexToken(ctx, {
     providerAccountId,
@@ -95,7 +88,7 @@ async function createOrUpdateConvexUser(ctx: MutationCtx, args: CreateOrUpdateUs
     throw new Error("This Convex account is already linked to a different user");
   }
 
-  await upsertConvexTokenFromProfile(ctx, authUserId, profile);
+  await upsertConvexTokenFromProfile(ctx, profile);
   return authUserId;
 }
 

@@ -18,7 +18,6 @@ export type SetupVercelTeam = {
 export type SetupBusyState =
   | "github-refresh"
   | "vercel-refresh"
-  | "vercel-verify"
   | "vercel-save"
   | "convex-refresh"
   | "convex"
