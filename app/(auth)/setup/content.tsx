@@ -1,36 +1,24 @@
 "use client";
 
+import Link from "next/link";
 import { useAction } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { Banner } from "./components/banner";
 import { ConvexSetupStep } from "./components/convex-setup-step";
 import { GitHubSetupStep } from "./components/github-setup-step";
-import type {
-  SetupBusyState,
-  SetupVercelTeam,
-  SetupViewerState,
-} from "./components/types";
+import type { SetupBusyState, SetupVercelTeam, SetupViewerState } from "./components/types";
 import { VercelSetupStep } from "./components/vercel-setup-step";
 
 export function Content({ viewer }: { viewer: SetupViewerState }) {
   const { signIn } = useAuthActions();
-  const refreshGithubInstallations = useAction(
-    api.client.providers.github.clientActions.refreshGithubInstallations,
-  );
-  const verifyVercelToken = useAction(
-    api.client.providers.vercel.clientActions.verifyVercelToken,
-  );
-  const refreshVercelTeams = useAction(
-    api.client.providers.vercel.clientActions.refreshVercelTeams,
-  );
-  const saveVercelToken = useAction(
-    api.client.providers.vercel.clientActions.saveVercelToken,
-  );
-  const refreshConvexToken = useAction(
-    api.client.providers.convex.clientActions.refreshConvexToken,
-  );
+  const refreshGithubInstallations = useAction(api.client.providers.github.clientActions.refreshGithubInstallations);
+  const verifyVercelToken = useAction(api.client.providers.vercel.clientActions.verifyVercelToken);
+  const refreshVercelTeams = useAction(api.client.providers.vercel.clientActions.refreshVercelTeams);
+  const saveVercelToken = useAction(api.client.providers.vercel.clientActions.saveVercelToken);
+  const refreshConvexToken = useAction(api.client.providers.convex.clientActions.refreshConvexToken);
 
   const [vercelToken, setVercelToken] = useState("");
   const [vercelTeams, setVercelTeams] = useState<SetupVercelTeam[] | null>(null);
@@ -38,6 +26,7 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<SetupBusyState>(null);
   const hasHandledRefreshGithubInstallationsParam = useRef(false);
+  const isSetupComplete = viewer.onboarding.canAccessApps;
 
   useEffect(() => {
     if (hasHandledRefreshGithubInstallationsParam.current) {
@@ -60,11 +49,7 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
       try {
         await refreshGithubInstallations({});
       } catch (refreshError) {
-        setError(
-          refreshError instanceof Error
-            ? refreshError.message
-            : "Could not refresh GitHub installations",
-        );
+        setError(refreshError instanceof Error ? refreshError.message : "Could not refresh GitHub installations");
       } finally {
         setBusy(null);
       }
@@ -77,11 +62,7 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
     try {
       await refreshGithubInstallations({});
     } catch (refreshError) {
-      setError(
-        refreshError instanceof Error
-          ? refreshError.message
-          : "Could not refresh GitHub installations",
-      );
+      setError(refreshError instanceof Error ? refreshError.message : "Could not refresh GitHub installations");
     } finally {
       setBusy(null);
     }
@@ -95,11 +76,7 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
       setVercelTeams(result.teams);
     } catch (verifyError) {
       setVercelTeams(null);
-      setError(
-        verifyError instanceof Error
-          ? verifyError.message
-          : "Could not verify the Vercel token",
-      );
+      setError(verifyError instanceof Error ? verifyError.message : "Could not verify the Vercel token");
     } finally {
       setBusy(null);
     }
@@ -111,11 +88,7 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
     try {
       await refreshVercelTeams({});
     } catch (refreshError) {
-      setError(
-        refreshError instanceof Error
-          ? refreshError.message
-          : "Could not refresh the saved Vercel token",
-      );
+      setError(refreshError instanceof Error ? refreshError.message : "Could not refresh the saved Vercel token");
     } finally {
       setBusy(null);
     }
@@ -136,11 +109,7 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
       setVercelTeams(null);
       setShowReplaceVercelToken(false);
     } catch (saveError) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "Could not save the Vercel token",
-      );
+      setError(saveError instanceof Error ? saveError.message : "Could not save the Vercel token");
     } finally {
       setBusy(null);
     }
@@ -152,11 +121,7 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
     try {
       await refreshConvexToken({});
     } catch (refreshError) {
-      setError(
-        refreshError instanceof Error
-          ? refreshError.message
-          : "Could not refresh the saved Convex token",
-      );
+      setError(refreshError instanceof Error ? refreshError.message : "Could not refresh the saved Convex token");
     } finally {
       setBusy(null);
     }
@@ -166,14 +131,16 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
     <section className="space-y-6 border border-border bg-card p-6">
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          Signed in as{" "}
-          {viewer.user.githubUsername ??
-            viewer.user.email ??
-            viewer.user.name ??
-            "GitHub user"}
+          Signed in as {viewer.user.githubUsername ?? viewer.user.email ?? viewer.user.name ?? "GitHub user"}
         </p>
         <h2 className="text-2xl font-semibold">Onboarding checklist</h2>
       </div>
+
+      {isSetupComplete ? (
+        <Button asChild className="w-full">
+          <Link href="/apps">Go to apps</Link>
+        </Button>
+      ) : null}
 
       {error && <Banner tone="error">{error}</Banner>}
 
@@ -241,6 +208,12 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
           })();
         }}
       />
+
+      {isSetupComplete ? (
+        <Button asChild className="w-full">
+          <Link href="/apps">Go to apps</Link>
+        </Button>
+      ) : null}
     </section>
   );
 }

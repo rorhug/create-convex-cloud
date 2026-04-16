@@ -4,6 +4,7 @@ import { ArrowCircleDownIcon, ArrowCircleRightIcon, ArrowCircleUpRightIcon } fro
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Banner } from "./banner";
+import { ProviderLogoName } from "./provider-logo";
 import { StepCard } from "./step-card";
 import type { SetupBusyState, SetupVercelTeam } from "./types";
 
@@ -42,7 +43,7 @@ export function VercelSetupStep({
   const showTokenEntryFields = vercel === null || !vercel.isValid || showReplaceToken;
 
   return (
-    <StepCard step="2" title="Vercel access token" complete={complete}>
+    <StepCard step="2" provider={ProviderLogoName.Vercel} complete={complete}>
       <div className="space-y-4 text-sm text-muted-foreground">
         {vercel ? (
           <>
@@ -101,7 +102,7 @@ export function VercelSetupStep({
         {vercel && !showTokenEntryFields ? (
           <div>
             <Button variant="outline" className="text-foreground" disabled={busy !== null} onClick={onRefresh}>
-              {busy === "vercel-refresh" ? "Refreshing..." : "Refresh orgs"}
+              {busy === "vercel-refresh" ? "Refreshing..." : "Refresh Vercel"}
             </Button>
           </div>
         ) : null}

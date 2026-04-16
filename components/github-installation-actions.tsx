@@ -24,7 +24,7 @@ export function GitHubInstallationActions({
   return (
     <div className={layout === "column" ? "flex flex-col gap-2" : "flex flex-wrap gap-3"}>
       <Button variant="outline" size={size} className={buttonClassName} disabled={disabled} onClick={onRefresh}>
-        {isRefreshing ? "Refreshing..." : "Refresh"}
+        {isRefreshing ? "Refreshing..." : "Refresh Github"}
       </Button>
       <Button asChild size={size} className={buttonClassName}>
         <a href={installUrl} target="_blank" rel="noopener noreferrer">

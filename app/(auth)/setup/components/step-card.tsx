@@ -2,30 +2,27 @@
 
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
+import { ProviderLogo, type ProviderLogoName } from "./provider-logo";
 
 export function StepCard({
   step,
-  title,
+  provider,
   complete,
   children,
 }: {
   step: string;
-  title: string;
+  provider: ProviderLogoName;
   complete: boolean;
   children: ReactNode;
 }) {
   return (
     <div className="border border-border bg-background p-5">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Step {step}
-          </p>
-          <h3 className="mt-1 text-lg font-medium">{title}</h3>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Step {step}</p>
+          <ProviderLogo provider={provider} />
         </div>
-        <Badge variant={complete ? "default" : "outline"}>
-          {complete ? "Complete" : "Required"}
-        </Badge>
+        <Badge variant={complete ? "default" : "outline"}>{complete ? "Complete" : "Required"}</Badge>
       </div>
       <div className="mt-4">{children}</div>
     </div>
