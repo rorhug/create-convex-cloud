@@ -117,8 +117,7 @@ export function AppCreationSection({
                     ))}
                   </SelectGroup>
                 ) : null}
-                {personalGithubInstallations.length > 0 &&
-                organizationGithubInstallations.length > 0 ? (
+                {personalGithubInstallations.length > 0 && organizationGithubInstallations.length > 0 ? (
                   <SelectSeparator />
                 ) : null}
                 {organizationGithubInstallations.length > 0 ? (
@@ -141,6 +140,27 @@ export function AppCreationSection({
           </div>
 
           <div className="min-w-0 flex-1 space-y-2">
+            <Label htmlFor="github-visibility">GitHub repository</Label>
+            <Select
+              value={githubRepoVisibility}
+              onValueChange={(value) => {
+                onGithubRepoVisibilityChange(value === "public" || value === "private" ? value : "");
+              }}
+            >
+              <SelectTrigger id="github-visibility" className="w-full">
+                <SelectValue placeholder="Public or private…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>GitHub repository visibility</SelectLabel>
+                  <SelectItem value="public">Public</SelectItem>
+                  <SelectItem value="private">Private</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-2">
             <Label htmlFor="vercel-team">Vercel team</Label>
             <Select
               value={vercelTeamId}
@@ -153,20 +173,17 @@ export function AppCreationSection({
               }}
             >
               <SelectTrigger id="vercel-team" className="w-full">
-                <SelectValue
-                  placeholder={
-                    vercelTeams.length === 0
-                      ? "No teams available"
-                      : "Select a team…"
-                  }
-                />
+                <SelectValue placeholder={vercelTeams.length === 0 ? "No teams available" : "Select a team…"} />
               </SelectTrigger>
               <SelectContent>
-                {vercelTeams.map((team) => (
-                  <SelectItem key={team.id} value={team.id}>
-                    {team.name}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  <SelectLabel>Vercel teams</SelectLabel>
+                  {vercelTeams.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
                 <SelectSeparator />
                 <SelectGroup>
                   <SelectLabel>Vercel Access</SelectLabel>
@@ -175,32 +192,11 @@ export function AppCreationSection({
               </SelectContent>
             </Select>
           </div>
-
-          <div className="min-w-0 flex-1 space-y-2">
-            <Label htmlFor="github-visibility">GitHub repository</Label>
-            <Select
-              value={githubRepoVisibility}
-              onValueChange={(value) => {
-                onGithubRepoVisibilityChange(
-                  value === "public" || value === "private" ? value : "",
-                );
-              }}
-            >
-              <SelectTrigger id="github-visibility" className="w-full">
-                <SelectValue placeholder="Public or private…" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="public">Public</SelectItem>
-                <SelectItem value="private">Private</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         {githubInstallations.length === 0 ? (
           <div className="border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm">
-            No GitHub App installations on file yet. Go to setup to add your
-            personal account or an organization.
+            No GitHub App installations on file yet. Go to setup to add your personal account or an organization.
           </div>
         ) : null}
 
@@ -215,8 +211,7 @@ export function AppCreationSection({
         ) : null}
 
         <p className="text-xs text-muted-foreground">
-          Choose the GitHub installation, Vercel team, and repo visibility for
-          the new app.
+          Choose the GitHub installation, Vercel team, and repo visibility for the new app.
         </p>
 
         <div>
