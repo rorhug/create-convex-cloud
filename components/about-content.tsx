@@ -1,8 +1,8 @@
 import Link from "next/link";
+import { PlusIcon } from "@phosphor-icons/react";
 import { ProviderLogo, ProviderLogoName } from "@/app/(auth)/setup/components/provider-logo";
 import { SignInCard } from "@/components/sign-in-card";
-import { CCC_TEMPLATE_REPO_URL, GITHUB_ISSUES_URL } from "@/lib/site";
-import { Plus, PlusIcon } from "@phosphor-icons/react";
+import { CCC_TEMPLATE_REPO_URL, GITHUB_FEATURE_REQUEST_URL } from "@/lib/site";
 
 type AboutContentProps = {
   /** When true, show provider logos + sign-in card at the top (logged-out home / about). */
@@ -19,50 +19,50 @@ export function AboutContent({ showSignInCta = false }: AboutContentProps) {
         </p>
       </div>
 
-      {/* <PlusIcon />  */}
-
       {showSignInCta && <SignInCard />}
 
       <section className="space-y-6">
         <h2 className="text-center text-lg font-medium ">Connect your accounts</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="flex flex-col rounded-xl border border-border bg-card px-4 py-5 text-center">
-            <div className="mb-3 flex justify-center">
-              <ProviderLogo provider={ProviderLogoName.GitHub} />
-            </div>
-            <h3 className="text-sm font-semibold">GitHub</h3>
-            <p className="mt-2 text-sm text-muted-foreground leading-snug">
-              Create repo from{" "}
-              <Link
-                href={CCC_TEMPLATE_REPO_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-primary underline underline-offset-2 hover:no-underline"
-              >
-                ccc-template
-              </Link>
-            </p>
-          </div>
-          <div className="flex flex-col rounded-xl border border-border bg-card px-4 py-5 text-center">
-            <div className="mb-3 flex justify-center">
-              <ProviderLogo provider={ProviderLogoName.Convex} />
-            </div>
-            <h3 className="text-sm font-semibold">Convex</h3>
-            <p className="mt-2 text-sm text-muted-foreground leading-snug">Realtime backend</p>
-          </div>
-          <div className="flex flex-col rounded-xl border border-border bg-card px-4 py-5 text-center">
-            <div className="mb-3 flex justify-center">
-              <ProviderLogo provider={ProviderLogoName.Vercel} />
-            </div>
-            <h3 className="text-sm font-semibold">Vercel</h3>
-            <p className="mt-2 text-sm text-muted-foreground leading-snug">
-              Continuous deployment and frontend hosting
-            </p>
-          </div>
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-2">
+          <ProviderCard
+            logo={ProviderLogoName.GitHub}
+            title="GitHub"
+            body={
+              <>
+                Create repo from{" "}
+                <Link
+                  href={CCC_TEMPLATE_REPO_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-primary underline underline-offset-2 hover:no-underline"
+                >
+                  ccc-template
+                </Link>
+              </>
+            }
+          />
+          <PlusIcon
+            aria-hidden
+            className="mx-auto size-4 shrink-0 text-muted-foreground sm:size-5"
+          />
+          <ProviderCard
+            logo={ProviderLogoName.Convex}
+            title="Convex"
+            body="Realtime backend"
+          />
+          <PlusIcon
+            aria-hidden
+            className="mx-auto size-4 shrink-0 text-muted-foreground sm:size-5"
+          />
+          <ProviderCard
+            logo={ProviderLogoName.Vercel}
+            title="Vercel"
+            body="Continuous deployment and frontend hosting"
+          />
         </div>
         <p className="text-center text-xs text-muted-foreground">
           <Link
-            href={GITHUB_ISSUES_URL}
+            href={GITHUB_FEATURE_REQUEST_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="underline underline-offset-2 hover:text-foreground"
@@ -82,19 +82,40 @@ export function AboutContent({ showSignInCta = false }: AboutContentProps) {
             </p>
           </div>
           <div className="rounded-xl border border-border bg-card p-5">
-            <h3 className="text-sm font-semibold">Built for coding agents</h3>
+            <h3 className="text-sm font-semibold">Mobile friendly</h3>
             <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-              Integrated backend and deploy keys so automated workflows can ship end-to-end changes safely.
+              Build apps from your phone with the stack that scales to millions of users.
             </p>
           </div>
           <div className="rounded-xl border border-border bg-card p-5">
-            <h3 className="text-sm font-semibold">Mobile friendly</h3>
+            <h3 className="text-sm font-semibold">Cloud agent previews</h3>
             <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-              Start building apps from your phone—setup and monitoring work on small screens.
+              Each pull-request created by your cloud agent runs perfectly on a preview branch with its own DB.
+              Authentication working out of the box!
             </p>
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function ProviderCard({
+  logo,
+  title,
+  body,
+}: {
+  logo: ProviderLogoName;
+  title: string;
+  body: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-1 min-w-0 flex-col rounded-xl border border-border bg-card px-4 py-5 text-center">
+      <div className="mb-3 flex justify-center">
+        <ProviderLogo provider={logo} />
+      </div>
+      <h3 className="text-sm font-semibold">{title}</h3>
+      <p className="mt-2 text-sm text-muted-foreground leading-snug">{body}</p>
     </div>
   );
 }

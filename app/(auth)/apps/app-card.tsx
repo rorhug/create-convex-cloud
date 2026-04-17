@@ -2,15 +2,18 @@
 
 import { useState } from "react";
 import { useAction, useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
+import { CaretRightIcon } from "@phosphor-icons/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { AppStatus } from "@/convex/lib/appStatus";
-/** Matches GitHub App install / permissions URLs embedded in Convex step messages. */
-const GITHUB_APP_ACCESS_URL_IN_MESSAGE =
-  /https:\/\/github\.com\/apps\/[^/\s]+\/installations\/new[^\s]*/;
-import type { FunctionReturnType } from "convex/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Item,
   ItemActions,
@@ -22,6 +25,10 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Spinner } from "@/components/ui/spinner";
+
+/** Matches GitHub App install / permissions URLs embedded in Convex step messages. */
+const GITHUB_APP_ACCESS_URL_IN_MESSAGE =
+  /https:\/\/github\.com\/apps\/[^/\s]+\/installations\/new[^\s]*/;
 
 const STATUS_VARIANT: Record<AppStatus, "default" | "secondary" | "outline" | "destructive"> = {
   pending: "secondary",
@@ -110,7 +117,50 @@ function AppCard({ app, onDelete }: { app: AppSummary; onDelete: (app: { id: Id<
           <StepProgress app={app} />
         </div>
       ) : null}
+      <EnvironmentVariablesSection appId={app._id} />
     </Item>
+  );
+}
+
+function EnvironmentVariablesSection({ appId }: { appId: Id<"apps"> }) {
+  const links = useQuery(api.client.apps.getAppDashboardLinks, { appId });
+  if (!links?.convexProdDeployment || !links.convexDefaultEnvVars) {
+    return null;
+  }
+  return (
+    <Collapsible className="w-full space-y-2 pt-1">
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="group flex cursor-pointer items-center gap-1.5 text-left text-xs font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground"
+        >
+          <CaretRightIcon
+            className="size-3.5 shrink-0 transition-transform duration-150 group-data-[state=open]:rotate-90"
+            weight="regular"
+          />
+          Environment Variables
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-3 pl-5">
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Most environment variables that are used for backend are to be placed in Convex. The URL above is for
+          production. Preview branch backends are created for each branch which will use the &quot;Default Environment
+          Variables&quot; on Convex.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm" className="h-7 px-2 text-xs">
+            <a href={links.convexProdDeployment} target="_blank" rel="noopener noreferrer">
+              Production env vars
+            </a>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="h-7 px-2 text-xs">
+            <a href={links.convexDefaultEnvVars} target="_blank" rel="noopener noreferrer">
+              Default env vars
+            </a>
+          </Button>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

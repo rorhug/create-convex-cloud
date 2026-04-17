@@ -176,6 +176,10 @@ const dashboardLinksValidator = v.object({
   github: v.union(v.string(), v.null()),
   vercel: v.union(v.string(), v.null()),
   convex: v.union(v.string(), v.null()),
+  /** Production deployment page `/t/{team}/{project}/{deployment}` (env vars for prod). */
+  convexProdDeployment: v.union(v.string(), v.null()),
+  /** Project settings with anchor on env vars — inherited by preview branch deployments. */
+  convexDefaultEnvVars: v.union(v.string(), v.null()),
 });
 
 export const getAppDashboardLinks = query({
@@ -209,14 +213,21 @@ export const getAppDashboardLinks = query({
     }
 
     let convex: string | null = null;
+    let convexProdDeployment: string | null = null;
+    let convexDefaultEnvVars: string | null = null;
     if (convexProject) {
-      convex = `https://dashboard.convex.dev/t/${convexProject.teamSlug}/${convexProject.projectSlug}`;
+      const base = `https://dashboard.convex.dev/t/${convexProject.teamSlug}/${convexProject.projectSlug}`;
+      convex = base;
+      convexProdDeployment = `${base}/${convexProject.prodDeploymentName}`;
+      convexDefaultEnvVars = `${base}/settings#env-vars`;
     }
 
     return {
       github: githubRepo?.repoUrl ?? null,
       vercel,
       convex,
+      convexProdDeployment,
+      convexDefaultEnvVars,
     };
   },
 });
