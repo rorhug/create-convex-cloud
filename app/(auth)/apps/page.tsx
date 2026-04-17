@@ -16,7 +16,7 @@ export default function AppsPage() {
 
   if (viewer === undefined) {
     return (
-      <div className="mx-auto max-w-3xl border border-border bg-card p-8">
+      <div className="border border-border bg-card p-8">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner />
           Loading apps...
