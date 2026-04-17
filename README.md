@@ -1,46 +1,52 @@
-# Welcome to your Convex + Next.js + Convex Auth app
+# Create Convex Cloud
 
-This is a [Convex](https://convex.dev/) project created with [`npm create convex`](https://www.npmjs.com/package/create-convex).
+**Launch the final stack from your phone.**
 
-After the initial setup (<2 minutes) you'll have a working full-stack app using:
+Connect GitHub, Convex, and Vercel once, then spin up full-stack apps in 30 seconds.
 
-- Convex as your backend (database, server logic)
-- [React](https://react.dev/) as your frontend (web page interactivity)
-- [Next.js](https://nextjs.org/) for optimized web hosting and page routing
-- [Tailwind](https://tailwindcss.com/) for building great looking accessible UI
-- [Convex Auth](https://labs.convex.dev/auth) for authentication
+Deployed here: [https://createconvex.cloud](https://createconvex.cloud)
 
-## Get started
+## How it works
 
-If you just cloned this codebase and didn't use `npm create convex`, run:
+Connect your accounts, and each new app gets:
+
+- **GitHub**: a repo created from the [ccc-template](https://github.com/rorhug/ccc-template) template. The template repo is synced from [this official repo](https://github.com/get-convex/templates/tree/main/template-nextjs-convexauth) with a few files added for smooth preview deployments.
+- **Convex**: a realtime backend project (with prod + preview deploy keys).
+- **Vercel**: CD and frontend hosting, wired to the new repo.
+
+Missing a platform you care about? [Open a feature request](https://github.com/rorhug/create-convex-cloud/issues/new?template=feature_request.yml).
+
+## Why use it
+
+- **One-click setup**: Wire accounts and generate a repo, Convex project, and Vercel deployment without juggling dashboards.
+- **Mobile friendly**: Build apps from your phone with a stack that scales to millions of users.
+- **Cloud agent previews**: Each pull-request created by your cloud agent runs on a preview branch with its own DB, with authentication working out of the box.
+
+## Stack
+
+- [Convex](https://convex.dev/): database, server logic, realtime
+- [Convex Auth](https://labs.convex.dev/auth): authentication (GitHub + Convex OAuth)
+- [Next.js](https://nextjs.org/): hosting + routing
+- [React](https://react.dev/): UI
+- [Tailwind CSS](https://tailwindcss.com/): styling
+
+## Local development
 
 ```
 npm install
 npm run dev
 ```
 
-If you're reading this README on GitHub and want to use this template, run:
-
-```
-npm create convex@latest -- -t nextjs-convexauth
-```
+`npm run dev` runs the Next.js frontend and `npx convex dev` in parallel. Copy `.env.example` to `.env.local` and fill in the GitHub OAuth + Convex platform credentials before the first run.
 
 ## Learn more
 
-To learn more about developing your project with Convex, check out:
+- [Tour of Convex](https://docs.convex.dev/get-started): introduction to Convex principles.
+- [Convex docs](https://docs.convex.dev/): full feature reference.
+- [Convex Auth docs](https://labs.convex.dev/auth): authentication patterns.
+- [Stack](https://stack.convex.dev/): in-depth articles on advanced topics.
 
-- The [Tour of Convex](https://docs.convex.dev/get-started) for a thorough introduction to Convex principles.
-- The rest of [Convex docs](https://docs.convex.dev/) to learn about all Convex features.
-- [Stack](https://stack.convex.dev/) for in-depth articles on advanced topics.
-- [Convex Auth docs](https://labs.convex.dev/auth) for documentation on the Convex Auth library.
+## Community
 
-## Configuring other authentication methods
-
-To configure different authentication methods, see [Configuration](https://labs.convex.dev/auth/config) in the Convex Auth docs.
-
-## Join the community
-
-Join thousands of developers building full-stack apps with Convex:
-
-- Join the [Convex Discord community](https://convex.dev/community) to get help in real-time.
-- Follow [Convex on GitHub](https://github.com/get-convex/), star and contribute to the open-source implementation of Convex.
+- [Convex Discord](https://convex.dev/community): real-time help.
+- [Convex on GitHub](https://github.com/get-convex/): star and contribute to the open-source Convex backend.

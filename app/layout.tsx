@@ -5,6 +5,7 @@ import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -45,6 +46,31 @@ export default function RootLayout({
                 </header>
 
                 {children}
+
+                <footer className="pt-6 flex justify-center">
+                  <div className="max-w-3xl w-full">
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <span>
+                        Created by:{" "}
+                        <a
+                          href="https://vibepair.ai"
+                          target="_blank"
+                          className="underline underline-offset-2 hover:text-foreground hover:no-underline"
+                        >
+                          VibePair.ai
+                        </a>
+                      </span>
+                      <span>·</span>
+                      <Link
+                        href="https://github.com/rorhug/create-convex-cloud"
+                        className="underline underline-offset-2 hover:text-foreground hover:no-underline"
+                        target="_blank"
+                      >
+                        GitHub
+                      </Link>
+                    </p>
+                  </div>
+                </footer>
               </main>
             </ConvexClientProvider>
           </ThemeProvider>

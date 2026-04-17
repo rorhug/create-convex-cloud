@@ -11,7 +11,7 @@ type AboutContentProps = {
 
 export function AboutContent({ showSignInCta = false }: AboutContentProps) {
   return (
-    <div className="mx-auto max-w-3xl space-y-12 px-4 pb-16 pt-4 tracking-tight">
+    <div className="mx-auto max-w-3xl space-y-12 pb-16 pt-4 tracking-tight">
       <div className="space-y-3">
         <h1 className="text-3xl font-semibold tracking-tight">Launch the final stack from your phone.</h1>
         <p className="text-muted-foreground leading-relaxed">
