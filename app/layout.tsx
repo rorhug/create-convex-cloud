@@ -6,6 +6,7 @@ import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { Header } from "./header";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -39,20 +40,7 @@ export default function RootLayout({
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
             <ConvexClientProvider>
               <main className="min-h-screen p-6">
-                <header className="pb-6 flex justify-between items-center max-w-3xl mx-auto">
-                  <h1 className="  text-sm uppercase tracking-[0.2em] text-muted-foreground font-semibold">
-                    Create Convex Cloud
-                  </h1>
-                  <div>
-                    <a
-                      href="https://vibepair.ai"
-                      target="_blank"
-                      className="underline text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:no-underline"
-                    >
-                      Get Human Help
-                    </a>
-                  </div>
-                </header>
+                <Header />
 
                 {children}
 

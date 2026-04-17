@@ -28,46 +28,36 @@ export default function Home() {
 
   if (authLoading) {
     return (
-      <main className="min-h-screen p-8">
-        <div className="mx-auto max-w-3xl border border-border bg-card p-8">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Spinner />
-            Loading…
-          </div>
+      <div className="mx-auto max-w-3xl border border-border bg-card p-8">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Spinner />
+          Loading…
         </div>
-      </main>
+      </div>
     );
   }
 
   if (!isAuthenticated) {
-    return (
-      <main className="min-h-screen p-8">
-        <AboutContent showSignInCta />
-      </main>
-    );
+    return <AboutContent showSignInCta />;
   }
 
   if (viewer === undefined) {
     return (
-      <main className="min-h-screen p-8">
-        <div className="mx-auto max-w-3xl border border-border bg-card p-8">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Spinner />
-            Loading your workspace…
-          </div>
+      <div className="mx-auto max-w-3xl border border-border bg-card p-8">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Spinner />
+          Loading your workspace…
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen p-8">
-      <div className="mx-auto max-w-3xl border border-border bg-card p-8">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Spinner />
-          Redirecting…
-        </div>
+    <div className="mx-auto max-w-3xl border border-border bg-card p-8">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Spinner />
+        Redirecting…
       </div>
-    </main>
+    </div>
   );
 }
