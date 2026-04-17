@@ -47,10 +47,7 @@ export function ConvexSetupStep({
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Link a Convex team to your existing GitHub user. We will store the resulting team-scoped application token
-            for app creation workflows.
-          </p>
+          <p className="text-sm text-muted-foreground">Link your Convex team to allow creation of new projects.</p>
           <Button disabled={busy !== null} onClick={onLink}>
             {busy === "convex" ? "Redirecting..." : "Link Convex"}
           </Button>

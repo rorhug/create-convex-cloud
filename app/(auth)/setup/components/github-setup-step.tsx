@@ -48,7 +48,7 @@ export function GitHubSetupStep({
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
-              Install the GitHub App on your personal account or an organization before continuing.
+              Install the GitHub App on your personal or org account to create repos.
             </p>
             <div className="border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
               Either <span className="font-medium text-foreground">All repositories</span> or{" "}

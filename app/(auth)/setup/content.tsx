@@ -136,6 +136,7 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
         showReplaceToken={showReplaceVercelToken}
         busy={busy}
         issue={viewer.vercel?.issue ?? null}
+        githubInstallations={viewer.github.installations}
         onTokenChange={(value) => {
           setVercelToken(value);
           setError(null);

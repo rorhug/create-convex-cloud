@@ -1,12 +1,21 @@
 "use client";
 
-import { ArrowCircleUpRightIcon } from "@phosphor-icons/react";
+import { ArrowCircleUpRightIcon, CaretDownIcon, CaretRightIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { vercelGithubAppPermissionsUrlForAccount } from "@/lib/site";
 import { Banner } from "./banner";
 import { ProviderLogoName } from "./provider-logo";
 import { StepCard } from "./step-card";
-import type { SetupBusyState, SetupVercelTeam } from "./types";
+import type { SetupBusyState, SetupGithubInstallation, SetupVercelTeam } from "./types";
 
 export function VercelSetupStep({
   complete,
@@ -15,6 +24,7 @@ export function VercelSetupStep({
   showReplaceToken,
   busy,
   issue,
+  githubInstallations,
   onTokenChange,
   onRefresh,
   onSave,
@@ -31,6 +41,8 @@ export function VercelSetupStep({
   showReplaceToken: boolean;
   busy: SetupBusyState;
   issue: string | null;
+  /** Used for the Vercel ↔ GitHub permissions helper once GitHub App is installed. */
+  githubInstallations: SetupGithubInstallation[];
   onTokenChange: (value: string) => void;
   onRefresh: () => void;
   onSave: () => void;
@@ -90,6 +102,62 @@ export function VercelSetupStep({
             ) : null}
           </div>
         ) : null}
+
+        {githubInstallations.length > 0 ? (
+          <>
+            <Separator className="my-6" />
+            <Collapsible className="space-y-2">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="group flex w-full cursor-pointer items-center gap-1.5 text-left text-sm font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground"
+                >
+                  <CaretRightIcon
+                    className="size-4 shrink-0 transition-transform duration-150 group-data-[state=open]:rotate-90"
+                    weight="regular"
+                  />
+                  Vercel ↔ GitHub Connection
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3">
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  After creating a GitHub repo, Vercel also needs to be able to access the repo to deploy. If Vercel has
+                  access to &quot;All repositories&quot; on the GitHub account, it will work smoothly. If Vercel only
+                  has access to &quot;Selected repositories&quot;, you will be given a link to add the new repo to the
+                  Vercel installation on GitHub.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button type="button" variant="outline" className="text-foreground">
+                        Update Vercel+GitHub Installation
+                        <CaretDownIcon className="ml-1.5 size-4 shrink-0 opacity-70" weight="regular" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="min-w-48">
+                      {githubInstallations.map((inst) => (
+                        <DropdownMenuItem
+                          key={inst.id}
+                          className="cursor-pointer"
+                          onSelect={() => {
+                            window.open(
+                              vercelGithubAppPermissionsUrlForAccount(inst.accountId, inst.accountType),
+                              "_blank",
+                              "noopener,noreferrer",
+                            );
+                          }}
+                        >
+                          {inst.accountLogin}
+                          {inst.accountType.toLowerCase() === "organization" ? " (org)" : " (personal)"}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </>
+        ) : null}
       </div>
     </StepCard>
   );
@@ -112,8 +180,7 @@ function TokenEntryFields({
     <>
       <div className="space-y-3 text-sm">
         <p>
-          Create a Vercel token, paste it here and save. You will be able to select which team to deploy each
-          app to.
+          Create a Vercel token, paste it here and save. You will be able to select which team to deploy each app to.
         </p>
         <p>
           <a
@@ -148,10 +215,7 @@ function TokenEntryFields({
         placeholder="Paste Vercel access token"
       />
       <div className="flex flex-wrap gap-3">
-        <Button
-          disabled={busy !== null || vercelToken.trim().length === 0}
-          onClick={onSave}
-        >
+        <Button disabled={busy !== null || vercelToken.trim().length === 0} onClick={onSave}>
           {busy === "vercel-save" ? "Saving..." : "Save token"}
         </Button>
         {onKeepExisting ? (
