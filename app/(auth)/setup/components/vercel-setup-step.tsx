@@ -121,10 +121,10 @@ export function VercelSetupStep({
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-3">
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  After creating a GitHub repo, Vercel also needs to be able to access the repo to deploy. If Vercel has
-                  access to &quot;All repositories&quot; on the GitHub account, it will work smoothly. If Vercel only
-                  has access to &quot;Selected repositories&quot;, you will be given a link to add the new repo to the
-                  Vercel installation on GitHub.
+                  If Vercel has access to <u>All repositories</u> on the selected GitHub account, it will work smoothly.
+                  <br />
+                  If Vercel only has access to <u>Selected repositories</u>, you will be given a link to add the repo
+                  &quot;Selected repositories&quot; on the Vercel installation on GitHub.
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <DropdownMenu>

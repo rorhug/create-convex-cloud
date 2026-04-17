@@ -23,42 +23,30 @@ export function AboutContent({ showSignInCta = false }: AboutContentProps) {
 
       <section className="space-y-6">
         <h2 className="text-center text-lg font-medium ">Connect your accounts</h2>
-        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-2">
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-stretch sm:gap-2">
           <ProviderCard
             logo={ProviderLogoName.GitHub}
             title="GitHub"
             body={
               <>
-                Create repo from{" "}
+                Create{" "}
                 <Link
                   href={CCC_TEMPLATE_REPO_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-medium text-primary underline underline-offset-2 hover:no-underline"
                 >
-                  ccc-template
-                </Link>
+                  template
+                </Link>{" "}
+                repo
               </>
             }
           />
-          <PlusIcon
-            aria-hidden
-            className="mx-auto size-4 shrink-0 text-muted-foreground sm:size-5"
-          />
-          <ProviderCard
-            logo={ProviderLogoName.Convex}
-            title="Convex"
-            body="Realtime backend"
-          />
-          <PlusIcon
-            aria-hidden
-            className="mx-auto size-4 shrink-0 text-muted-foreground sm:size-5"
-          />
-          <ProviderCard
-            logo={ProviderLogoName.Vercel}
-            title="Vercel"
-            body="Continuous deployment and frontend hosting"
-          />
+
+          <PlusIcon aria-hidden className="mx-auto size-4 shrink-0 text-muted-foreground sm:size-5 self-center" />
+          <ProviderCard logo={ProviderLogoName.Convex} title="Convex" body="Realtime backend" />
+          <PlusIcon aria-hidden className="mx-auto size-4 shrink-0 text-muted-foreground sm:size-5 self-center" />
+          <ProviderCard logo={ProviderLogoName.Vercel} title="Vercel" body="CD and frontend hosting" />
         </div>
         <p className="text-center text-xs text-muted-foreground">
           <Link
@@ -91,7 +79,6 @@ export function AboutContent({ showSignInCta = false }: AboutContentProps) {
             <h3 className="text-sm font-semibold">Cloud agent previews</h3>
             <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
               Each pull-request created by your cloud agent runs perfectly on a preview branch with its own DB.
-              Authentication working out of the box!
             </p>
           </div>
         </div>
@@ -100,17 +87,9 @@ export function AboutContent({ showSignInCta = false }: AboutContentProps) {
   );
 }
 
-function ProviderCard({
-  logo,
-  title,
-  body,
-}: {
-  logo: ProviderLogoName;
-  title: string;
-  body: React.ReactNode;
-}) {
+function ProviderCard({ logo, title, body }: { logo: ProviderLogoName; title: string; body: React.ReactNode }) {
   return (
-    <div className="flex flex-1 min-w-0 flex-col rounded-xl border border-border bg-card px-4 py-5 text-center">
+    <div className="flex flex-1 min-w-0 flex-col rounded-xl border border-border bg-card px-4 py-5 text-center justify-center">
       <div className="mb-3 flex justify-center">
         <ProviderLogo provider={logo} />
       </div>

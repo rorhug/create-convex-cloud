@@ -9,11 +9,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import type { AppStatus } from "@/convex/lib/appStatus";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Item,
   ItemActions,
@@ -25,10 +21,10 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Spinner } from "@/components/ui/spinner";
+import { Separator } from "@/components/ui/separator";
 
 /** Matches GitHub App install / permissions URLs embedded in Convex step messages. */
-const GITHUB_APP_ACCESS_URL_IN_MESSAGE =
-  /https:\/\/github\.com\/apps\/[^/\s]+\/installations\/new[^\s]*/;
+const GITHUB_APP_ACCESS_URL_IN_MESSAGE = /https:\/\/github\.com\/apps\/[^/\s]+\/installations\/new[^\s]*/;
 
 const STATUS_VARIANT: Record<AppStatus, "default" | "secondary" | "outline" | "destructive"> = {
   pending: "secondary",
@@ -86,38 +82,41 @@ export function AppList({
 
 function AppCard({ app, onDelete }: { app: AppSummary; onDelete: (app: { id: Id<"apps">; name: string }) => void }) {
   return (
-    <Item variant="outline" className=" p-6">
-      <ItemHeader className="items-start">
-        <ItemContent>
-          <ItemTitle>
-            {APP_TITLE_SPINNER_STATUSES.has(app.status) && <Spinner className="size-3.5" />}
-            {app.name}
-            <Badge variant={STATUS_VARIANT[app.status]}>{app.status}</Badge>
-          </ItemTitle>
-          <ItemDescription>
-            <DeploymentUrl appId={app._id} />
-          </ItemDescription>
-        </ItemContent>
-        <ItemActions>
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={app.status === "deleting"}
-            onClick={() => onDelete({ id: app._id, name: app.name })}
-          >
-            Delete
-          </Button>
-        </ItemActions>
-      </ItemHeader>
-      <ItemFooter>
+    <Item variant="outline" className="p-6 items-start">
+      <ItemContent>
+        <ItemTitle className="text-lg">
+          {APP_TITLE_SPINNER_STATUSES.has(app.status) && <Spinner className="size-3.5" />}
+          {app.name}
+          <Badge variant={STATUS_VARIANT[app.status]}>{app.status}</Badge>
+        </ItemTitle>
+        <ItemDescription className="space-y-3">
+          <DeploymentUrl appId={app._id} />
+        </ItemDescription>
+      </ItemContent>
+      <ItemActions>
+        <Button
+          variant="secondary"
+          size="xs"
+          disabled={app.status === "deleting"}
+          onClick={() => onDelete({ id: app._id, name: app.name })}
+        >
+          Delete
+        </Button>
+      </ItemActions>
+
+      <ItemFooter className="flex-col items-start gap-4">
+        <Separator />
         <DashboardLinks appId={app._id} />
+        {app.status !== "ready" ? (
+          <div className="w-full pt-1">
+            <StepProgress app={app} />
+          </div>
+        ) : null}
+        <EnvironmentVariablesSection appId={app._id} />
       </ItemFooter>
-      {app.status !== "ready" ? (
-        <div className="w-full pt-1">
-          <StepProgress app={app} />
-        </div>
-      ) : null}
-      <EnvironmentVariablesSection appId={app._id} />
+      {/* <ItemFooter className="flex-col items-start"> */}
+
+      {/* </ItemFooter> */}
     </Item>
   );
 }
@@ -128,7 +127,7 @@ function EnvironmentVariablesSection({ appId }: { appId: Id<"apps"> }) {
     return null;
   }
   return (
-    <Collapsible className="w-full space-y-2 pt-1">
+    <Collapsible className="w-full">
       <CollapsibleTrigger asChild>
         <button
           type="button"
@@ -141,11 +140,10 @@ function EnvironmentVariablesSection({ appId }: { appId: Id<"apps"> }) {
           Environment Variables
         </button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-3 pl-5">
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Most environment variables that are used for backend are to be placed in Convex. The URL above is for
-          production. Preview branch backends are created for each branch which will use the &quot;Default Environment
-          Variables&quot; on Convex.
+      <CollapsibleContent className="space-y-3">
+        <p className="text-xs text-muted-foreground leading-relaxed mt-3">
+          <strong>Backend:</strong> Add backend environment variables on Convex. Each preview environment (branch) copys
+          the <em>Default Environment Variables</em>.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm" className="h-7 px-2 text-xs">
@@ -168,14 +166,12 @@ function DeploymentUrl({ appId }: { appId: Id<"apps"> }) {
   const url = useQuery(api.client.apps.getAppDeploymentUrl, { appId });
   if (!url) return null;
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-block text-xs text-primary hover:underline"
-    >
-      {url}
-    </a>
+    <span className="inline-block">
+      Production URL:{" "}
+      <a href={url} target="_blank" rel="noopener noreferrer" className=" text-primary hover:underline">
+        {url}
+      </a>
+    </span>
   );
 }
 
@@ -234,17 +230,12 @@ function StepProgress({ app }: { app: AppSummary }) {
   if (!steps || steps.length === 0) return null;
 
   const showRetry = (s: { status: AppStatus; step: string }) =>
-    app.status === "error" &&
-    (app.workflowKind ?? "create") === "create" &&
-    s.status === "error";
+    app.status === "error" && (app.workflowKind ?? "create") === "create" && s.status === "error";
 
   return (
     <div className="space-y-1">
       {steps.map((s: FunctionReturnType<typeof api.client.apps.getAppSteps>[number]) => (
-        <div
-          key={s.step}
-          className="flex w-full items-start justify-between gap-2 text-xs"
-        >
+        <div key={s.step} className="flex w-full items-start justify-between gap-2 text-xs">
           <div className="flex min-w-0 flex-1 items-start gap-2">
             <StepIcon status={s.status} />
             <span
@@ -305,8 +296,7 @@ function StepMessage({ step, message }: { step: string; message: string }) {
           .trimEnd();
         return (
           <>
-            {beforeUrl}
-            {" "}
+            {beforeUrl}{" "}
             <a
               href={url}
               target="_blank"

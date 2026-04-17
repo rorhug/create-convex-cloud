@@ -35,11 +35,10 @@ export const createApp = mutation({
   returns: v.id("apps"),
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
-    const { githubInstallationId, vercelTeamId } =
-      await validateCreateAppSelections(ctx, user._id, {
-        githubInstallationId: args.githubInstallationId,
-        vercelTeamId: args.vercelTeamId,
-      });
+    const { githubInstallationId, vercelTeamId } = await validateCreateAppSelections(ctx, user._id, {
+      githubInstallationId: args.githubInstallationId,
+      vercelTeamId: args.vercelTeamId,
+    });
 
     const appId = await createAppForUser(ctx, user._id, args.name, {
       vercelTeamId,
@@ -218,7 +217,7 @@ export const getAppDashboardLinks = query({
     if (convexProject) {
       const base = `https://dashboard.convex.dev/t/${convexProject.teamSlug}/${convexProject.projectSlug}`;
       convex = base;
-      convexProdDeployment = `${base}/${convexProject.prodDeploymentName}`;
+      convexProdDeployment = `${base}/${convexProject.prodDeploymentName}/settings/environment-variables`;
       convexDefaultEnvVars = `${base}/settings#env-vars`;
     }
 
