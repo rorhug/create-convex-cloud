@@ -28,7 +28,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
 
   return (
     <main className="min-h-screen p-6">
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="mx-auto max-w-3xl space-y-6">
         <header className="flex gap-4 border border-border bg-card p-6 flex-col">
           <div className="flex items-center justify-between w-full">
             <nav className="flex flex-wrap gap-2">

@@ -37,8 +37,8 @@ export default function RootLayout({
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
             <ConvexClientProvider>
-              <header className="pt-7 px-6">
-                <p className=" max-w-5xl mx-auto text-sm uppercase tracking-[0.2em] text-muted-foreground font-semibold">
+              <header className="pt-7 ">
+                <p className=" max-w-3xl px-4 mx-auto text-sm uppercase tracking-[0.2em] text-muted-foreground font-semibold">
                   Create Convex Cloud
                 </p>
               </header>

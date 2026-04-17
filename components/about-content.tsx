@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ProviderLogo, ProviderLogoName } from "@/app/(auth)/setup/components/provider-logo";
 import { SignInCard } from "@/components/sign-in-card";
 import { CCC_TEMPLATE_REPO_URL, GITHUB_ISSUES_URL } from "@/lib/site";
+import { Plus, PlusIcon } from "@phosphor-icons/react";
 
 type AboutContentProps = {
   /** When true, show provider logos + sign-in card at the top (logged-out home / about). */
@@ -10,33 +11,20 @@ type AboutContentProps = {
 
 export function AboutContent({ showSignInCta = false }: AboutContentProps) {
   return (
-    <div className="mx-auto max-w-3xl space-y-12 px-4 pb-16 pt-4">
-      {showSignInCta ? (
-        <div className="space-y-6">
-          {/* <div className="grid grid-cols-3 gap-4 sm:gap-8">
-            <div className="flex flex-col items-center justify-center gap-2">
-              <ProviderLogo provider={ProviderLogoName.GitHub} className="justify-center" />
-            </div>
-            <div className="flex flex-col items-center justify-center gap-2">
-              <ProviderLogo provider={ProviderLogoName.Convex} className="justify-center" />
-            </div>
-            <div className="flex flex-col items-center justify-center gap-2">
-              <ProviderLogo provider={ProviderLogoName.Vercel} className="justify-center" />
-            </div>
-          </div> */}
-          <SignInCard />
-        </div>
-      ) : null}
-
+    <div className="mx-auto max-w-3xl space-y-12 px-4 pb-16 pt-4 tracking-tight">
       <div className="space-y-3">
-        <h1 className="text-3xl font-semibold tracking-tight">How Create Convex Cloud works</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Launch the final stack from your phone.</h1>
         <p className="text-muted-foreground leading-relaxed">
-          Connect GitHub, Convex, and Vercel once, then spin up full-stack apps from a single flow.
+          Connect GitHub, Convex, and Vercel once, then spin up full-stack apps in 30 seconds.
         </p>
       </div>
 
+      {/* <PlusIcon />  */}
+
+      {showSignInCta && <SignInCard />}
+
       <section className="space-y-6">
-        <h2 className="text-center text-lg font-medium">Connect your accounts</h2>
+        <h2 className="text-center text-lg font-medium ">Connect your accounts</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="flex flex-col rounded-xl border border-border bg-card px-4 py-5 text-center">
             <div className="mb-3 flex justify-center">
@@ -60,7 +48,7 @@ export function AboutContent({ showSignInCta = false }: AboutContentProps) {
               <ProviderLogo provider={ProviderLogoName.Convex} />
             </div>
             <h3 className="text-sm font-semibold">Convex</h3>
-            <p className="mt-2 text-sm text-muted-foreground leading-snug">Create backend for app</p>
+            <p className="mt-2 text-sm text-muted-foreground leading-snug">Realtime backend</p>
           </div>
           <div className="flex flex-col rounded-xl border border-border bg-card px-4 py-5 text-center">
             <div className="mb-3 flex justify-center">
@@ -68,7 +56,7 @@ export function AboutContent({ showSignInCta = false }: AboutContentProps) {
             </div>
             <h3 className="text-sm font-semibold">Vercel</h3>
             <p className="mt-2 text-sm text-muted-foreground leading-snug">
-              Continuous deployment for backend and frontend
+              Continuous deployment and frontend hosting
             </p>
           </div>
         </div>
