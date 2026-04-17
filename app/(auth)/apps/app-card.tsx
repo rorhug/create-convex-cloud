@@ -59,7 +59,7 @@ export function AppList({
 }) {
   return (
     <section>
-      <h2 className="text-xl font-semibold">Your apps</h2>
+      <h2 className="text-xl font-semibold">Applications</h2>
       <div className="mt-4">
         {apps === undefined && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">

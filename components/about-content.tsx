@@ -63,22 +63,22 @@ export function AboutContent({ showSignInCta = false }: AboutContentProps) {
       <section className="space-y-4">
         <h2 className="text-center text-lg font-medium">Why use it</h2>
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-border bg-card p-5">
+          <div className=" border border-border bg-card p-6">
             <h3 className="text-sm font-semibold">One-click setup</h3>
             <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
               Wire accounts and generate a repo, Convex project, and Vercel deployment without juggling dashboards.
             </p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-5">
+          <div className=" border border-border bg-card p-6">
             <h3 className="text-sm font-semibold">Mobile friendly</h3>
             <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-              Build apps from your phone with the stack that scales to millions of users.
+              Start building apps from your phone with the stack that scales to millions of users with no extra setup.
             </p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-5">
+          <div className=" border border-border bg-card p-6">
             <h3 className="text-sm font-semibold">Cloud agent previews</h3>
             <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-              Each pull-request created by your cloud agent runs perfectly on a preview branch with its own DB.
+              Each pull-request created by your cloud agent gets a preview link with its own DB.
             </p>
           </div>
         </div>
@@ -89,12 +89,12 @@ export function AboutContent({ showSignInCta = false }: AboutContentProps) {
 
 function ProviderCard({ logo, title, body }: { logo: ProviderLogoName; title: string; body: React.ReactNode }) {
   return (
-    <div className="flex flex-1 min-w-0 flex-col rounded-xl border border-border bg-card px-4 py-5 text-center justify-center">
-      <div className="mb-3 flex justify-center">
+    <div className="flex flex-1 min-w-0 flex-col rounded-xl border border-border bg-card px-4 py-7 text-center justify-center space-y-5">
+      <div className=" flex justify-center">
         <ProviderLogo provider={logo} />
       </div>
       <h3 className="text-sm font-semibold">{title}</h3>
-      <p className="mt-2 text-sm text-muted-foreground leading-snug">{body}</p>
+      <p className="text-sm text-muted-foreground leading-snug">{body}</p>
     </div>
   );
 }
