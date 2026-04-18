@@ -7,7 +7,12 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { AppCreationSection, type AppsGithubInstallation, type AppsVercelTeam } from "./components";
+import {
+  CreateAppForm,
+  type AppsGithubInstallation,
+  type AppsVercelTeam,
+  type CreateAppFormDefaults,
+} from "./create-app-form";
 import { AppList } from "./app-card";
 import { DeleteAppDialog } from "./delete-app-dialog";
 
@@ -31,79 +36,44 @@ export default function AppsPage() {
 function AppsManager() {
   const viewer = useQuery(api.client.viewer.getViewer);
   const apps = useQuery(api.client.apps.listApps);
+  const lastAppSelections = useQuery(api.client.apps.getLastAppSelections);
   const createApp = useMutation(api.client.apps.createApp);
   const githubInstallations: AppsGithubInstallation[] = viewer?.github.installations ?? [];
   const vercelTeams: AppsVercelTeam[] = viewer?.vercel?.teams ?? [];
   const canAccessApps = viewer?.onboarding.canAccessApps ?? false;
   const requiredActions = viewer?.onboarding.requiredActions ?? [];
-  const [githubInstallationId, setGithubInstallationId] = useState("");
-  const [vercelTeamId, setVercelTeamId] = useState("");
-  const [githubRepoVisibility, setGithubRepoVisibility] = useState<"" | "public" | "private">("");
-  const [name, setName] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<{
     id: Id<"apps">;
     name: string;
   } | null>(null);
 
-  async function handleCreate() {
-    if (githubRepoVisibility !== "public" && githubRepoVisibility !== "private") {
-      return;
-    }
-    setIsCreating(true);
-    setError(null);
-    try {
-      await createApp({
-        name,
-        githubInstallationId,
-        vercelTeamId: vercelTeamId.trim(),
-        githubRepoVisibility,
-      });
-      setName("");
-      setGithubInstallationId("");
-      setGithubRepoVisibility("");
-    } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Could not create the app");
-    } finally {
-      setIsCreating(false);
-    }
-  }
-
   return (
     <>
       <div className="w-full space-y-6">
         {canAccessApps ? (
-          <AppCreationSection
-            error={error}
-            githubInstallationId={githubInstallationId}
-            githubInstallations={githubInstallations}
-            githubRepoVisibility={githubRepoVisibility}
-            isCreating={isCreating}
-            name={name}
-            onGithubInstallationChange={(value) => {
-              setGithubInstallationId(value);
-              setError(null);
-            }}
-            onGithubRepoVisibilityChange={(value) => {
-              setGithubRepoVisibility(value);
-              setError(null);
-            }}
-            onNameChange={(value) => {
-              setName(value);
-              setError(null);
-            }}
-            onSubmit={() => {
-              void handleCreate();
-            }}
-            onVercelTeamChange={(value) => {
-              setVercelTeamId(value);
-              setError(null);
-            }}
-            vercelTeamId={vercelTeamId}
-            vercelTeams={vercelTeams}
-          />
+          lastAppSelections === undefined ? (
+            <div className="border border-border bg-card p-8">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Spinner />
+                Loading form...
+              </div>
+            </div>
+          ) : (
+            <CreateAppForm
+              defaultValues={buildDefaultValues(lastAppSelections, githubInstallations, vercelTeams)}
+              githubInstallations={githubInstallations}
+              vercelTeams={vercelTeams}
+              onSubmit={async (values) => {
+                await createApp({
+                  name: values.name,
+                  githubInstallationId: values.githubInstallationId,
+                  vercelTeamId: values.vercelTeamId,
+                  githubRepoVisibility: values.githubRepoVisibility,
+                });
+              }}
+            />
+          )
         ) : (
           <section className="border border-border bg-card p-6">
             <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Setup required</p>
@@ -130,4 +100,40 @@ function AppsManager() {
       <DeleteAppDialog target={deleteTarget} onClose={() => setDeleteTarget(null)} />
     </>
   );
+}
+
+function buildDefaultValues(
+  lastAppSelections:
+    | {
+        githubInstallationId: string;
+        vercelTeamId: string;
+        githubRepoVisibility: "public" | "private";
+      }
+    | null,
+  githubInstallations: AppsGithubInstallation[],
+  vercelTeams: AppsVercelTeam[],
+): CreateAppFormDefaults {
+  if (!lastAppSelections) {
+    return {
+      name: "",
+      githubInstallationId: "",
+      vercelTeamId: "",
+      githubRepoVisibility: "",
+    };
+  }
+  // Only carry over selections that still exist for the current user.
+  const githubInstallationId = githubInstallations.some(
+    (i) => i.id === lastAppSelections.githubInstallationId,
+  )
+    ? lastAppSelections.githubInstallationId
+    : "";
+  const vercelTeamId = vercelTeams.some((t) => t.id === lastAppSelections.vercelTeamId)
+    ? lastAppSelections.vercelTeamId
+    : "";
+  return {
+    name: "",
+    githubInstallationId,
+    vercelTeamId,
+    githubRepoVisibility: lastAppSelections.githubRepoVisibility,
+  };
 }

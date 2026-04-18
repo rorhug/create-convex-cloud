@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { CaretRightIcon } from "@phosphor-icons/react";
+import { ArrowSquareOutIcon, CaretRightIcon } from "@phosphor-icons/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { AppStatus } from "@/convex/lib/appStatus";
@@ -143,17 +143,27 @@ function EnvironmentVariablesSection({ appId }: { appId: Id<"apps"> }) {
       <CollapsibleContent className="space-y-3">
         <p className="text-xs text-muted-foreground leading-relaxed mt-3">
           <strong>Backend:</strong> Add backend environment variables on Convex. Each preview environment (branch) copys
-          the <em>Default Environment Variables</em>.
+          the <em>Default env vars</em>.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm" className="h-7 px-2 text-xs">
             <a href={links.convexProdDeployment} target="_blank" rel="noopener noreferrer">
-              Production env vars
+              Production env vars <ArrowSquareOutIcon className="inline" />
             </a>
           </Button>
           <Button asChild variant="outline" size="sm" className="h-7 px-2 text-xs">
             <a href={links.convexDefaultEnvVars} target="_blank" rel="noopener noreferrer">
-              Default env vars
+              Default env vars <ArrowSquareOutIcon className="inline" />
+            </a>
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed mt-3">
+          <strong>Frontend:</strong> Add frontend environment variables on Vercel (e.g NEXT_PUBLIC_ABC)
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm" className="h-7 px-2 text-xs">
+            <a href={`${links.vercel}/settings/environment-variables`} target="_blank" rel="noopener noreferrer">
+              Vercel env vars <ArrowSquareOutIcon className="inline" />
             </a>
           </Button>
         </div>

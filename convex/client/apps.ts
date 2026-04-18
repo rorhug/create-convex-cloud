@@ -25,6 +25,31 @@ export const listApps = query({
   },
 });
 
+const lastAppSelectionsValidator = v.union(
+  v.object({
+    githubInstallationId: v.string(),
+    vercelTeamId: v.string(),
+    githubRepoVisibility: v.union(v.literal("public"), v.literal("private")),
+  }),
+  v.null(),
+);
+
+export const getLastAppSelections = query({
+  args: {},
+  returns: lastAppSelectionsValidator,
+  handler: async (ctx) => {
+    const user = await requireCurrentUser(ctx);
+    const apps = await listAppsForUser(ctx, user._id);
+    const latest = apps[0];
+    if (!latest) return null;
+    return {
+      githubInstallationId: latest.githubInstallationId,
+      vercelTeamId: latest.vercelTeamId,
+      githubRepoVisibility: (latest.githubRepoPrivate ? "private" : "public") as "public" | "private",
+    };
+  },
+});
+
 export const createApp = mutation({
   args: {
     name: v.string(),
