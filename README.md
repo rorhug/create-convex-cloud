@@ -13,6 +13,7 @@ Connect your accounts, and each new app gets:
 - **GitHub**: a repo created from the [ccc-template](https://github.com/rorhug/ccc-template) template. The template repo is synced from [this official repo](https://github.com/get-convex/templates/tree/main/template-nextjs-convexauth) with a few files added for smooth preview deployments.
 - **Convex**: a realtime backend project (with prod + preview deploy keys).
 - **Vercel**: CD and frontend hosting, wired to the new repo.
+- **GitHub Pages (optional)**: an included workflow (`.github/workflows/deploy-github-pages.yml`) can deploy with the same Convex+Next build command used in `vercel.json`.
 
 Missing a platform you care about? [Open a feature request](https://github.com/rorhug/create-convex-cloud/issues/new?template=feature_request.yml).
 
