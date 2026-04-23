@@ -9,6 +9,7 @@ import {
   formatVercelCreateProjectUserMessage,
   getVercelErrorMessage,
   getVercelDeployment,
+  getVercelDeploymentUrl,
   isVercelTokenInvalidError,
   isRetryableVercelGitError,
   logVercelErrorDetail,
@@ -232,11 +233,10 @@ export const stepWaitForDeployment = internalAction({
           args.teamId,
         );
         const state = data.readyState;
-        const deploymentAlias = data.alias?.[0];
 
         if (state === "READY") {
-          if (deploymentAlias) {
-            const deploymentUrl = deploymentAlias ? `https://${deploymentAlias}` : undefined;
+          const deploymentUrl = getVercelDeploymentUrl(data);
+          if (deploymentUrl) {
             await setStep(ctx, args.appId, "vercel", "ready", deploymentUrl);
             await ctx.runMutation(internal.lib.providers.vercel.data.updateVercelProject, {
               projectId: args.projectId,

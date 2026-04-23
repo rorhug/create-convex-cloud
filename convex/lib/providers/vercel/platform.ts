@@ -50,6 +50,13 @@ type VercelDeploymentResponse = {
   alias?: string[];
 };
 
+type VercelDeploymentListResponse = {
+  deployments: Array<{
+    uid: string;
+    readyState?: string;
+  }>;
+};
+
 type VercelErrorPayload = {
   error?: {
     code?: string;
@@ -73,6 +80,46 @@ type VercelTeamsPage = {
     next?: number | null;
   };
 };
+
+export type VercelProjectLink = {
+  type?: string;
+  org?: string;
+  repo?: string;
+};
+
+export type VercelProjectSummary = {
+  id: string;
+  name: string;
+  link: VercelProjectLink | null;
+};
+
+type VercelProjectsPage =
+  | {
+      projects: VercelProjectSummary[];
+      pagination?: {
+        next?: string | number | null;
+      };
+    }
+  | VercelProjectSummary[];
+
+export type VercelEnvironmentVariable = {
+  id?: string;
+  key: string;
+  value?: string;
+  target?: string[] | string;
+  type?: "secret" | "sensitive" | "system" | "encrypted" | "plain";
+  decrypted?: boolean;
+};
+
+type VercelEnvironmentVariablesPage =
+  | {
+      envs: VercelEnvironmentVariable[];
+      pagination?: {
+        next?: string | number | null;
+      };
+    }
+  | VercelEnvironmentVariable[]
+  | VercelEnvironmentVariable;
 
 function buildVercelUrl(path: string, params?: Record<string, string | number | undefined>) {
   const url = new URL(path, VERCEL_API_BASE_URL);
@@ -216,6 +263,86 @@ export async function fetchVercelTeamsForToken(token: string, ctx?: TokenInvalid
   return teams;
 }
 
+export async function fetchVercelProjectsForTeam(
+  token: string,
+  teamId: string,
+  ctx?: TokenInvalidationCtx,
+): Promise<VercelProjectSummary[]> {
+  const projects: VercelProjectSummary[] = [];
+  let from: string | number | undefined;
+
+  for (;;) {
+    const page = await vercelFetch<VercelProjectsPage>(ctx, token, "/v10/projects", {
+      params: {
+        teamId,
+        limit: 100,
+        from,
+      },
+    });
+    const pageProjects = Array.isArray(page) ? page : page.projects;
+
+    projects.push(
+      ...pageProjects.map((project) => ({
+        id: project.id,
+        name: project.name,
+        link: project.link ?? null,
+      })),
+    );
+
+    if (Array.isArray(page) || page.pagination?.next == null) {
+      break;
+    }
+    from = page.pagination.next;
+  }
+
+  return projects;
+}
+
+export async function fetchVercelProjectEnvironmentVariables(
+  token: string,
+  projectId: string,
+  teamId: string,
+  ctx?: TokenInvalidationCtx,
+): Promise<VercelEnvironmentVariable[]> {
+  const response = await vercelFetch<VercelEnvironmentVariablesPage>(
+    ctx,
+    token,
+    `/v10/projects/${encodeURIComponent(projectId)}/env`,
+    {
+      params: {
+        teamId,
+      },
+    },
+  );
+
+  if (Array.isArray(response)) {
+    return response;
+  }
+  if ("envs" in response) {
+    return response.envs;
+  }
+  return [response];
+}
+
+export async function fetchVercelProjectEnvironmentVariableDecryptedValue(
+  token: string,
+  projectId: string,
+  envId: string,
+  teamId: string,
+  ctx?: TokenInvalidationCtx,
+): Promise<VercelEnvironmentVariable> {
+  return await vercelFetch<VercelEnvironmentVariable>(
+    ctx,
+    token,
+    `/v1/projects/${encodeURIComponent(projectId)}/env/${encodeURIComponent(envId)}`,
+    {
+      params: {
+        teamId,
+      },
+    },
+  );
+}
+
 export async function createVercelProject(
   ctx: TokenInvalidationCtx,
   token: string,
@@ -243,7 +370,7 @@ export async function createVercelDeployment(
 }
 
 export async function getVercelDeployment(
-  ctx: TokenInvalidationCtx,
+  ctx: TokenInvalidationCtx | undefined,
   token: string,
   deploymentId: string,
   teamId: string,
@@ -256,6 +383,35 @@ export async function getVercelDeployment(
       params: { teamId },
     },
   );
+}
+
+export function getVercelDeploymentUrl(deployment: VercelDeploymentResponse): string | undefined {
+  const deploymentAlias = deployment.alias?.[0];
+  return deploymentAlias ? `https://${deploymentAlias}` : undefined;
+}
+
+export async function fetchLatestProductionDeploymentUrlForProject(
+  token: string,
+  projectId: string,
+  teamId: string,
+  ctx?: TokenInvalidationCtx,
+): Promise<string | undefined> {
+  const page = await vercelFetch<VercelDeploymentListResponse>(ctx, token, "/v6/deployments", {
+    params: {
+      teamId,
+      projectId,
+      target: "production",
+      state: "READY",
+      limit: 1,
+    },
+  });
+  const latestDeployment = page.deployments[0];
+  if (!latestDeployment?.uid) {
+    return undefined;
+  }
+
+  const deployment = await getVercelDeployment(ctx, token, latestDeployment.uid, teamId);
+  return getVercelDeploymentUrl(deployment);
 }
 
 export async function deleteVercelProject(ctx: TokenInvalidationCtx, token: string, projectId: string, teamId: string) {

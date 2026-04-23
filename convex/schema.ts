@@ -100,7 +100,7 @@ export default defineSchema({
     projectSlug: v.string(),
     prodDeploymentName: v.string(),
     prodDeployKey: v.string(),
-    previewDeployKey: v.string(),
+    previewDeployKey: v.optional(v.string()),
   }).index("by_app", ["appId"]),
 
   vercelProjects: defineTable({
@@ -112,4 +112,33 @@ export default defineSchema({
     teamSlug: v.string(),
     deploymentUrl: v.optional(v.string()),
   }).index("by_app", ["appId"]),
+
+  existingProjectSearches: defineTable({
+    ownerId: v.id("users"),
+    status: v.union(v.literal("idle"), v.literal("searching"), v.literal("ready"), v.literal("error")),
+    message: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_owner", ["ownerId"]),
+
+  existingProjects: defineTable({
+    ownerId: v.id("users"),
+    vercelProjectId: v.string(),
+    vercelProjectName: v.string(),
+    vercelTeamId: v.string(),
+    vercelTeamSlug: v.string(),
+    deploymentUrl: v.optional(v.string()),
+    gitProvider: v.optional(v.string()),
+    githubRepoFullName: v.optional(v.string()),
+    githubRepoUrl: v.optional(v.string()),
+    githubRepoPrivate: v.optional(v.boolean()),
+    githubInstallationId: v.optional(v.string()),
+    prodDeployKey: v.optional(v.string()),
+    previewDeployKey: v.optional(v.string()),
+    convexProjectId: v.optional(v.string()),
+    convexTeamId: v.optional(v.string()),
+    convexTeamSlug: v.optional(v.string()),
+    convexProjectSlug: v.optional(v.string()),
+    convexProdDeploymentName: v.optional(v.string()),
+    scannedAt: v.number(),
+  }).index("by_owner", ["ownerId"]),
 });

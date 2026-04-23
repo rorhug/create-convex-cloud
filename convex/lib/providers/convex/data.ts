@@ -151,7 +151,7 @@ export const getConvexDeployKeysByAppId = internalQuery({
       .query("convexProjects")
       .withIndex("by_app", (q) => q.eq("appId", args.appId))
       .first();
-    if (!project) return null;
+    if (!project?.prodDeployKey || !project.previewDeployKey) return null;
     return {
       prodDeployKey: project.prodDeployKey,
       previewDeployKey: project.previewDeployKey,
@@ -168,7 +168,7 @@ export const insertConvexProject = internalMutation({
     projectSlug: v.string(),
     prodDeploymentName: v.string(),
     prodDeployKey: v.string(),
-    previewDeployKey: v.string(),
+    previewDeployKey: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {

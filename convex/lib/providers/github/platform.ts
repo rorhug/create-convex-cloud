@@ -13,6 +13,12 @@ export type GithubInstallation = {
   repositorySelection: string;
 };
 
+export type GithubInstallationRepository = {
+  fullName: string;
+  htmlUrl: string;
+  private: boolean;
+};
+
 export class GithubApiError extends Error {
   constructor(
     message: string,
@@ -117,6 +123,14 @@ type GithubUserInstallationsResponse = {
   }>;
 };
 
+type GithubInstallationRepositoriesResponse = {
+  repositories?: Array<{
+    full_name?: string;
+    html_url?: string;
+    private?: boolean;
+  }>;
+};
+
 async function githubFetch(accessToken: string, url: string, ctx?: TokenInvalidationCtx) {
   try {
     const response = await fetch(url, {
@@ -186,4 +200,45 @@ export async function fetchGithubInstallationsForAccessToken(
   }
 
   return installations;
+}
+
+export async function fetchGithubRepositoriesForUserInstallation(
+  accessToken: string,
+  installationId: string,
+  ctx?: TokenInvalidationCtx,
+): Promise<GithubInstallationRepository[]> {
+  const repositories: GithubInstallationRepository[] = [];
+  let page = 1;
+
+  for (;;) {
+    const response = await githubFetch(
+      accessToken,
+      `https://api.github.com/user/installations/${encodeURIComponent(installationId)}/repositories?per_page=100&page=${page}`,
+      ctx,
+    );
+
+    const data = (await response.json()) as GithubInstallationRepositoriesResponse;
+    const pageRepositories: GithubInstallationRepository[] = [];
+
+    for (const repository of data.repositories ?? []) {
+      const fullName = repository.full_name?.trim();
+      const htmlUrl = repository.html_url?.trim();
+      if (!fullName || !htmlUrl || typeof repository.private !== "boolean") {
+        continue;
+      }
+      pageRepositories.push({
+        fullName,
+        htmlUrl,
+        private: repository.private,
+      });
+    }
+
+    repositories.push(...pageRepositories);
+    if (pageRepositories.length < 100) {
+      break;
+    }
+    page += 1;
+  }
+
+  return repositories;
 }

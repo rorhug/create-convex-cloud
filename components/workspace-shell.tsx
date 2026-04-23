@@ -34,6 +34,9 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             <Button asChild variant={pathname.startsWith("/apps") ? "default" : "outline"}>
               <Link href="/apps">Apps</Link>
             </Button>
+            <Button asChild variant={pathname.startsWith("/import") ? "default" : "outline"}>
+              <Link href="/import">Import</Link>
+            </Button>
             <Button asChild variant={pathname.startsWith("/setup") ? "default" : "outline"}>
               <Link href="/setup">Setup</Link>
             </Button>
