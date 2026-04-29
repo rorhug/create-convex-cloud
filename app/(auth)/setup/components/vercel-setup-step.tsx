@@ -13,12 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { vercelGithubAppPermissionsUrlForAccount } from "@/lib/site";
 import { Banner } from "./banner";
-import { ProviderLogoName } from "./provider-logo";
-import { StepCard } from "./step-card";
 import type { SetupBusyState, SetupGithubInstallation, SetupVercelTeam } from "./types";
 
-export function VercelSetupStep({
-  complete,
+export function VercelDeploymentTab({
   vercel,
   vercelToken,
   showReplaceToken,
@@ -30,7 +27,6 @@ export function VercelSetupStep({
   onSave,
   onToggleReplaceToken,
 }: {
-  complete: boolean;
   vercel: {
     teams: SetupVercelTeam[];
     tokenPreview: string;
@@ -54,117 +50,115 @@ export function VercelSetupStep({
   const replaceTokenLabel = showReplaceToken ? "Keep existing token" : "Replace token";
 
   return (
-    <StepCard step="2" provider={ProviderLogoName.Vercel} complete={complete}>
-      <div className="space-y-4 text-sm text-muted-foreground">
-        {vercel ? (
-          <p>
-            Token saved: <span className="font-medium text-foreground">{vercel.tokenPreview}</span>
-          </p>
-        ) : null}
+    <div className="space-y-4 text-sm text-muted-foreground">
+      {vercel ? (
+        <p>
+          Token saved: <span className="font-medium text-foreground">{vercel.tokenPreview}</span>
+        </p>
+      ) : null}
 
-        {issue ? <Banner tone="error">{issue}</Banner> : null}
+      {issue ? <Banner tone="error">{issue}</Banner> : null}
 
-        {showRefreshButton ? (
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline" className="text-foreground" disabled={busy !== null} onClick={onRefresh}>
-              {busy === "vercel-refresh" ? "Refreshing..." : refreshLabel}
+      {showRefreshButton ? (
+        <div className="flex flex-wrap gap-3">
+          <Button variant="outline" className="text-foreground" disabled={busy !== null} onClick={onRefresh}>
+            {busy === "vercel-refresh" ? "Refreshing..." : refreshLabel}
+          </Button>
+          {vercel?.isValid ? (
+            <Button variant="outline" className="text-foreground" onClick={onToggleReplaceToken}>
+              {replaceTokenLabel}
             </Button>
-            {vercel?.isValid ? (
-              <Button variant="outline" className="text-foreground" onClick={onToggleReplaceToken}>
-                {replaceTokenLabel}
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+      ) : null}
 
-        {showTokenEntryFields ? (
-          <div className={vercel ? "space-y-4 border border-border bg-background p-4" : "space-y-4"}>
-            {vercel && !vercel.isValid ? (
-              <p>
-                The saved token may still work. Try the saved token again, or paste a replacement token to restore app
-                creation and Vercel refreshes.
-              </p>
-            ) : null}
-            <TokenEntryFields
-              vercelToken={vercelToken}
-              busy={busy}
-              onTokenChange={onTokenChange}
-              onSave={onSave}
-            />
-          </div>
-        ) : null}
+      {showTokenEntryFields ? (
+        <div className={vercel ? "space-y-4 border border-border bg-background p-4" : "space-y-4"}>
+          {vercel && !vercel.isValid ? (
+            <p>
+              The saved token may still work. Try the saved token again, or paste a replacement token to restore app
+              creation and Vercel refreshes.
+            </p>
+          ) : null}
+          <TokenEntryFields
+            vercelToken={vercelToken}
+            busy={busy}
+            onTokenChange={onTokenChange}
+            onSave={onSave}
+          />
+        </div>
+      ) : null}
 
-        {vercel?.teams.length && !showTokenEntryFields ? (
+      {vercel?.teams.length && !showTokenEntryFields ? (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">Available orgs</p>
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Available orgs</p>
-            <div className="space-y-2">
-              {vercel.teams.map((team) => (
-                <div key={team.id} className="border border-border bg-muted/50 px-4 py-3 text-sm">
-                  <div className="font-medium text-foreground">{team.name}</div>
-                  <div className="text-muted-foreground">{team.slug}</div>
-                </div>
-              ))}
-            </div>
+            {vercel.teams.map((team) => (
+              <div key={team.id} className="border border-border bg-muted/50 px-4 py-3 text-sm">
+                <div className="font-medium text-foreground">{team.name}</div>
+                <div className="text-muted-foreground">{team.slug}</div>
+              </div>
+            ))}
           </div>
-        ) : null}
+        </div>
+      ) : null}
 
-        {githubInstallations.length > 0 ? (
-          <>
-            <Separator className="my-6" />
-            <Collapsible className="space-y-2">
-              <CollapsibleTrigger asChild>
-                <button
-                  type="button"
-                  className="group flex w-full cursor-pointer items-center gap-1.5 text-left text-sm font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground"
-                >
-                  <CaretRightIcon
-                    className="size-4 shrink-0 transition-transform duration-150 group-data-[state=open]:rotate-90"
-                    weight="regular"
-                  />
-                  Vercel ↔ GitHub Connection
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-3">
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  If Vercel has access to <u>All repositories</u> on the selected GitHub account, it will work smoothly.
-                  <br />
-                  If Vercel only has access to <u>Selected repositories</u>, you will be given a link to add the repo
-                  &quot;Selected repositories&quot; on the Vercel installation on GitHub.
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button type="button" variant="outline" className="text-foreground">
-                        Update Vercel+GitHub Installation
-                        <CaretDownIcon className="ml-1.5 size-4 shrink-0 opacity-70" weight="regular" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-48">
-                      {githubInstallations.map((inst) => (
-                        <DropdownMenuItem
-                          key={inst.id}
-                          className="cursor-pointer"
-                          onSelect={() => {
-                            window.open(
-                              vercelGithubAppPermissionsUrlForAccount(inst.accountId, inst.accountType),
-                              "_blank",
-                              "noopener,noreferrer",
-                            );
-                          }}
-                        >
-                          {inst.accountLogin}
-                          {inst.accountType.toLowerCase() === "organization" ? " (org)" : " (personal)"}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </>
-        ) : null}
-      </div>
-    </StepCard>
+      {githubInstallations.length > 0 ? (
+        <>
+          <Separator className="my-6" />
+          <Collapsible className="space-y-2">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="group flex w-full cursor-pointer items-center gap-1.5 text-left text-sm font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:text-foreground"
+              >
+                <CaretRightIcon
+                  className="size-4 shrink-0 transition-transform duration-150 group-data-[state=open]:rotate-90"
+                  weight="regular"
+                />
+                Vercel ↔ GitHub Connection
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-3">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                If Vercel has access to <u>All repositories</u> on the selected GitHub account, it will work smoothly.
+                <br />
+                If Vercel only has access to <u>Selected repositories</u>, you will be given a link to add the repo
+                &quot;Selected repositories&quot; on the Vercel installation on GitHub.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="outline" className="text-foreground">
+                      Update Vercel+GitHub Installation
+                      <CaretDownIcon className="ml-1.5 size-4 shrink-0 opacity-70" weight="regular" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-48">
+                    {githubInstallations.map((inst) => (
+                      <DropdownMenuItem
+                        key={inst.id}
+                        className="cursor-pointer"
+                        onSelect={() => {
+                          window.open(
+                            vercelGithubAppPermissionsUrlForAccount(inst.accountId, inst.accountType),
+                            "_blank",
+                            "noopener,noreferrer",
+                          );
+                        }}
+                      >
+                        {inst.accountLogin}
+                        {inst.accountType.toLowerCase() === "organization" ? " (org)" : " (personal)"}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </>
+      ) : null}
+    </div>
   );
 }
 

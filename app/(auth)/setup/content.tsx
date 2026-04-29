@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { Banner } from "./components/banner";
 import { ConvexSetupStep } from "./components/convex-setup-step";
+import { DeploymentTargetStep } from "./components/deployment-target-step";
 import { GitHubSetupStep } from "./components/github-setup-step";
 import type { SetupBusyState, SetupViewerState } from "./components/types";
-import { VercelSetupStep } from "./components/vercel-setup-step";
 import { ArrowRightIcon } from "@phosphor-icons/react";
 
 export function Content({ viewer }: { viewer: SetupViewerState }) {
@@ -129,25 +129,25 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
         }}
       />
 
-      <VercelSetupStep
+      <DeploymentTargetStep
         complete={viewer.vercel?.isValid === true}
         vercel={viewer.vercel}
         vercelToken={vercelToken}
-        showReplaceToken={showReplaceVercelToken}
+        showReplaceVercelToken={showReplaceVercelToken}
         busy={busy}
-        issue={viewer.vercel?.issue ?? null}
+        vercelIssue={viewer.vercel?.issue ?? null}
         githubInstallations={viewer.github.installations}
-        onTokenChange={(value) => {
+        onVercelTokenChange={(value) => {
           setVercelToken(value);
           setError(null);
         }}
-        onRefresh={() => {
+        onVercelRefresh={() => {
           void handleRefreshVercelTeams();
         }}
-        onSave={() => {
+        onVercelSave={() => {
           void handleSaveVercelToken();
         }}
-        onToggleReplaceToken={() => {
+        onToggleReplaceVercelToken={() => {
           setShowReplaceVercelToken((value) => !value);
         }}
       />
