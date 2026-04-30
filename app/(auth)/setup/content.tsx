@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useAction } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,9 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
   const refreshVercelTeams = useAction(api.client.providers.vercel.clientActions.refreshVercelTeams);
   const saveVercelToken = useAction(api.client.providers.vercel.clientActions.saveVercelToken);
   const refreshConvexToken = useAction(api.client.providers.convex.clientActions.refreshConvexToken);
+  const confirmGithubPagesDeployment = useMutation(
+    api.client.providers.githubPages.clientActions.confirmGithubPagesDeployment,
+  );
 
   const [vercelToken, setVercelToken] = useState("");
   const [showReplaceVercelToken, setShowReplaceVercelToken] = useState(false);
@@ -27,6 +30,7 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
   const hasHandledRefreshGithubInstallationsParam = useRef(false);
   const isSetupComplete = viewer.onboarding.canAccessApps;
   const isGithubAppInstalled = viewer.onboarding.hasGitHubConnection && !viewer.github.needsAttention;
+  const isGithubPagesConfirmed = viewer.githubPages !== null;
 
   useEffect(() => {
     if (hasHandledRefreshGithubInstallationsParam.current) {
@@ -94,6 +98,22 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
     }
   }
 
+  async function handleConfirmGithubPagesDeployment() {
+    setBusy("github-pages-confirm");
+    setError(null);
+    try {
+      await confirmGithubPagesDeployment({});
+    } catch (confirmError) {
+      setError(
+        confirmError instanceof Error
+          ? confirmError.message
+          : "Could not confirm GitHub Pages deployment",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function handleRefreshConvexToken() {
     setBusy("convex-refresh");
     setError(null);
@@ -131,7 +151,7 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
       />
 
       <DeploymentTargetStep
-        complete={viewer.vercel?.isValid === true}
+        complete={viewer.vercel?.isValid === true || isGithubPagesConfirmed}
         vercel={viewer.vercel}
         vercelToken={vercelToken}
         showReplaceVercelToken={showReplaceVercelToken}
@@ -140,6 +160,10 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
         githubInstallations={viewer.github.installations}
         githubInstallUrl={viewer.github.installUrl}
         isGithubAppInstalled={isGithubAppInstalled}
+        isGithubPagesConfirmed={isGithubPagesConfirmed}
+        onConfirmGithubPages={() => {
+          void handleConfirmGithubPagesDeployment();
+        }}
         onVercelTokenChange={(value) => {
           setVercelToken(value);
           setError(null);

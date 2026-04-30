@@ -32,6 +32,12 @@ const viewerStateValidator = v.object({
     }),
     v.null(),
   ),
+  githubPages: v.union(
+    v.object({
+      confirmedAt: v.number(),
+    }),
+    v.null(),
+  ),
   convex: v.union(
     v.object({
       teamId: v.string(),

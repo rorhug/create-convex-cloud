@@ -30,6 +30,14 @@ export default defineSchema({
     .index("by_provider_account", ["providerAccountId"])
     .index("by_token", ["token"]),
 
+  // User's confirmation that they want to deploy via GitHub Pages.
+  // Created when the user clicks "Confirm Deployment to GitHub Pages" on
+  // the setup page. Used as a default deployment-target hint per app.
+  githubPagesPreferences: defineTable({
+    userId: v.id("users"),
+    confirmedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
   // Vercel personal access token (pasted by user)
   vercelTokens: defineTable({
     userId: v.id("users"),

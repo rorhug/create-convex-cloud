@@ -20,6 +20,8 @@ export function DeploymentTargetStep({
   githubInstallations,
                          githubInstallUrl,
   isGithubAppInstalled,
+  isGithubPagesConfirmed,
+  onConfirmGithubPages,
   onVercelTokenChange,
   onVercelRefresh,
   onVercelSave,
@@ -39,6 +41,8 @@ export function DeploymentTargetStep({
   githubInstallations: SetupGithubInstallation[];
   githubInstallUrl: string;
   isGithubAppInstalled: boolean;
+  isGithubPagesConfirmed: boolean;
+  onConfirmGithubPages: () => void;
   onVercelTokenChange: (value: string) => void;
   onVercelRefresh: () => void;
   onVercelSave: () => void;
@@ -93,7 +97,10 @@ export function DeploymentTargetStep({
         <TabsContent value="github-pages" className="pt-6">
           <GitHubPagesDeploymentTab
             isGithubAppInstalled={isGithubAppInstalled}
+            isGithubPagesConfirmed={isGithubPagesConfirmed}
             installUrl={githubInstallUrl}
+            busy={busy}
+            onConfirm={onConfirmGithubPages}
           />
         </TabsContent>
       </Tabs>
