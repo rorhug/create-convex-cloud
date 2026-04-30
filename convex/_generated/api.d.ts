@@ -8,7 +8,6 @@
  * @module
  */
 
-import type * as apps from "../apps.js";
 import type * as auth from "../auth.js";
 import type * as authProviders_convexPlatform from "../authProviders/convexPlatform.js";
 import type * as authProviders_github from "../authProviders/github.js";
@@ -54,7 +53,6 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  apps: typeof apps;
   auth: typeof auth;
   "authProviders/convexPlatform": typeof authProviders_convexPlatform;
   "authProviders/github": typeof authProviders_github;
