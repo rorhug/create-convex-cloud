@@ -4,8 +4,69 @@ import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { Octokit } from "octokit";
-import { DEFAULT_TEMPLATE_OWNER, DEFAULT_TEMPLATE_REPO } from "./templateConfig";
+import {
+  DEFAULT_TEMPLATE_OWNER,
+  DEFAULT_TEMPLATE_REPO,
+  TEMPLATE_ONLY_FILES_TO_DELETE_AFTER_GENERATE,
+} from "./templateConfig";
 import { setStep } from "./stepUtils";
+
+const GITHUB_API_VERSION = "2022-11-28";
+const TEMPLATE_GENERATION_SETTLE_MS = 5_000;
+
+function httpStatusFromUnknown(error: unknown): number | undefined {
+  if (typeof error === "object" && error !== null && "status" in error) {
+    const status = (error as { status?: number }).status;
+    return typeof status === "number" ? status : undefined;
+  }
+  return undefined;
+}
+
+async function sleepMs(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function deleteRepoFileIfPresent({
+  octokit,
+  owner,
+  repo,
+  path,
+  branch,
+}: {
+  octokit: Octokit;
+  owner: string;
+  repo: string;
+  path: string;
+  branch: string;
+}): Promise<boolean> {
+  try {
+    const getContentRes = await octokit.request("GET /repos/{owner}/{repo}/contents/{path}", {
+      owner,
+      repo,
+      path,
+      ref: branch,
+    });
+
+    if (Array.isArray(getContentRes.data) || typeof getContentRes.data.sha !== "string") {
+      throw new Error(`Expected ${path} to be a file in ${owner}/${repo}`);
+    }
+
+    await octokit.request("DELETE /repos/{owner}/{repo}/contents/{path}", {
+      owner,
+      repo,
+      path,
+      branch,
+      message: `Remove template-only file ${path}`,
+      sha: getContentRes.data.sha,
+    });
+    return true;
+  } catch (error) {
+    if (httpStatusFromUnknown(error) === 404) {
+      return false;
+    }
+    throw error;
+  }
+}
 
 export const stepCreateGithubRepoTemplate = internalAction({
   args: { appId: v.id("apps") },
@@ -38,7 +99,15 @@ export const stepCreateGithubRepoTemplate = internalAction({
       internal.workflows.githubAccessTokenAction.ensureFreshGithubAccessToken,
       { userId: app.ownerId },
     );
-    const octokit = new Octokit({ auth: accessToken });
+    const octokit = new Octokit({
+      auth: accessToken,
+      request: {
+        headers: {
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": GITHUB_API_VERSION,
+        },
+      },
+    });
     const owner = installation.accountLogin || githubUsername || "";
     let repoCreated = false;
     let createdRepoFullName: string | null = null;
@@ -59,13 +128,36 @@ export const stepCreateGithubRepoTemplate = internalAction({
         name: app.name,
         description: "Created by https://createconvex.cloud",
         private: app.githubRepoPrivate ?? false,
-        headers: { "X-GitHub-Api-Version": "2022-11-28" },
       });
       repoCreated = true;
 
       const repoFullName: string = createRepoRes.data.full_name;
       const repoUrl: string = createRepoRes.data.html_url;
+      const defaultBranch: string = createRepoRes.data.default_branch ?? "main";
       createdRepoFullName = repoFullName;
+
+      const [repoOwner, repoName] = repoFullName.split("/");
+      if (!repoOwner || !repoName) {
+        throw new Error(`Could not determine owner/repo from ${repoFullName}`);
+      }
+
+      if (TEMPLATE_ONLY_FILES_TO_DELETE_AFTER_GENERATE.length > 0) {
+        await setStep(ctx, args.appId, "github", "creating", "Waiting for GitHub template files...");
+        await sleepMs(TEMPLATE_GENERATION_SETTLE_MS);
+        await setStep(ctx, args.appId, "github", "creating", "Removing template-only files...");
+        for (const path of TEMPLATE_ONLY_FILES_TO_DELETE_AFTER_GENERATE) {
+          const deleted = await deleteRepoFileIfPresent({
+            octokit,
+            owner: repoOwner,
+            repo: repoName,
+            path,
+            branch: defaultBranch,
+          });
+          if (!deleted) {
+            console.warn(`Template-only file ${path} was not found in ${repoFullName}; skipped deletion.`);
+          }
+        }
+      }
 
       await ctx.runMutation(internal.lib.providers.github.data.insertGithubRepo, {
         appId: args.appId,
@@ -85,7 +177,6 @@ export const stepCreateGithubRepoTemplate = internalAction({
           await octokit.request("DELETE /repos/{owner}/{repo}", {
             owner: cleanupOwner!,
             repo: cleanupRepo!,
-            headers: { "X-GitHub-Api-Version": "2022-11-28" },
           });
         } catch (cleanupErr) {
           console.error("Failed to clean up repo after error:", cleanupErr);

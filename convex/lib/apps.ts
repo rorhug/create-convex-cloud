@@ -7,6 +7,7 @@ import { appStatusValidator } from "./appStatus";
 import { getGithubTokenDocForUser } from "./providers/github/data";
 import { findConvexAuthAccountForUser } from "./providers/convex/data";
 import { githubAccessTokenNeedsRefresh } from "./providers/github/platform";
+import { requireVercelTokenDocForUser } from "./providers/vercel/data";
 
 export const appSummaryValidator = v.object({
   _id: v.id("apps"),
@@ -36,18 +37,7 @@ export async function validateCreateAppSelections(
     githubInstallationId: string;
   },
 ) {
-  const vercelToken = await ctx.db
-    .query("vercelTokens")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .first();
-  if (!vercelToken) {
-    throw new Error("Connect your Vercel account before creating apps");
-  }
-  if (vercelToken.tokenStatus === "invalid") {
-    throw new Error(
-      "The saved Vercel token is no longer valid. Paste a new token on the setup page.",
-    );
-  }
+  const vercelToken = await requireVercelTokenDocForUser(ctx, userId);
 
   const vercelTeamId = args.vercelTeamId.trim();
   if (!vercelTeamId) {

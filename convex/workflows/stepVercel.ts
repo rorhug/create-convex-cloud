@@ -63,17 +63,12 @@ export const stepCreateVercelProject = internalAction({
           }
         : null;
 
-    const vercelToken = await ctx.runQuery(internal.lib.providers.vercel.data.getVercelTokenForUser, {
-      userId: app.ownerId,
-    });
-    if (!vercelToken) {
-      await setStep(ctx, args.appId, "vercel", "error", "Vercel token not found");
-      throw new Error("Vercel token not found for user");
-    }
-
     let vercelTeamLabel = app.vercelTeamId;
 
     try {
+      const vercelToken = await ctx.runQuery(internal.lib.providers.vercel.data.requireVercelTokenForUser, {
+        userId: app.ownerId,
+      });
       const teamId: string = app.vercelTeamId;
       const team = vercelToken.teams.find((t: { id: string; slug: string }) => t.id === teamId);
       if (!team) {

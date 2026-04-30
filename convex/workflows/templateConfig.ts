@@ -14,6 +14,12 @@ export const CLONE_TEMPLATE_FOLDER = "template-nextjs-convexauth";
 export const DEFAULT_TEMPLATE_OWNER = "rorhug";
 export const DEFAULT_TEMPLATE_REPO = "ccc-template";
 
+// Files that should stay in the template repo itself but should not remain in
+// repos generated from that template.
+export const TEMPLATE_ONLY_FILES_TO_DELETE_AFTER_GENERATE = [
+  ".github/workflows/refresh-convex-template.yml",
+];
+
 // Files from the upstream template that we do NOT want in the generated repo.
 export const TEMPLATE_SKIP_FILES = new Set(["package-lock.json"]);
 

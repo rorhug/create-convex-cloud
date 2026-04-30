@@ -3,6 +3,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { getGithubTokenDocForUser } from "./providers/github/data";
 import { findConvexAuthAccountForUser } from "./providers/convex/data";
 import { getGithubAppInstallUrl } from "./providers/github/platform";
+import { getVercelTokenDocForUser, getVercelTokenIssue } from "./providers/vercel/data";
 
 export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
   const githubToken = await getGithubTokenDocForUser(ctx, user._id);
@@ -13,15 +14,9 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
       ? "GitHub access needs attention. Sign in with GitHub again."
       : null;
 
-  const vercelToken = await ctx.db
-    .query("vercelTokens")
-    .withIndex("by_user", (q) => q.eq("userId", user._id))
-    .first();
+  const vercelToken = await getVercelTokenDocForUser(ctx, user._id);
   const hasVercelConnection = vercelToken !== null;
-  const vercelIssue =
-    vercelToken?.tokenStatus === "invalid"
-      ? "The saved Vercel token is no longer valid. Paste a new token on the setup page."
-      : null;
+  const vercelIssue = getVercelTokenIssue(vercelToken);
 
   const convexAccount = await findConvexAuthAccountForUser(ctx, user._id);
   const convexToken = convexAccount

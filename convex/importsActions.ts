@@ -128,15 +128,9 @@ export const searchExistingProjects = internalAction({
     });
 
     try {
-      const vercelToken = await ctx.runQuery(internal.lib.providers.vercel.data.getVercelTokenForUser, {
+      const vercelToken = await ctx.runQuery(internal.lib.providers.vercel.data.requireVercelTokenForUser, {
         userId: args.userId,
       });
-      if (!vercelToken) {
-        throw new Error("Connect Vercel on the setup page before importing apps.");
-      }
-      if (vercelToken.tokenStatus !== "valid") {
-        throw new Error("The saved Vercel token needs attention on the setup page.");
-      }
 
       const githubConnection = await ctx.runQuery(internal.lib.providers.github.data.getGithubConnection, {
         userId: args.userId,
