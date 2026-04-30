@@ -43,16 +43,27 @@ export type AppsVercelTeam = {
 export type CreateAppFormValues = {
   name: string;
   githubInstallationId: string;
-  vercelTeamId: string;
+  deploymentTarget:
+    | { type: "vercel"; vercelTeamId: string }
+    | { type: "github-pages" };
   githubRepoVisibility: "public" | "private";
 };
 
 const GO_TO_SETUP_VALUE = "__go-to-setup__";
+const GITHUB_PAGES_VALUE = "github-pages";
+const VERCEL_NOT_CONNECTED_VALUE = "__vercel-not-connected__";
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Enter an app name"),
   githubInstallationId: z.string().min(1, "Select a GitHub installation"),
-  vercelTeamId: z.string().min(1, "Select a Vercel team"),
+  deploymentTargetId: z
+    .string()
+    .min(1, "Select a deployment target")
+    .refine(
+      (value) =>
+        value !== GO_TO_SETUP_VALUE && value !== VERCEL_NOT_CONNECTED_VALUE,
+      "Select a deployment target",
+    ),
   githubRepoVisibility: z.enum(["public", "private"], {
     message: "Select a GitHub repository visibility",
   }),
@@ -63,7 +74,7 @@ type FormSchema = z.infer<typeof formSchema>;
 export type CreateAppFormDefaults = {
   name: string;
   githubInstallationId: string;
-  vercelTeamId: string;
+  deploymentTargetId: string;
   githubRepoVisibility: "" | "public" | "private";
 };
 
@@ -71,11 +82,14 @@ export function CreateAppForm({
   defaultValues,
   githubInstallations,
   vercelTeams,
+  isGithubPagesConfirmed,
   onSubmit,
 }: {
   defaultValues: CreateAppFormDefaults;
   githubInstallations: AppsGithubInstallation[];
   vercelTeams: AppsVercelTeam[];
+  /** Whether the user clicked "Confirm Deployment to GitHub Pages" on /setup. */
+  isGithubPagesConfirmed: boolean;
   onSubmit: (values: CreateAppFormValues) => Promise<void>;
 }) {
   const router = useRouter();
@@ -97,13 +111,18 @@ export function CreateAppForm({
 
   async function handleSubmit(values: FormSchema) {
     try {
+      const deploymentTarget: CreateAppFormValues["deploymentTarget"] =
+        values.deploymentTargetId === GITHUB_PAGES_VALUE
+          ? { type: "github-pages" }
+          : { type: "vercel", vercelTeamId: values.deploymentTargetId.trim() };
+
       await onSubmit({
         name: values.name,
         githubInstallationId: values.githubInstallationId,
-        vercelTeamId: values.vercelTeamId.trim(),
+        deploymentTarget,
         githubRepoVisibility: values.githubRepoVisibility,
       });
-      // Keep the last-selected installation / team / visibility, but clear the name.
+      // Keep the last-selected installation / target / visibility, but clear the name.
       form.reset({ ...values, name: "" });
     } catch (error) {
       form.setError("root", {
@@ -116,6 +135,8 @@ export function CreateAppForm({
   const isSubmitting = form.formState.isSubmitting;
   const hasGithubInstallations = githubInstallations.length > 0;
   const hasVercelTeams = vercelTeams.length > 0;
+  // At least one deployment target must be available to submit.
+  const hasAnyDeploymentTarget = hasVercelTeams || isGithubPagesConfirmed;
 
   return (
     <section className="border border-border bg-card p-6">
@@ -237,11 +258,11 @@ export function CreateAppForm({
             />
 
             <Controller
-              name="vercelTeamId"
+              name="deploymentTargetId"
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid} className="min-w-0 flex-1">
-                  <FieldLabel htmlFor="vercel-team">Vercel team</FieldLabel>
+                  <FieldLabel htmlFor="deployment-target">Deployment target</FieldLabel>
                   <Select
                     name={field.name}
                     value={field.value}
@@ -250,26 +271,43 @@ export function CreateAppForm({
                         router.push("/setup");
                         return;
                       }
+                      if (value === VERCEL_NOT_CONNECTED_VALUE) {
+                        // Disabled placeholder — ignore.
+                        return;
+                      }
                       field.onChange(value);
                     }}
                   >
                     <SelectTrigger
-                      id="vercel-team"
+                      id="deployment-target"
                       aria-invalid={fieldState.invalid}
                       className="w-full"
                     >
                       <SelectValue
-                        placeholder={hasVercelTeams ? "Select a team…" : "No teams available"}
+                        placeholder={
+                          hasAnyDeploymentTarget ? "Select a target…" : "No targets available"
+                        }
                       />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        <SelectLabel>Vercel teams</SelectLabel>
-                        {vercelTeams.map((team) => (
-                          <SelectItem key={team.id} value={team.id}>
-                            {team.name}
+                        <SelectLabel>Vercel Teams</SelectLabel>
+                        {hasVercelTeams ? (
+                          vercelTeams.map((team) => (
+                            <SelectItem key={team.id} value={team.id}>
+                              {team.name ?? team.slug}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value={VERCEL_NOT_CONNECTED_VALUE} disabled>
+                            Vercel not connected
                           </SelectItem>
-                        ))}
+                        )}
+                      </SelectGroup>
+                      <SelectSeparator />
+                      <SelectGroup>
+                        <SelectLabel>Other options</SelectLabel>
+                        <SelectItem value={GITHUB_PAGES_VALUE}>GitHub Pages</SelectItem>
                       </SelectGroup>
                       <SelectSeparator />
                       <SelectGroup>
@@ -291,20 +329,20 @@ export function CreateAppForm({
             </FieldDescription>
           ) : null}
 
-          {!hasVercelTeams ? (
+          {!hasVercelTeams && !isGithubPagesConfirmed ? (
             <FieldDescription className="border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm">
-              No Vercel teams on file (your personal team should appear after you{" "}
+              No deployment targets on file. Either{" "}
               <Link href="/setup" className="underline hover:text-foreground">
-                verify your Vercel token again
+                save a Vercel token or confirm GitHub Pages on the setup page
               </Link>
-              ).
+              .
             </FieldDescription>
           ) : null}
 
           <Button
             type="submit"
             className="w-full"
-            disabled={isSubmitting || !hasGithubInstallations || !hasVercelTeams}
+            disabled={isSubmitting || !hasGithubInstallations || !hasAnyDeploymentTarget}
           >
             {isSubmitting ? "Creating..." : "Create app"}
           </Button>

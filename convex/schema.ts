@@ -69,8 +69,10 @@ export default defineSchema({
   apps: defineTable({
     ownerId: v.id("users"),
     name: v.string(),
-    /** Vercel team id (includes personal/hobby via default team id). */
-    vercelTeamId: v.string(),
+    /** Where this app deploys to. Optional for legacy rows; missing → "vercel". */
+    deploymentTarget: v.optional(v.union(v.literal("vercel"), v.literal("github-pages"))),
+    /** Vercel team id (includes personal/hobby via default team id). Required when deploymentTarget === "vercel". */
+    vercelTeamId: v.optional(v.string()),
     /** GitHub App installation to use for repo access and ownership. */
     githubInstallationId: v.string(),
     /** GitHub repo visibility at creation time (`false` = public). */

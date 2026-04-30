@@ -23,25 +23,33 @@ export const listApps = query({
   },
 });
 
+// NOTE: This is a legacy duplicate of `client/apps.ts:createApp` and is no
+// longer referenced anywhere (`api.apps.*` has zero call sites). Kept compiling
+// against the new deployment-target shape so tsc passes; safe to delete.
+const deploymentTargetArgValidator = v.union(
+  v.object({ type: v.literal("vercel"), vercelTeamId: v.string() }),
+  v.object({ type: v.literal("github-pages") }),
+);
+
 export const createApp = mutation({
   args: {
     name: v.string(),
-    vercelTeamId: v.string(),
     githubInstallationId: v.string(),
+    deploymentTarget: deploymentTargetArgValidator,
     githubRepoVisibility: v.union(v.literal("public"), v.literal("private")),
   },
   returns: v.id("apps"),
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
-    const { githubInstallationId, vercelTeamId } =
+    const { githubInstallationId, deploymentTarget } =
       await validateCreateAppSelections(ctx, user._id, {
         githubInstallationId: args.githubInstallationId,
-        vercelTeamId: args.vercelTeamId,
+        deploymentTarget: args.deploymentTarget,
       });
 
     const appId = await createAppForUser(ctx, user._id, args.name, {
-      vercelTeamId,
       githubInstallationId,
+      deploymentTarget,
       githubRepoPrivate: args.githubRepoVisibility === "private",
     });
 

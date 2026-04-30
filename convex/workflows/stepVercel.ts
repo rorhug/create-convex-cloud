@@ -49,6 +49,17 @@ export const stepCreateVercelProject = internalAction({
     const app = await ctx.runQuery(internal.client.apps.internalGetApp, { id: args.appId });
     if (!app) throw new Error("App not found");
 
+    // This step only runs for the Vercel deployment target; the workflow gates
+    // it on `deploymentTarget === "vercel"`. The `vercelTeamId` therefore must
+    // be present on the app row — but the field is now optional in the schema
+    // (since github-pages apps don't have one), so narrow it explicitly here.
+    if (!app.vercelTeamId) {
+      throw new Error(
+        "Internal error: stepCreateVercelProject was invoked for an app without a vercelTeamId.",
+      );
+    }
+    const vercelTeamId: string = app.vercelTeamId;
+
     const githubConnection = await ctx.runQuery(internal.lib.providers.github.data.getGithubConnection, {
       userId: app.ownerId,
     });
@@ -63,13 +74,13 @@ export const stepCreateVercelProject = internalAction({
           }
         : null;
 
-    let vercelTeamLabel = app.vercelTeamId;
+    let vercelTeamLabel: string = vercelTeamId;
 
     try {
       const vercelToken = await ctx.runQuery(internal.lib.providers.vercel.data.requireVercelTokenForUser, {
         userId: app.ownerId,
       });
-      const teamId: string = app.vercelTeamId;
+      const teamId: string = vercelTeamId;
       const team = vercelToken.teams.find((t: { id: string; slug: string }) => t.id === teamId);
       if (!team) {
         throw new Error("Selected Vercel team not found for this token; re-save your Vercel token on the setup page.");

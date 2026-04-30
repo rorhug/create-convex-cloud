@@ -111,7 +111,9 @@ export async function createAppForUser(
   userId: Id<"users">,
   name: string,
   options: {
-    vercelTeamId: string;
+    deploymentTarget:
+      | { type: "vercel"; vercelTeamId: string }
+      | { type: "github-pages" };
     githubInstallationId: string;
     githubRepoPrivate: boolean;
   },
@@ -124,16 +126,28 @@ export async function createAppForUser(
     throw new Error("App name must be 64 characters or fewer");
   }
 
-  return await ctx.db.insert("apps", {
+  const baseFields = {
     ownerId: userId,
     name: trimmedName,
-    vercelTeamId: options.vercelTeamId,
     githubInstallationId: options.githubInstallationId,
     githubRepoPrivate: options.githubRepoPrivate,
-    githubRepoCreationMethod: "template",
-    status: "creating",
-    workflowKind: "create",
+    githubRepoCreationMethod: "template" as const,
+    status: "creating" as const,
+    workflowKind: "create" as const,
     createdAt: Date.now(),
+  };
+
+  if (options.deploymentTarget.type === "vercel") {
+    return await ctx.db.insert("apps", {
+      ...baseFields,
+      deploymentTarget: "vercel",
+      vercelTeamId: options.deploymentTarget.vercelTeamId,
+    });
+  }
+
+  return await ctx.db.insert("apps", {
+    ...baseFields,
+    deploymentTarget: "github-pages",
   });
 }
 

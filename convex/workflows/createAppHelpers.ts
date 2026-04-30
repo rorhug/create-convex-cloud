@@ -103,12 +103,7 @@ export const createApp = workflow.define({
   },
   handler: async (step, args): Promise<void> => {
     try {
-      // Initialize step records
-      await step.runMutation(internal.workflows.createAppHelpers.initSteps, {
-        appId: args.appId,
-        steps: ["github", "convex", "vercel"],
-      });
-
+      // Read the app first so we know which deployment-target steps to run.
       const app = await step.runQuery(internal.client.apps.internalGetApp, {
         id: args.appId,
       });
@@ -116,7 +111,21 @@ export const createApp = workflow.define({
         throw new Error("App not found");
       }
 
-      // Steps 1 & 2 in parallel: GitHub repo + Convex project
+      const isVercelTarget = app.deploymentTarget === "vercel";
+
+      // Only schedule the Vercel step record when actually deploying to Vercel.
+      // GitHub Pages deployment is not yet implemented end-to-end (see TODO
+      // below); for now the github-pages workflow stops after Convex is set up.
+      const stepsToInit: StepService[] = isVercelTarget
+        ? ["github", "convex", "vercel"]
+        : ["github", "convex"];
+
+      await step.runMutation(internal.workflows.createAppHelpers.initSteps, {
+        appId: args.appId,
+        steps: stepsToInit,
+      });
+
+      // Steps 1 & 2 in parallel: GitHub repo + Convex project (always run).
       const [githubResult, convexResult] = await Promise.all([
         step.runAction(
           internal.workflows.stepGithubRepoTemplate.stepCreateGithubRepoTemplate,
@@ -130,31 +139,44 @@ export const createApp = workflow.define({
         ),
       ]);
 
-      // Step 3: Create Vercel project (depends on both previous steps)
-      const vercelResult = await step.runAction(
-        internal.workflows.stepVercel.stepCreateVercelProject,
-        {
-          appId: args.appId,
-          repoFullName: githubResult.repoFullName,
-          prodDeployKey: convexResult.prodDeployKey,
-          previewDeployKey: convexResult.previewDeployKey,
-        },
-        { name: "createVercelProject" },
-      );
-
-      // Step 4: Wait for deployment to finish
-      if (vercelResult.deploymentId) {
-        await step.runAction(
-          internal.workflows.stepVercel.stepWaitForDeployment,
+      if (isVercelTarget) {
+        // Step 3: Create Vercel project (depends on both previous steps).
+        const vercelResult = await step.runAction(
+          internal.workflows.stepVercel.stepCreateVercelProject,
           {
             appId: args.appId,
-            deploymentId: vercelResult.deploymentId,
-            vercelToken: vercelResult.vercelToken,
-            teamId: vercelResult.teamId,
-            projectId: vercelResult.projectId,
+            repoFullName: githubResult.repoFullName,
+            prodDeployKey: convexResult.prodDeployKey,
+            previewDeployKey: convexResult.previewDeployKey,
           },
-          { name: "waitForDeployment" },
+          { name: "createVercelProject" },
         );
+
+        // Step 4: Wait for deployment to finish.
+        if (vercelResult.deploymentId) {
+          await step.runAction(
+            internal.workflows.stepVercel.stepWaitForDeployment,
+            {
+              appId: args.appId,
+              deploymentId: vercelResult.deploymentId,
+              vercelToken: vercelResult.vercelToken,
+              teamId: vercelResult.teamId,
+              projectId: vercelResult.projectId,
+            },
+            { name: "waitForDeployment" },
+          );
+        }
+      } else {
+        // TODO(github-pages): build a stepGithubPages action that
+        //   1. creates a `gh-pages` branch (or configures Pages from `main`),
+        //   2. pushes a built artifact (or sets up a workflow file that does),
+        //   3. enables Pages via `PUT /repos/{owner}/{repo}/pages` REST call,
+        //   4. waits for the first Pages deployment to be live.
+        // Until that step exists, github-pages apps are marked ready after
+        // github + convex with no actual public deployment.
+        // Reference githubResult/convexResult so the lint stays clean.
+        void githubResult;
+        void convexResult;
       }
 
       await step.runMutation(internal.client.apps.internalUpdateAppStatus, {

@@ -27,8 +27,10 @@ export const listApps = query({
 
 const lastAppSelectionsValidator = v.union(
   v.object({
+    deploymentTarget: v.union(v.literal("vercel"), v.literal("github-pages")),
     githubInstallationId: v.string(),
-    vercelTeamId: v.string(),
+    /** Present only when the last app deployed via Vercel. */
+    vercelTeamId: v.union(v.string(), v.null()),
     githubRepoVisibility: v.union(v.literal("public"), v.literal("private")),
   }),
   v.null(),
@@ -43,31 +45,37 @@ export const getLastAppSelections = query({
     const latest = apps[0];
     if (!latest) return null;
     return {
+      deploymentTarget: (latest.deploymentTarget ?? "vercel") as "vercel" | "github-pages",
       githubInstallationId: latest.githubInstallationId,
-      vercelTeamId: latest.vercelTeamId,
+      vercelTeamId: latest.vercelTeamId ?? null,
       githubRepoVisibility: (latest.githubRepoPrivate ? "private" : "public") as "public" | "private",
     };
   },
 });
 
+const deploymentTargetArgValidator = v.union(
+  v.object({ type: v.literal("vercel"), vercelTeamId: v.string() }),
+  v.object({ type: v.literal("github-pages") }),
+);
+
 export const createApp = mutation({
   args: {
     name: v.string(),
-    vercelTeamId: v.string(),
     githubInstallationId: v.string(),
+    deploymentTarget: deploymentTargetArgValidator,
     githubRepoVisibility: v.union(v.literal("public"), v.literal("private")),
   },
   returns: v.id("apps"),
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
-    const { githubInstallationId, vercelTeamId } = await validateCreateAppSelections(ctx, user._id, {
+    const { githubInstallationId, deploymentTarget } = await validateCreateAppSelections(ctx, user._id, {
       githubInstallationId: args.githubInstallationId,
-      vercelTeamId: args.vercelTeamId,
+      deploymentTarget: args.deploymentTarget,
     });
 
     const appId = await createAppForUser(ctx, user._id, args.name, {
-      vercelTeamId,
       githubInstallationId,
+      deploymentTarget,
       githubRepoPrivate: args.githubRepoVisibility === "private",
     });
 
