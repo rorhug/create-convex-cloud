@@ -43,10 +43,10 @@ export const refreshVercelTeams = action({
   }),
   handler: async (ctx) => {
     const userId = await requireCurrentUserId(ctx);
-    const existing = await ctx.runQuery(internal.lib.providers.vercel.data.getVercelTokenForUser, { userId });
-    if (!existing) {
-      throw new Error("Save a Vercel token first");
-    }
+    const existing = await ctx.runQuery(internal.lib.providers.vercel.data.requireVercelTokenForUser, {
+      userId,
+      allowInvalid: true,
+    });
 
     const teams = await fetchVercelTeamsForToken(existing.token, ctx);
     await ctx.runMutation(internal.lib.providers.vercel.data.upsertVercelToken, {

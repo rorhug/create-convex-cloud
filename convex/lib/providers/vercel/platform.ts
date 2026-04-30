@@ -239,10 +239,7 @@ export async function fetchVercelTeamsForToken(token: string, ctx?: TokenInvalid
       // @ts-expect-error okm
       delete team.billing;
     }
-    console.log(
-      "[refreshVercelTeams] API /v2/teams full list (includes personal + org teams):",
-      JSON.stringify(page.teams, null, 2),
-    );
+    console.log("[refreshVercelTeams] API /v2/teams full list (includes personal + org teams)");
     for (const team of page.teams) {
       teams.push({
         id: team.id,

@@ -49,6 +49,9 @@ export function VercelSetupStep({
   onToggleReplaceToken: () => void;
 }) {
   const showTokenEntryFields = vercel === null || !vercel.isValid || showReplaceToken;
+  const showRefreshButton = vercel !== null;
+  const refreshLabel = vercel?.isValid === false ? "Try saved token again" : "Refresh Vercel";
+  const replaceTokenLabel = showReplaceToken ? "Keep existing token" : "Replace token";
 
   return (
     <StepCard step="2" provider={ProviderLogoName.Vercel} complete={complete}>
@@ -61,17 +64,32 @@ export function VercelSetupStep({
 
         {issue ? <Banner tone="error">{issue}</Banner> : null}
 
+        {showRefreshButton ? (
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" className="text-foreground" disabled={busy !== null} onClick={onRefresh}>
+              {busy === "vercel-refresh" ? "Refreshing..." : refreshLabel}
+            </Button>
+            {vercel?.isValid ? (
+              <Button variant="outline" className="text-foreground" onClick={onToggleReplaceToken}>
+                {replaceTokenLabel}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
         {showTokenEntryFields ? (
           <div className={vercel ? "space-y-4 border border-border bg-background p-4" : "space-y-4"}>
             {vercel && !vercel.isValid ? (
-              <p>Paste a replacement token and save it to restore app creation and Vercel refreshes.</p>
+              <p>
+                The saved token may still work. Try the saved token again, or paste a replacement token to restore app
+                creation and Vercel refreshes.
+              </p>
             ) : null}
             <TokenEntryFields
               vercelToken={vercelToken}
               busy={busy}
               onTokenChange={onTokenChange}
               onSave={onSave}
-              onKeepExisting={vercel?.isValid ? onToggleReplaceToken : undefined}
             />
           </div>
         ) : null}
@@ -87,19 +105,6 @@ export function VercelSetupStep({
                 </div>
               ))}
             </div>
-          </div>
-        ) : null}
-
-        {vercel && !showTokenEntryFields ? (
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline" className="text-foreground" disabled={busy !== null} onClick={onRefresh}>
-              {busy === "vercel-refresh" ? "Refreshing..." : "Refresh Vercel"}
-            </Button>
-            {vercel.isValid ? (
-              <Button variant="outline" className="text-foreground" onClick={onToggleReplaceToken}>
-                Replace token
-              </Button>
-            ) : null}
           </div>
         ) : null}
 
@@ -168,13 +173,11 @@ function TokenEntryFields({
   busy,
   onTokenChange,
   onSave,
-  onKeepExisting,
 }: {
   vercelToken: string;
   busy: SetupBusyState;
   onTokenChange: (value: string) => void;
   onSave: () => void;
-  onKeepExisting?: () => void;
 }) {
   return (
     <>
@@ -218,11 +221,6 @@ function TokenEntryFields({
         <Button disabled={busy !== null || vercelToken.trim().length === 0} onClick={onSave}>
           {busy === "vercel-save" ? "Saving..." : "Save token"}
         </Button>
-        {onKeepExisting ? (
-          <Button variant="outline" className="text-foreground" onClick={onKeepExisting}>
-            Keep existing token
-          </Button>
-        ) : null}
       </div>
     </>
   );
