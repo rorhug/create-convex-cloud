@@ -18,6 +18,8 @@ export function DeploymentTargetStep({
   busy,
   vercelIssue,
   githubInstallations,
+                         githubInstallUrl,
+  isGithubAppInstalled,
   onVercelTokenChange,
   onVercelRefresh,
   onVercelSave,
@@ -35,14 +37,14 @@ export function DeploymentTargetStep({
   busy: SetupBusyState;
   vercelIssue: string | null;
   githubInstallations: SetupGithubInstallation[];
+  githubInstallUrl: string;
+  isGithubAppInstalled: boolean;
   onVercelTokenChange: (value: string) => void;
   onVercelRefresh: () => void;
   onVercelSave: () => void;
   onToggleReplaceVercelToken: () => void;
 }) {
   const [provider, setProvider] = useState<DeploymentProvider>("vercel");
-  const [githubPagesToken, setGithubPagesToken] = useState("");
-  const [githubPagesUsername, setGithubPagesUsername] = useState("");
 
   return (
     <StepCard
@@ -56,17 +58,17 @@ export function DeploymentTargetStep({
         onValueChange={(value) => setProvider(value as DeploymentProvider)}
         className="mt-4"
       >
-        <TabsList variant="line" className="w-full justify-start gap-6 border-b border-border">
+        <TabsList variant="line" className="w-full justify-start gap-2 border-b border-border">
           <TabsTrigger
             value="vercel"
-            className="text-base after:!bg-primary data-active:text-foreground"
+            className="!flex-none w-fit cursor-pointer px-3 text-base after:!bg-primary data-active:text-foreground"
           >
             <TriangleIcon weight="fill" className="size-4" />
             Vercel
           </TabsTrigger>
           <TabsTrigger
             value="github-pages"
-            className="text-base after:!bg-primary data-active:text-foreground"
+            className="!flex-none w-fit cursor-pointer px-3 text-base after:!bg-primary data-active:text-foreground"
           >
             <GithubLogoIcon weight="fill" className="size-4" />
             GitHub Pages
@@ -90,10 +92,8 @@ export function DeploymentTargetStep({
 
         <TabsContent value="github-pages" className="pt-6">
           <GitHubPagesDeploymentTab
-            token={githubPagesToken}
-            username={githubPagesUsername}
-            onTokenChange={setGithubPagesToken}
-            onUsernameChange={setGithubPagesUsername}
+            isGithubAppInstalled={isGithubAppInstalled}
+            installUrl={githubInstallUrl}
           />
         </TabsContent>
       </Tabs>
