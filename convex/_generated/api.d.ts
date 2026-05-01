@@ -39,6 +39,7 @@ import type * as workflows_deleteApp from "../workflows/deleteApp.js";
 import type * as workflows_githubAccessTokenAction from "../workflows/githubAccessTokenAction.js";
 import type * as workflows_retryCreateApp from "../workflows/retryCreateApp.js";
 import type * as workflows_stepConvex from "../workflows/stepConvex.js";
+import type * as workflows_stepGithubPages from "../workflows/stepGithubPages.js";
 import type * as workflows_stepGithubRepoClone from "../workflows/stepGithubRepoClone.js";
 import type * as workflows_stepGithubRepoTemplate from "../workflows/stepGithubRepoTemplate.js";
 import type * as workflows_stepTypes from "../workflows/stepTypes.js";
@@ -84,6 +85,7 @@ declare const fullApi: ApiFromModules<{
   "workflows/githubAccessTokenAction": typeof workflows_githubAccessTokenAction;
   "workflows/retryCreateApp": typeof workflows_retryCreateApp;
   "workflows/stepConvex": typeof workflows_stepConvex;
+  "workflows/stepGithubPages": typeof workflows_stepGithubPages;
   "workflows/stepGithubRepoClone": typeof workflows_stepGithubRepoClone;
   "workflows/stepGithubRepoTemplate": typeof workflows_stepGithubRepoTemplate;
   "workflows/stepTypes": typeof workflows_stepTypes;

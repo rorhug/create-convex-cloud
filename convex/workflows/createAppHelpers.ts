@@ -63,7 +63,7 @@ export const updateStep = internalMutation({
   },
 });
 
-const STEP_ORDER: StepService[] = ["github", "convex", "vercel"];
+const STEP_ORDER: StepService[] = ["github", "convex", "vercel", "github-pages"];
 
 /** Reset this step and all following steps to pending (for retry from a failed step). */
 export const resetStepsFrom = internalMutation({
@@ -113,12 +113,12 @@ export const createApp = workflow.define({
 
       const isVercelTarget = app.deploymentTarget === "vercel";
 
-      // Only schedule the Vercel step record when actually deploying to Vercel.
-      // GitHub Pages deployment is not yet implemented end-to-end (see TODO
-      // below); for now the github-pages workflow stops after Convex is set up.
+      // Each target gets its own third step: Vercel deployment for Vercel
+      // apps, or the GitHub Pages workflow setup (commit deploy.yml + secret +
+      // enable Pages) for github-pages apps.
       const stepsToInit: StepService[] = isVercelTarget
         ? ["github", "convex", "vercel"]
-        : ["github", "convex"];
+        : ["github", "convex", "github-pages"];
 
       await step.runMutation(internal.workflows.createAppHelpers.initSteps, {
         appId: args.appId,
@@ -167,16 +167,19 @@ export const createApp = workflow.define({
           );
         }
       } else {
-        // TODO(github-pages): build a stepGithubPages action that
-        //   1. creates a `gh-pages` branch (or configures Pages from `main`),
-        //   2. pushes a built artifact (or sets up a workflow file that does),
-        //   3. enables Pages via `PUT /repos/{owner}/{repo}/pages` REST call,
-        //   4. waits for the first Pages deployment to be live.
-        // Until that step exists, github-pages apps are marked ready after
-        // github + convex with no actual public deployment.
-        // Reference githubResult/convexResult so the lint stays clean.
-        void githubResult;
-        void convexResult;
+        // GitHub Pages target: commit deploy.yml to the repo, set
+        // CONVEX_DEPLOY_KEY as an Actions secret, and turn on Pages with the
+        // workflow build type. The first GitHub Actions run (triggered by
+        // the workflow's commit-on-main) builds + deploys the static site.
+        await step.runAction(
+          internal.workflows.stepGithubPages.stepCreateGithubPagesDeployment,
+          {
+            appId: args.appId,
+            repoFullName: githubResult.repoFullName,
+            prodDeployKey: convexResult.prodDeployKey,
+          },
+          { name: "createGithubPagesDeployment" },
+        );
       }
 
       await step.runMutation(internal.client.apps.internalUpdateAppStatus, {

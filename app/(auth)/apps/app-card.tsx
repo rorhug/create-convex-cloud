@@ -39,6 +39,7 @@ const STEP_LABELS: Record<string, string> = {
   github: "GitHub repo",
   convex: "Convex project",
   vercel: "Vercel deployment",
+  "github-pages": "GitHub Pages deployment",
 };
 
 type AppSummary = {

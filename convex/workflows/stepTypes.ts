@@ -8,6 +8,11 @@ export const stepStatusValidator = appStatusValidator;
 
 export type StepStatus = AppStatus;
 
-export const stepServiceValidator = v.union(v.literal("github"), v.literal("convex"), v.literal("vercel"));
+export const stepServiceValidator = v.union(
+  v.literal("github"),
+  v.literal("convex"),
+  v.literal("vercel"),
+  v.literal("github-pages"),
+);
 
 export type StepService = Infer<typeof stepServiceValidator>;
