@@ -59,8 +59,13 @@ ensure_site_url_env() {
 
   if [ "$VERCEL_TARGET_ENV" = "preview" ]; then
     NEW_SITE_URL="https://$VERCEL_BRANCH_URL"
-  else
+  elif [ -n "$VERCEL_PROJECT_PRODUCTION_URL" ]; then
     NEW_SITE_URL="https://$VERCEL_PROJECT_PRODUCTION_URL"
+  elif [ -n "$SITE_URL" ]; then
+    NEW_SITE_URL="$SITE_URL"
+  else
+    echo "Warning: No site URL found. Skipping SITE_URL setup."
+    return 0
   fi
 
   if [ "$CURRENT_SITE_URL" != "$NEW_SITE_URL" ]; then
