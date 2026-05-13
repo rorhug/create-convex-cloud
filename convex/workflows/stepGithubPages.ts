@@ -11,17 +11,13 @@ const GITHUB_API_VERSION = "2022-11-28";
 
 /**
  * GitHub Actions workflow that builds the Next.js static export and deploys
- * it to GitHub Pages. We wrap `pnpm run build` with `npx convex deploy` so
+ * it to GitHub Pages. We wrap `npm run build` with `npx convex deploy` so
  * the Convex functions are pushed and `NEXT_PUBLIC_CONVEX_URL` is injected
  * into the build environment, mirroring the Vercel `buildCommand` recipe.
  *
  * Requirements on the generated repo:
  *   - Pages source set to `workflow` (this step does it via the API).
  *   - `CONVEX_DEPLOY_KEY` set as a repo Actions secret (this step does it).
- *   - The Next.js app should be configured for static export
- *     (`output: "export"` in next.config + `basePath` from PAGES_BASE_PATH).
- *     The current upstream template targets Vercel, so users may need to
- *     adjust their next.config.js for static export to actually succeed.
  */
 const DEPLOY_WORKFLOW_YAML = `name: Deploy Next.js site to Pages
 
@@ -53,38 +49,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          version: 10
-          run_install: false
-
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install
+          node-version: "24"
+          cache: npm
 
       - name: Setup Pages
         id: setup_pages
         uses: actions/configure-pages@v5
+        with:
+          static_site_generator: next
 
-      - name: Restore cache
+      - name: Restore Next.js cache
         uses: actions/cache@v4
         with:
           path: |
             .next/cache
           # Generate a new cache whenever packages or source files change.
-          key: \${{ runner.os }}-nextjs-\${{ hashFiles('**/pnpm-lock.yaml') }}-\${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+          key: \${{ runner.os }}-nextjs-\${{ hashFiles('**/package-lock.json') }}-\${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
           # If source files changed but packages didn't, rebuild from a prior cache.
           restore-keys: |
-            \${{ runner.os }}-nextjs-\${{ hashFiles('**/pnpm-lock.yaml') }}-
+            \${{ runner.os }}-nextjs-\${{ hashFiles('**/package-lock.json') }}-
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build with Next.js (and deploy Convex)
-        run: npx convex deploy --cmd 'pnpm run build' --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL
+        run: npx convex deploy --cmd 'npm run build' --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL
         env:
           CONVEX_DEPLOY_KEY: \${{ secrets.CONVEX_DEPLOY_KEY }}
           PAGES_BASE_PATH: \${{ steps.setup_pages.outputs.base_path }}
@@ -103,7 +95,7 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 `;
 
 function httpStatusFromUnknown(error: unknown): number | undefined {
@@ -171,10 +163,7 @@ async function setActionsSecret({
   secretValue: string;
 }): Promise<void> {
   // 1. Fetch the repo's public key for Actions secrets.
-  const publicKeyRes = await octokit.request(
-    "GET /repos/{owner}/{repo}/actions/secrets/public-key",
-    { owner, repo },
-  );
+  const publicKeyRes = await octokit.request("GET /repos/{owner}/{repo}/actions/secrets/public-key", { owner, repo });
   const { key: publicKeyBase64, key_id: keyId } = publicKeyRes.data;
 
   // 2. Encrypt the secret with libsodium's sealed box (X25519 + XSalsa20-Poly1305),
@@ -245,13 +234,7 @@ export const stepCreateGithubPagesDeployment = internalAction({
     pagesUrl: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args): Promise<{ pagesUrl: string | null }> => {
-    await setStep(
-      ctx,
-      args.appId,
-      "github-pages",
-      "creating",
-      "Configuring GitHub Pages deployment...",
-    );
+    await setStep(ctx, args.appId, "github-pages", "creating", "Configuring GitHub Pages deployment...");
 
     const app = await ctx.runQuery(internal.client.apps.internalGetApp, { id: args.appId });
     if (!app) throw new Error("App not found");
@@ -276,13 +259,7 @@ export const stepCreateGithubPagesDeployment = internalAction({
     });
 
     try {
-      await setStep(
-        ctx,
-        args.appId,
-        "github-pages",
-        "creating",
-        "Setting CONVEX_DEPLOY_KEY repo secret...",
-      );
+      await setStep(ctx, args.appId, "github-pages", "creating", "Setting CONVEX_DEPLOY_KEY repo secret...");
       await setActionsSecret({
         octokit,
         owner,
@@ -291,23 +268,11 @@ export const stepCreateGithubPagesDeployment = internalAction({
         secretValue: args.prodDeployKey,
       });
 
-      await setStep(
-        ctx,
-        args.appId,
-        "github-pages",
-        "creating",
-        "Adding .github/workflows/deploy.yml to the repo...",
-      );
+      await setStep(ctx, args.appId, "github-pages", "creating", "Adding .github/workflows/deploy.yml to the repo...");
       // The repo was created from a template using the default branch (main).
       await commitDeployWorkflow({ octokit, owner, repo, branch: "main" });
 
-      await setStep(
-        ctx,
-        args.appId,
-        "github-pages",
-        "creating",
-        "Enabling GitHub Pages (source: GitHub Actions)...",
-      );
+      await setStep(ctx, args.appId, "github-pages", "creating", "Enabling GitHub Pages (source: GitHub Actions)...");
       await enablePagesWithWorkflowSource({ octokit, owner, repo });
 
       // Predict the Pages URL. The actual URL is also returned by GET /repos/{owner}/{repo}/pages

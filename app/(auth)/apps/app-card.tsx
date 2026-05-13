@@ -157,16 +157,20 @@ function EnvironmentVariablesSection({ appId }: { appId: Id<"apps"> }) {
             </a>
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground leading-relaxed mt-3">
-          <strong>Frontend:</strong> Add frontend environment variables on Vercel (e.g NEXT_PUBLIC_ABC)
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm" className="h-7 px-2 text-xs">
-            <a href={`${links.vercel}/settings/environment-variables`} target="_blank" rel="noopener noreferrer">
-              Vercel env vars <ArrowSquareOutIcon className="inline" />
-            </a>
-          </Button>
-        </div>
+        {links.frontendEnvVars ? (
+          <>
+            <p className="text-xs text-muted-foreground leading-relaxed mt-3">
+              <strong>Frontend:</strong> Add frontend environment variables (e.g NEXT_PUBLIC_ABC)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" size="sm" className="h-7 px-2 text-xs">
+                <a href={links.frontendEnvVars.url} target="_blank" rel="noopener noreferrer">
+                  {links.frontendEnvVars.label} <ArrowSquareOutIcon className="inline" />
+                </a>
+              </Button>
+            </div>
+          </>
+        ) : null}
       </CollapsibleContent>
     </Collapsible>
   );

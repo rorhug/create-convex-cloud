@@ -23,7 +23,6 @@ export type SetupBusyState =
   | "github-refresh"
   | "vercel-refresh"
   | "vercel-save"
-  | "github-pages-confirm"
   | "convex-refresh"
   | "convex"
   | null;
@@ -46,9 +45,6 @@ export type SetupViewerState = {
     tokenPreview: string;
     isValid: boolean;
     issue: string | null;
-  } | null;
-  githubPages: {
-    confirmedAt: number;
   } | null;
   convex: {
     teamId: string;

@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useAction, useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { Banner } from "./components/banner";
 import { ConvexSetupStep } from "./components/convex-setup-step";
-import { DeploymentTargetStep } from "./components/deployment-target-step";
 import { GitHubSetupStep } from "./components/github-setup-step";
 import type { SetupBusyState, SetupViewerState } from "./components/types";
+import { VercelSetupStep } from "./components/vercel-setup-step";
 import { ArrowRightIcon } from "@phosphor-icons/react";
 
 export function Content({ viewer }: { viewer: SetupViewerState }) {
@@ -19,9 +19,6 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
   const refreshVercelTeams = useAction(api.client.providers.vercel.clientActions.refreshVercelTeams);
   const saveVercelToken = useAction(api.client.providers.vercel.clientActions.saveVercelToken);
   const refreshConvexToken = useAction(api.client.providers.convex.clientActions.refreshConvexToken);
-  const confirmGithubPagesDeployment = useMutation(
-    api.client.providers.githubPages.clientActions.confirmGithubPagesDeployment,
-  );
 
   const [vercelToken, setVercelToken] = useState("");
   const [showReplaceVercelToken, setShowReplaceVercelToken] = useState(false);
@@ -30,7 +27,6 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
   const hasHandledRefreshGithubInstallationsParam = useRef(false);
   const isSetupComplete = viewer.onboarding.canAccessApps;
   const isGithubAppInstalled = viewer.onboarding.hasGitHubConnection && !viewer.github.needsAttention;
-  const isGithubPagesConfirmed = viewer.githubPages !== null;
 
   useEffect(() => {
     if (hasHandledRefreshGithubInstallationsParam.current) {
@@ -98,22 +94,6 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
     }
   }
 
-  async function handleConfirmGithubPagesDeployment() {
-    setBusy("github-pages-confirm");
-    setError(null);
-    try {
-      await confirmGithubPagesDeployment({});
-    } catch (confirmError) {
-      setError(
-        confirmError instanceof Error
-          ? confirmError.message
-          : "Could not confirm GitHub Pages deployment",
-      );
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function handleRefreshConvexToken() {
     setBusy("convex-refresh");
     setError(null);
@@ -150,35 +130,6 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
         }}
       />
 
-      <DeploymentTargetStep
-        complete={viewer.vercel?.isValid === true || isGithubPagesConfirmed}
-        vercel={viewer.vercel}
-        vercelToken={vercelToken}
-        showReplaceVercelToken={showReplaceVercelToken}
-        busy={busy}
-        vercelIssue={viewer.vercel?.issue ?? null}
-        githubInstallations={viewer.github.installations}
-        githubInstallUrl={viewer.github.installUrl}
-        isGithubAppInstalled={isGithubAppInstalled}
-        isGithubPagesConfirmed={isGithubPagesConfirmed}
-        onConfirmGithubPages={() => {
-          void handleConfirmGithubPagesDeployment();
-        }}
-        onVercelTokenChange={(value) => {
-          setVercelToken(value);
-          setError(null);
-        }}
-        onVercelRefresh={() => {
-          void handleRefreshVercelTeams();
-        }}
-        onVercelSave={() => {
-          void handleSaveVercelToken();
-        }}
-        onToggleReplaceVercelToken={() => {
-          setShowReplaceVercelToken((value) => !value);
-        }}
-      />
-
       <ConvexSetupStep
         complete={viewer.convex?.isValid === true}
         convex={viewer.convex}
@@ -202,6 +153,29 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
               setBusy(null);
             }
           })();
+        }}
+      />
+
+      <VercelSetupStep
+        complete={viewer.vercel?.isValid === true}
+        vercel={viewer.vercel}
+        vercelToken={vercelToken}
+        showReplaceToken={showReplaceVercelToken}
+        busy={busy}
+        issue={viewer.vercel?.issue ?? null}
+        githubInstallations={viewer.github.installations}
+        onTokenChange={(value) => {
+          setVercelToken(value);
+          setError(null);
+        }}
+        onRefresh={() => {
+          void handleRefreshVercelTeams();
+        }}
+        onSave={() => {
+          void handleSaveVercelToken();
+        }}
+        onToggleReplaceToken={() => {
+          setShowReplaceVercelToken((value) => !value);
         }}
       />
 

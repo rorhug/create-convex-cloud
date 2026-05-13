@@ -42,7 +42,6 @@ function AppsManager() {
   const createApp = useMutation(api.client.apps.createApp);
   const githubInstallations: AppsGithubInstallation[] = viewer?.github.installations ?? [];
   const vercelTeams: AppsVercelTeam[] = viewer?.vercel?.teams ?? [];
-  const isGithubPagesConfirmed = viewer?.githubPages != null;
   const canAccessApps = viewer?.onboarding.canAccessApps ?? false;
   const requiredActions = viewer?.onboarding.requiredActions ?? [];
 
@@ -68,11 +67,9 @@ function AppsManager() {
                 lastAppSelections,
                 githubInstallations,
                 vercelTeams,
-                isGithubPagesConfirmed,
               )}
               githubInstallations={githubInstallations}
               vercelTeams={vercelTeams}
-              isGithubPagesConfirmed={isGithubPagesConfirmed}
               onSubmit={async (values) => {
                 await createApp({
                   name: values.name,
@@ -122,10 +119,8 @@ function buildDefaultValues(
     | null,
   githubInstallations: AppsGithubInstallation[],
   vercelTeams: AppsVercelTeam[],
-  isGithubPagesConfirmed: boolean,
 ): CreateAppFormDefaults {
   // Default deployment target: prefer the last app's choice if still available;
-  // fall back to GitHub Pages when the user has confirmed it on /setup;
   // otherwise leave blank for the user to pick.
   let deploymentTargetId = "";
   if (lastAppSelections?.deploymentTarget === "github-pages") {
@@ -136,8 +131,6 @@ function buildDefaultValues(
     vercelTeams.some((t) => t.id === lastAppSelections.vercelTeamId)
   ) {
     deploymentTargetId = lastAppSelections.vercelTeamId;
-  } else if (isGithubPagesConfirmed) {
-    deploymentTargetId = GITHUB_PAGES_VALUE;
   }
 
   if (!lastAppSelections) {

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +8,6 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -82,14 +80,11 @@ export function CreateAppForm({
   defaultValues,
   githubInstallations,
   vercelTeams,
-  isGithubPagesConfirmed,
   onSubmit,
 }: {
   defaultValues: CreateAppFormDefaults;
   githubInstallations: AppsGithubInstallation[];
   vercelTeams: AppsVercelTeam[];
-  /** Whether the user clicked "Confirm Deployment to GitHub Pages" on /setup. */
-  isGithubPagesConfirmed: boolean;
   onSubmit: (values: CreateAppFormValues) => Promise<void>;
 }) {
   const router = useRouter();
@@ -135,8 +130,6 @@ export function CreateAppForm({
   const isSubmitting = form.formState.isSubmitting;
   const hasGithubInstallations = githubInstallations.length > 0;
   const hasVercelTeams = vercelTeams.length > 0;
-  // At least one deployment target must be available to submit.
-  const hasAnyDeploymentTarget = hasVercelTeams || isGithubPagesConfirmed;
 
   return (
     <section className="border border-border bg-card p-6">
@@ -284,9 +277,7 @@ export function CreateAppForm({
                       className="w-full"
                     >
                       <SelectValue
-                        placeholder={
-                          hasAnyDeploymentTarget ? "Select a target…" : "No targets available"
-                        }
+                        placeholder="Select a target…"
                       />
                     </SelectTrigger>
                     <SelectContent>
@@ -322,27 +313,10 @@ export function CreateAppForm({
             />
           </div>
 
-          {!hasGithubInstallations ? (
-            <FieldDescription className="border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm">
-              No GitHub App installations on file yet. Go to setup to add your personal account
-              or an organization.
-            </FieldDescription>
-          ) : null}
-
-          {!hasVercelTeams && !isGithubPagesConfirmed ? (
-            <FieldDescription className="border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm">
-              No deployment targets on file. Either{" "}
-              <Link href="/setup" className="underline hover:text-foreground">
-                save a Vercel token or confirm GitHub Pages on the setup page
-              </Link>
-              .
-            </FieldDescription>
-          ) : null}
-
           <Button
             type="submit"
             className="w-full"
-            disabled={isSubmitting || !hasGithubInstallations || !hasAnyDeploymentTarget}
+            disabled={isSubmitting || !hasGithubInstallations}
           >
             {isSubmitting ? "Creating..." : "Create app"}
           </Button>

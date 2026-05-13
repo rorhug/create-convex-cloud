@@ -122,9 +122,7 @@ export async function validateCreateAppSelections(
   }
 
   // github-pages: nothing extra to check beyond the GitHub installation above.
-  // (We deliberately do NOT require a `githubPagesPreferences` row — picking
-  // GitHub Pages here is itself an explicit choice. The setup-page confirmation
-  // is just a hint for the default selection.)
+  // Picking GitHub Pages here is the explicit per-app deployment choice.
   return {
     githubInstallationId,
     deploymentTarget: { type: "github-pages" },

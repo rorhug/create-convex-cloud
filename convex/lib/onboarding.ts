@@ -18,12 +18,6 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
   const hasVercelConnection = vercelToken !== null;
   const vercelIssue = getVercelTokenIssue(vercelToken);
 
-  const githubPagesPreference = await ctx.db
-    .query("githubPagesPreferences")
-    .withIndex("by_user", (q) => q.eq("userId", user._id))
-    .first();
-  const hasConfirmedGithubPages = githubPagesPreference !== null;
-
   const convexAccount = await findConvexAuthAccountForUser(ctx, user._id);
   const convexToken = convexAccount
     ? await ctx.db
@@ -36,10 +30,6 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
     convexToken?.tokenStatus === "invalid"
       ? "The saved Convex token is no longer valid. Reconnect Convex on the setup page."
       : null;
-  
-  const hasDeploymentTarget =
-    (hasVercelConnection && vercelIssue === null) ||
-    (hasGitHubConnection && githubIssue === null && hasConfirmedGithubPages);
 
   const requiredActions: string[] = [];
   if (!hasGitHubConnection) {
@@ -48,9 +38,6 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
     );
   } else if (githubIssue) {
     requiredActions.push(githubIssue);
-  }
-  if (vercelIssue) {
-    requiredActions.push(vercelIssue);
   }
   if (!hasConvexToken) {
     requiredActions.push("Connect a Convex team on the setup page.");
@@ -79,9 +66,6 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
           issue: vercelIssue,
         }
       : null,
-    githubPages: hasConfirmedGithubPages
-      ? { confirmedAt: githubPagesPreference.confirmedAt }
-      : null,
     convex: hasConvexToken
       ? {
           teamId: convexToken.teamId,
@@ -99,7 +83,6 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
       canAccessApps:
         hasGitHubConnection &&
         githubIssue === null &&
-        hasDeploymentTarget &&
         hasConvexToken &&
         convexIssue === null,
     },
