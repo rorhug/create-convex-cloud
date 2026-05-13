@@ -54,7 +54,7 @@ export function VercelSetupStep({
   const replaceTokenLabel = showReplaceToken ? "Keep existing token" : "Replace token";
 
   return (
-    <StepCard step="2" provider={ProviderLogoName.Vercel} complete={complete}>
+    <StepCard step="3" provider={ProviderLogoName.Vercel} complete={complete} optional>
       <div className="space-y-4 text-sm text-muted-foreground">
         {vercel ? (
           <p>

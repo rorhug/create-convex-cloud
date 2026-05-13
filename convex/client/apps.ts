@@ -27,8 +27,10 @@ export const listApps = query({
 
 const lastAppSelectionsValidator = v.union(
   v.object({
+    deploymentTarget: v.union(v.literal("vercel"), v.literal("github-pages")),
     githubInstallationId: v.string(),
-    vercelTeamId: v.string(),
+    /** Present only when the last app deployed via Vercel. */
+    vercelTeamId: v.union(v.string(), v.null()),
     githubRepoVisibility: v.union(v.literal("public"), v.literal("private")),
   }),
   v.null(),
@@ -43,31 +45,37 @@ export const getLastAppSelections = query({
     const latest = apps[0];
     if (!latest) return null;
     return {
+      deploymentTarget: (latest.deploymentTarget ?? "vercel") as "vercel" | "github-pages",
       githubInstallationId: latest.githubInstallationId,
-      vercelTeamId: latest.vercelTeamId,
+      vercelTeamId: latest.vercelTeamId ?? null,
       githubRepoVisibility: (latest.githubRepoPrivate ? "private" : "public") as "public" | "private",
     };
   },
 });
 
+const deploymentTargetArgValidator = v.union(
+  v.object({ type: v.literal("vercel"), vercelTeamId: v.string() }),
+  v.object({ type: v.literal("github-pages") }),
+);
+
 export const createApp = mutation({
   args: {
     name: v.string(),
-    vercelTeamId: v.string(),
     githubInstallationId: v.string(),
+    deploymentTarget: deploymentTargetArgValidator,
     githubRepoVisibility: v.union(v.literal("public"), v.literal("private")),
   },
   returns: v.id("apps"),
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
-    const { githubInstallationId, vercelTeamId } = await validateCreateAppSelections(ctx, user._id, {
+    const { githubInstallationId, deploymentTarget } = await validateCreateAppSelections(ctx, user._id, {
       githubInstallationId: args.githubInstallationId,
-      vercelTeamId: args.vercelTeamId,
+      deploymentTarget: args.deploymentTarget,
     });
 
     const appId = await createAppForUser(ctx, user._id, args.name, {
-      vercelTeamId,
       githubInstallationId,
+      deploymentTarget,
       githubRepoPrivate: args.githubRepoVisibility === "private",
     });
 
@@ -187,7 +195,20 @@ export const getAppDeploymentUrl = query({
   args: { appId: v.id("apps") },
   returns: v.union(v.string(), v.null()),
   handler: async (ctx, args) => {
-    await requireCurrentUser(ctx);
+    const user = await requireCurrentUser(ctx);
+    const app = await ctx.db.get(args.appId);
+    if (!app || app.ownerId !== user._id) {
+      throw new Error("App not found");
+    }
+
+    if (app.deploymentTarget === "github-pages") {
+      const githubRepo = await ctx.db
+        .query("githubRepos")
+        .withIndex("by_app", (q) => q.eq("appId", args.appId))
+        .first();
+      return githubRepo ? githubPagesUrlFromRepoFullName(githubRepo.repoFullName) : null;
+    }
+
     const vercelProject = await ctx.db
       .query("vercelProjects")
       .withIndex("by_app", (q) => q.eq("appId", args.appId))
@@ -200,6 +221,14 @@ const dashboardLinksValidator = v.object({
   github: v.union(v.string(), v.null()),
   vercel: v.union(v.string(), v.null()),
   convex: v.union(v.string(), v.null()),
+  githubActionsSecrets: v.union(v.string(), v.null()),
+  frontendEnvVars: v.union(
+    v.object({
+      label: v.string(),
+      url: v.string(),
+    }),
+    v.null(),
+  ),
   /** Production deployment page `/t/{team}/{project}/{deployment}` (env vars for prod). */
   convexProdDeployment: v.union(v.string(), v.null()),
   /** Project settings with anchor on env vars — inherited by preview branch deployments. */
@@ -235,6 +264,15 @@ export const getAppDashboardLinks = query({
     if (vercelProject) {
       vercel = `https://vercel.com/${vercelProject.teamSlug}/${vercelProject.projectName}`;
     }
+    const githubActionsSecrets = githubRepo ? githubActionsSecretsUrlFromRepoFullName(githubRepo.repoFullName) : null;
+    const frontendEnvVars =
+      app.deploymentTarget === "github-pages"
+        ? githubActionsSecrets
+          ? { label: "GitHub Actions secrets", url: githubActionsSecrets }
+          : null
+        : vercel
+          ? { label: "Vercel env vars", url: `${vercel}/settings/environment-variables` }
+          : null;
 
     let convex: string | null = null;
     let convexProdDeployment: string | null = null;
@@ -250,11 +288,23 @@ export const getAppDashboardLinks = query({
       github: githubRepo?.repoUrl ?? null,
       vercel,
       convex,
+      githubActionsSecrets,
+      frontendEnvVars,
       convexProdDeployment,
       convexDefaultEnvVars,
     };
   },
 });
+
+function githubPagesUrlFromRepoFullName(repoFullName: string) {
+  const [owner, repo] = repoFullName.split("/");
+  if (!owner || !repo) return null;
+  return `https://${owner}.github.io/${repo}/`;
+}
+
+function githubActionsSecretsUrlFromRepoFullName(repoFullName: string) {
+  return `https://github.com/${repoFullName}/settings/secrets/actions`;
+}
 
 export const internalGetApp = internalQuery({
   args: { id: v.id("apps") },

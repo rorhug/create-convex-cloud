@@ -63,7 +63,7 @@ export const updateStep = internalMutation({
   },
 });
 
-const STEP_ORDER: StepService[] = ["github", "convex", "vercel"];
+const STEP_ORDER: StepService[] = ["github", "convex", "vercel", "github-pages"];
 
 /** Reset this step and all following steps to pending (for retry from a failed step). */
 export const resetStepsFrom = internalMutation({
@@ -103,12 +103,7 @@ export const createApp = workflow.define({
   },
   handler: async (step, args): Promise<void> => {
     try {
-      // Initialize step records
-      await step.runMutation(internal.workflows.createAppHelpers.initSteps, {
-        appId: args.appId,
-        steps: ["github", "convex", "vercel"],
-      });
-
+      // Read the app first so we know which deployment-target steps to run.
       const app = await step.runQuery(internal.client.apps.internalGetApp, {
         id: args.appId,
       });
@@ -116,7 +111,21 @@ export const createApp = workflow.define({
         throw new Error("App not found");
       }
 
-      // Steps 1 & 2 in parallel: GitHub repo + Convex project
+      const isVercelTarget = app.deploymentTarget === "vercel";
+
+      // Each target gets its own third step: Vercel deployment for Vercel
+      // apps, or the GitHub Pages workflow setup (commit deploy.yml + secret +
+      // enable Pages) for github-pages apps.
+      const stepsToInit: StepService[] = isVercelTarget
+        ? ["github", "convex", "vercel"]
+        : ["github", "convex", "github-pages"];
+
+      await step.runMutation(internal.workflows.createAppHelpers.initSteps, {
+        appId: args.appId,
+        steps: stepsToInit,
+      });
+
+      // Steps 1 & 2 in parallel: GitHub repo + Convex project (always run).
       const [githubResult, convexResult] = await Promise.all([
         step.runAction(
           internal.workflows.stepGithubRepoTemplate.stepCreateGithubRepoTemplate,
@@ -130,30 +139,46 @@ export const createApp = workflow.define({
         ),
       ]);
 
-      // Step 3: Create Vercel project (depends on both previous steps)
-      const vercelResult = await step.runAction(
-        internal.workflows.stepVercel.stepCreateVercelProject,
-        {
-          appId: args.appId,
-          repoFullName: githubResult.repoFullName,
-          prodDeployKey: convexResult.prodDeployKey,
-          previewDeployKey: convexResult.previewDeployKey,
-        },
-        { name: "createVercelProject" },
-      );
-
-      // Step 4: Wait for deployment to finish
-      if (vercelResult.deploymentId) {
-        await step.runAction(
-          internal.workflows.stepVercel.stepWaitForDeployment,
+      if (isVercelTarget) {
+        // Step 3: Create Vercel project (depends on both previous steps).
+        const vercelResult = await step.runAction(
+          internal.workflows.stepVercel.stepCreateVercelProject,
           {
             appId: args.appId,
-            deploymentId: vercelResult.deploymentId,
-            vercelToken: vercelResult.vercelToken,
-            teamId: vercelResult.teamId,
-            projectId: vercelResult.projectId,
+            repoFullName: githubResult.repoFullName,
+            prodDeployKey: convexResult.prodDeployKey,
+            previewDeployKey: convexResult.previewDeployKey,
           },
-          { name: "waitForDeployment" },
+          { name: "createVercelProject" },
+        );
+
+        // Step 4: Wait for deployment to finish.
+        if (vercelResult.deploymentId) {
+          await step.runAction(
+            internal.workflows.stepVercel.stepWaitForDeployment,
+            {
+              appId: args.appId,
+              deploymentId: vercelResult.deploymentId,
+              vercelToken: vercelResult.vercelToken,
+              teamId: vercelResult.teamId,
+              projectId: vercelResult.projectId,
+            },
+            { name: "waitForDeployment" },
+          );
+        }
+      } else {
+        // GitHub Pages target: commit deploy.yml to the repo, set
+        // CONVEX_DEPLOY_KEY as an Actions secret, and turn on Pages with the
+        // workflow build type. The first GitHub Actions run (triggered by
+        // the workflow's commit-on-main) builds + deploys the static site.
+        await step.runAction(
+          internal.workflows.stepGithubPages.stepCreateGithubPagesDeployment,
+          {
+            appId: args.appId,
+            repoFullName: githubResult.repoFullName,
+            prodDeployKey: convexResult.prodDeployKey,
+          },
+          { name: "createGithubPagesDeployment" },
         );
       }
 

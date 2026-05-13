@@ -26,6 +26,7 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
   const [busy, setBusy] = useState<SetupBusyState>(null);
   const hasHandledRefreshGithubInstallationsParam = useRef(false);
   const isSetupComplete = viewer.onboarding.canAccessApps;
+  const isGithubAppInstalled = viewer.onboarding.hasGitHubConnection && !viewer.github.needsAttention;
 
   useEffect(() => {
     if (hasHandledRefreshGithubInstallationsParam.current) {
@@ -118,7 +119,7 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
       {error && <Banner tone="error">{error}</Banner>}
 
       <GitHubSetupStep
-        complete={viewer.onboarding.hasGitHubConnection && !viewer.github.needsAttention}
+        complete={isGithubAppInstalled}
         installations={viewer.github.installations}
         installUrl={viewer.github.installUrl}
         issue={viewer.github.issue}
@@ -126,29 +127,6 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
         disabled={busy !== null}
         onRefresh={() => {
           void handleRefreshGithubInstallations();
-        }}
-      />
-
-      <VercelSetupStep
-        complete={viewer.vercel?.isValid === true}
-        vercel={viewer.vercel}
-        vercelToken={vercelToken}
-        showReplaceToken={showReplaceVercelToken}
-        busy={busy}
-        issue={viewer.vercel?.issue ?? null}
-        githubInstallations={viewer.github.installations}
-        onTokenChange={(value) => {
-          setVercelToken(value);
-          setError(null);
-        }}
-        onRefresh={() => {
-          void handleRefreshVercelTeams();
-        }}
-        onSave={() => {
-          void handleSaveVercelToken();
-        }}
-        onToggleReplaceToken={() => {
-          setShowReplaceVercelToken((value) => !value);
         }}
       />
 
@@ -175,6 +153,29 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
               setBusy(null);
             }
           })();
+        }}
+      />
+
+      <VercelSetupStep
+        complete={viewer.vercel?.isValid === true}
+        vercel={viewer.vercel}
+        vercelToken={vercelToken}
+        showReplaceToken={showReplaceVercelToken}
+        busy={busy}
+        issue={viewer.vercel?.issue ?? null}
+        githubInstallations={viewer.github.installations}
+        onTokenChange={(value) => {
+          setVercelToken(value);
+          setError(null);
+        }}
+        onRefresh={() => {
+          void handleRefreshVercelTeams();
+        }}
+        onSave={() => {
+          void handleSaveVercelToken();
+        }}
+        onToggleReplaceToken={() => {
+          setShowReplaceVercelToken((value) => !value);
         }}
       />
 

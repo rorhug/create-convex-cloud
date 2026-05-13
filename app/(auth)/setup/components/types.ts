@@ -19,7 +19,13 @@ export type SetupVercelTeam = {
   slug: string;
 };
 
-export type SetupBusyState = "github-refresh" | "vercel-refresh" | "vercel-save" | "convex-refresh" | "convex" | null;
+export type SetupBusyState =
+  | "github-refresh"
+  | "vercel-refresh"
+  | "vercel-save"
+  | "convex-refresh"
+  | "convex"
+  | null;
 
 export type SetupViewerState = {
   user: {

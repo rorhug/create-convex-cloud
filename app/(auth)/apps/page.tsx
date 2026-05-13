@@ -16,6 +16,8 @@ import {
 import { AppList } from "./app-card";
 import { DeleteAppDialog } from "./delete-app-dialog";
 
+const GITHUB_PAGES_VALUE = "github-pages";
+
 export default function AppsPage() {
   const viewer = useQuery(api.client.viewer.getViewer);
 
@@ -61,14 +63,18 @@ function AppsManager() {
             </div>
           ) : (
             <CreateAppForm
-              defaultValues={buildDefaultValues(lastAppSelections, githubInstallations, vercelTeams)}
+              defaultValues={buildDefaultValues(
+                lastAppSelections,
+                githubInstallations,
+                vercelTeams,
+              )}
               githubInstallations={githubInstallations}
               vercelTeams={vercelTeams}
               onSubmit={async (values) => {
                 await createApp({
                   name: values.name,
                   githubInstallationId: values.githubInstallationId,
-                  vercelTeamId: values.vercelTeamId,
+                  deploymentTarget: values.deploymentTarget,
                   githubRepoVisibility: values.githubRepoVisibility,
                 });
               }}
@@ -105,35 +111,48 @@ function AppsManager() {
 function buildDefaultValues(
   lastAppSelections:
     | {
+        deploymentTarget: "vercel" | "github-pages";
         githubInstallationId: string;
-        vercelTeamId: string;
+        vercelTeamId: string | null;
         githubRepoVisibility: "public" | "private";
       }
     | null,
   githubInstallations: AppsGithubInstallation[],
   vercelTeams: AppsVercelTeam[],
 ): CreateAppFormDefaults {
+  // Default deployment target: prefer the last app's choice if still available;
+  // otherwise leave blank for the user to pick.
+  let deploymentTargetId = "";
+  if (lastAppSelections?.deploymentTarget === "github-pages") {
+    deploymentTargetId = GITHUB_PAGES_VALUE;
+  } else if (
+    lastAppSelections?.deploymentTarget === "vercel" &&
+    lastAppSelections.vercelTeamId &&
+    vercelTeams.some((t) => t.id === lastAppSelections.vercelTeamId)
+  ) {
+    deploymentTargetId = lastAppSelections.vercelTeamId;
+  }
+
   if (!lastAppSelections) {
     return {
       name: "",
       githubInstallationId: "",
-      vercelTeamId: "",
+      deploymentTargetId,
       githubRepoVisibility: "",
     };
   }
-  // Only carry over selections that still exist for the current user.
+
+  // Only carry over the last GitHub installation if it still exists for this user.
   const githubInstallationId = githubInstallations.some(
     (i) => i.id === lastAppSelections.githubInstallationId,
   )
     ? lastAppSelections.githubInstallationId
     : "";
-  const vercelTeamId = vercelTeams.some((t) => t.id === lastAppSelections.vercelTeamId)
-    ? lastAppSelections.vercelTeamId
-    : "";
+
   return {
     name: "",
     githubInstallationId,
-    vercelTeamId,
+    deploymentTargetId,
     githubRepoVisibility: lastAppSelections.githubRepoVisibility,
   };
 }

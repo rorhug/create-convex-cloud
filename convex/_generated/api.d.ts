@@ -8,7 +8,6 @@
  * @module
  */
 
-import type * as apps from "../apps.js";
 import type * as auth from "../auth.js";
 import type * as authProviders_convexPlatform from "../authProviders/convexPlatform.js";
 import type * as authProviders_github from "../authProviders/github.js";
@@ -38,6 +37,7 @@ import type * as workflows_deleteApp from "../workflows/deleteApp.js";
 import type * as workflows_githubAccessTokenAction from "../workflows/githubAccessTokenAction.js";
 import type * as workflows_retryCreateApp from "../workflows/retryCreateApp.js";
 import type * as workflows_stepConvex from "../workflows/stepConvex.js";
+import type * as workflows_stepGithubPages from "../workflows/stepGithubPages.js";
 import type * as workflows_stepGithubRepoClone from "../workflows/stepGithubRepoClone.js";
 import type * as workflows_stepGithubRepoTemplate from "../workflows/stepGithubRepoTemplate.js";
 import type * as workflows_stepTypes from "../workflows/stepTypes.js";
@@ -52,7 +52,6 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  apps: typeof apps;
   auth: typeof auth;
   "authProviders/convexPlatform": typeof authProviders_convexPlatform;
   "authProviders/github": typeof authProviders_github;
@@ -82,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   "workflows/githubAccessTokenAction": typeof workflows_githubAccessTokenAction;
   "workflows/retryCreateApp": typeof workflows_retryCreateApp;
   "workflows/stepConvex": typeof workflows_stepConvex;
+  "workflows/stepGithubPages": typeof workflows_stepGithubPages;
   "workflows/stepGithubRepoClone": typeof workflows_stepGithubRepoClone;
   "workflows/stepGithubRepoTemplate": typeof workflows_stepGithubRepoTemplate;
   "workflows/stepTypes": typeof workflows_stepTypes;
