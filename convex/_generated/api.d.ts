@@ -21,6 +21,7 @@ import type * as client_viewer from "../client/viewer.js";
 import type * as http from "../http.js";
 import type * as importsActions from "../importsActions.js";
 import type * as importsInternal from "../importsInternal.js";
+import type * as lib_appName from "../lib/appName.js";
 import type * as lib_appStatus from "../lib/appStatus.js";
 import type * as lib_apps from "../lib/apps.js";
 import type * as lib_auth from "../lib/auth.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   importsActions: typeof importsActions;
   importsInternal: typeof importsInternal;
+  "lib/appName": typeof lib_appName;
   "lib/appStatus": typeof lib_appStatus;
   "lib/apps": typeof lib_apps;
   "lib/auth": typeof lib_auth;

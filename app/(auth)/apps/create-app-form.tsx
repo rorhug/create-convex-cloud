@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
+import { normalizeAppName, validateAppName } from "@/convex/lib/appName";
 import {
   Field,
   FieldDescription,
@@ -50,7 +51,15 @@ export type CreateAppFormValues = {
 const GO_TO_SETUP_VALUE = "__go-to-setup__";
 
 const formSchema = z.object({
-  name: z.string().trim().min(1, "Enter an app name"),
+  name: z
+    .string()
+    .min(1, "Enter an app name")
+    .superRefine((name, ctx) => {
+      const message = validateAppName(name);
+      if (message) {
+        ctx.addIssue({ code: "custom", message });
+      }
+    }),
   githubInstallationId: z.string().min(1, "Select a GitHub installation"),
   vercelTeamId: z.string().min(1, "Select a Vercel team"),
   githubRepoVisibility: z.enum(["public", "private"], {
@@ -96,9 +105,16 @@ export function CreateAppForm({
   );
 
   async function handleSubmit(values: FormSchema) {
+    const name = normalizeAppName(values.name);
+    const nameError = validateAppName(name);
+    if (nameError) {
+      form.setError("name", { message: nameError });
+      return;
+    }
+
     try {
       await onSubmit({
-        name: values.name,
+        name,
         githubInstallationId: values.githubInstallationId,
         vercelTeamId: values.vercelTeamId.trim(),
         githubRepoVisibility: values.githubRepoVisibility,
@@ -133,6 +149,7 @@ export function CreateAppForm({
                   placeholder="my-demo-app"
                   aria-invalid={fieldState.invalid}
                   className="w-full"
+                  onChange={(event) => field.onChange(normalizeAppName(event.target.value))}
                 />
                 {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
               </Field>

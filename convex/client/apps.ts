@@ -9,6 +9,7 @@ import {
   mapInternalApp,
   validateCreateAppSelections,
 } from "../lib/apps";
+import { assertValidAppName } from "../lib/appName";
 import { createAppForUser, deleteAppForUser, listAppsForUser } from "../lib/onboarding";
 import type { StepService, StepStatus } from "../workflows/stepTypes";
 import { appStatusValidator } from "../lib/appStatus";
@@ -59,6 +60,8 @@ export const createApp = mutation({
   },
   returns: v.id("apps"),
   handler: async (ctx, args) => {
+    assertValidAppName(args.name);
+
     const user = await requireCurrentUser(ctx);
     const { githubInstallationId, vercelTeamId } = await validateCreateAppSelections(ctx, user._id, {
       githubInstallationId: args.githubInstallationId,

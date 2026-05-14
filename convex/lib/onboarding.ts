@@ -1,5 +1,6 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { assertValidAppName } from "./appName";
 import { getGithubTokenDocForUser } from "./providers/github/data";
 import { findConvexAuthAccountForUser } from "./providers/convex/data";
 import { getGithubAppInstallUrl } from "./providers/github/platform";
@@ -106,17 +107,11 @@ export async function createAppForUser(
     githubRepoPrivate: boolean;
   },
 ) {
-  const trimmedName = name.trim();
-  if (trimmedName.length < 2) {
-    throw new Error("App name must be at least 2 characters");
-  }
-  if (trimmedName.length > 64) {
-    throw new Error("App name must be 64 characters or fewer");
-  }
+  assertValidAppName(name);
 
   return await ctx.db.insert("apps", {
     ownerId: userId,
-    name: trimmedName,
+    name,
     vercelTeamId: options.vercelTeamId,
     githubInstallationId: options.githubInstallationId,
     githubRepoPrivate: options.githubRepoPrivate,
