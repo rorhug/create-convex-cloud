@@ -1,9 +1,8 @@
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { mutation, query } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { requireCurrentUser } from "../lib/auth";
+import { userMutation, userQuery } from "../functions";
 import {
   existingProjectsViewValidator,
   getExistingProjectBlockingReasons,
@@ -58,22 +57,20 @@ async function buildExistingProjectMatchSets(
   return matches;
 }
 
-export const getExistingProjects = query({
+export const getExistingProjects = userQuery({
   args: {},
   returns: existingProjectsViewValidator,
   handler: async (ctx) => {
-    const user = await requireCurrentUser(ctx);
-
     const [searchState, rows, matches] = await Promise.all([
       ctx.db
         .query("existingProjectSearches")
-        .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+        .withIndex("by_owner", (q) => q.eq("ownerId", ctx.userId))
         .first(),
       ctx.db
         .query("existingProjects")
-        .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+        .withIndex("by_owner", (q) => q.eq("ownerId", ctx.userId))
         .collect(),
-      buildExistingProjectMatchSets(ctx, user._id),
+      buildExistingProjectMatchSets(ctx, ctx.userId),
     ]);
 
     const projects = rows
@@ -94,45 +91,42 @@ export const getExistingProjects = query({
   },
 });
 
-export const scheduleExistingProjectSearch = mutation({
+export const scheduleExistingProjectSearch = userMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const user = await requireCurrentUser(ctx);
-
     await ctx.runMutation(internal.importsInternal.setExistingProjectSearchState, {
-      userId: user._id,
+      userId: ctx.userId,
       status: "searching",
       message: "Searching Vercel projects...",
     });
     await ctx.scheduler.runAfter(0, internal.importsActions.searchExistingProjects, {
-      userId: user._id,
+      userId: ctx.userId,
     });
 
     return null;
   },
 });
 
-export const importExistingProject = mutation({
+export const importExistingProject = userMutation({
   args: {
     existingProjectId: v.id("existingProjects"),
   },
   returns: v.id("apps"),
   handler: async (ctx, args) => {
-    const user = await requireCurrentUser(ctx);
     const project = await ctx.db.get("existingProjects", args.existingProjectId);
-    if (!project || project.ownerId !== user._id) {
+    if (!project || project.ownerId !== ctx.userId) {
       throw new Error("Import candidate not found");
     }
 
-    const matches = await buildExistingProjectMatchSets(ctx, user._id);
+    const matches = await buildExistingProjectMatchSets(ctx, ctx.userId);
     if (!isExistingProjectReadyForImport(project, matches)) {
       const reasons = getExistingProjectBlockingReasons(project, matches);
       throw new Error(reasons[0] ?? "This project cannot be imported.");
     }
 
     const appId = await ctx.db.insert("apps", {
-      ownerId: user._id,
+      ownerId: ctx.userId,
       name: project.vercelProjectName,
       vercelTeamId: project.vercelTeamId,
       githubInstallationId: project.githubInstallationId,

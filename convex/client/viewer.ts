@@ -1,6 +1,5 @@
 import { v } from "convex/values";
-import { query } from "../_generated/server";
-import { requireCurrentUser } from "../lib/auth";
+import { userQuery } from "../functions";
 import { githubInstallationValidator } from "../lib/providers/github/data";
 import { getViewerState } from "../lib/onboarding";
 
@@ -51,11 +50,10 @@ const viewerStateValidator = v.object({
   }),
 });
 
-export const getViewer = query({
+export const getViewer = userQuery({
   args: {},
   returns: viewerStateValidator,
   handler: async (ctx) => {
-    const user = await requireCurrentUser(ctx);
-    return await getViewerState(ctx, user);
+    return await getViewerState(ctx, ctx.user);
   },
 });

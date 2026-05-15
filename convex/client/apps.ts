@@ -1,7 +1,7 @@
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, mutation, query } from "../_generated/server";
+import { internalMutation, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { requireCurrentUser, requireCurrentUserId } from "../lib/auth";
+import { userAction, userMutation, userQuery } from "../functions";
 import {
   appSummaryValidator,
   internalAppValidator,
@@ -15,13 +15,11 @@ import type { StepService, StepStatus } from "../workflows/stepTypes";
 import { appStatusValidator } from "../lib/appStatus";
 import { stepServiceValidator } from "../workflows/stepTypes";
 
-export const listApps = query({
+export const listApps = userQuery({
   args: {},
   returns: v.array(appSummaryValidator),
   handler: async (ctx) => {
-    const user = await requireCurrentUser(ctx);
-
-    const apps = await listAppsForUser(ctx, user._id);
+    const apps = await listAppsForUser(ctx, ctx.userId);
     return apps.map(mapAppSummary);
   },
 });
@@ -35,12 +33,11 @@ const lastAppSelectionsValidator = v.union(
   v.null(),
 );
 
-export const getLastAppSelections = query({
+export const getLastAppSelections = userQuery({
   args: {},
   returns: lastAppSelectionsValidator,
   handler: async (ctx) => {
-    const user = await requireCurrentUser(ctx);
-    const apps = await listAppsForUser(ctx, user._id);
+    const apps = await listAppsForUser(ctx, ctx.userId);
     const latest = apps[0];
     if (!latest) return null;
     return {
@@ -51,7 +48,7 @@ export const getLastAppSelections = query({
   },
 });
 
-export const createApp = mutation({
+export const createApp = userMutation({
   args: {
     name: v.string(),
     vercelTeamId: v.string(),
@@ -62,13 +59,12 @@ export const createApp = mutation({
   handler: async (ctx, args) => {
     assertValidAppName(args.name);
 
-    const user = await requireCurrentUser(ctx);
-    const { githubInstallationId, vercelTeamId } = await validateCreateAppSelections(ctx, user._id, {
+    const { githubInstallationId, vercelTeamId } = await validateCreateAppSelections(ctx, ctx.userId, {
       githubInstallationId: args.githubInstallationId,
       vercelTeamId: args.vercelTeamId,
     });
 
-    const appId = await createAppForUser(ctx, user._id, args.name, {
+    const appId = await createAppForUser(ctx, ctx.userId, args.name, {
       vercelTeamId,
       githubInstallationId,
       githubRepoPrivate: args.githubRepoVisibility === "private",
@@ -80,7 +76,7 @@ export const createApp = mutation({
   },
 });
 
-export const deleteApp = action({
+export const deleteApp = userAction({
   args: {
     id: v.id("apps"),
     deleteGithubRepo: v.boolean(),
@@ -89,15 +85,13 @@ export const deleteApp = action({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await requireCurrentUserId(ctx);
-
     const app = await ctx.runQuery(internal.client.apps.internalGetApp, {
       id: args.id,
     });
     if (!app) {
       throw new Error("App not found");
     }
-    if (app.ownerId !== userId) {
+    if (app.ownerId !== ctx.userId) {
       throw new Error("You do not own this app");
     }
 
@@ -113,7 +107,7 @@ export const deleteApp = action({
 
     await ctx.scheduler.runAfter(0, internal.workflows.deleteApp.runDeleteAppWorkflow, {
       appId: args.id,
-      userId,
+      userId: ctx.userId,
       deleteGithubRepo: args.deleteGithubRepo,
       deleteConvexProject: args.deleteConvexProject,
       deleteVercelProject: args.deleteVercelProject,
@@ -123,18 +117,17 @@ export const deleteApp = action({
   },
 });
 
-export const retryFailedCreateStep = action({
+export const retryFailedCreateStep = userAction({
   args: {
     appId: v.id("apps"),
     step: stepServiceValidator,
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await requireCurrentUserId(ctx);
     const app = await ctx.runQuery(internal.client.apps.internalGetApp, {
       id: args.appId,
     });
-    if (!app || app.ownerId !== userId) {
+    if (!app || app.ownerId !== ctx.userId) {
       throw new Error("App not found");
     }
     if ((app.workflowKind ?? "create") !== "create") {
@@ -169,11 +162,10 @@ const stepValidator = v.object({
   message: v.union(v.string(), v.null()),
 });
 
-export const getAppSteps = query({
+export const getAppSteps = userQuery({
   args: { appId: v.id("apps") },
   returns: v.array(stepValidator),
   handler: async (ctx, args) => {
-    await requireCurrentUser(ctx);
     const steps = await ctx.db
       .query("appSteps")
       .withIndex("by_app", (q) => q.eq("appId", args.appId))
@@ -186,11 +178,10 @@ export const getAppSteps = query({
   },
 });
 
-export const getAppDeploymentUrl = query({
+export const getAppDeploymentUrl = userQuery({
   args: { appId: v.id("apps") },
   returns: v.union(v.string(), v.null()),
   handler: async (ctx, args) => {
-    await requireCurrentUser(ctx);
     const vercelProject = await ctx.db
       .query("vercelProjects")
       .withIndex("by_app", (q) => q.eq("appId", args.appId))
@@ -209,13 +200,12 @@ const dashboardLinksValidator = v.object({
   convexDefaultEnvVars: v.union(v.string(), v.null()),
 });
 
-export const getAppDashboardLinks = query({
+export const getAppDashboardLinks = userQuery({
   args: { appId: v.id("apps") },
   returns: dashboardLinksValidator,
   handler: async (ctx, args) => {
-    const user = await requireCurrentUser(ctx);
     const app = await ctx.db.get(args.appId);
-    if (!app || app.ownerId !== user._id) {
+    if (!app || app.ownerId !== ctx.userId) {
       throw new Error("App not found");
     }
 

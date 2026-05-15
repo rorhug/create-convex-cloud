@@ -2,21 +2,19 @@
 
 import { v } from "convex/values";
 import { internal } from "../../../_generated/api";
-import { action } from "../../../_generated/server";
-import { requireCurrentUserId } from "../../../lib/auth";
+import { userAction } from "../../../functions";
 import { getConvexTokenDetails } from "../../../lib/providers/convex/platform";
 
-export const refreshConvexToken = action({
+export const refreshConvexToken = userAction({
   args: {},
   returns: v.object({
     teamId: v.string(),
     teamSlug: v.string(),
   }),
   handler: async (ctx) => {
-    const userId = await requireCurrentUserId(ctx);
     const existing = await ctx.runQuery(
       internal.lib.providers.convex.data.getConvexTokenForUser,
-      { userId },
+      { userId: ctx.userId },
     );
     if (!existing) {
       throw new Error("Connect Convex first");

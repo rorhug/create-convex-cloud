@@ -17,6 +17,7 @@ import type * as client_providers_convex_clientActions from "../client/providers
 import type * as client_providers_github_clientActions from "../client/providers/github/clientActions.js";
 import type * as client_providers_vercel_clientActions from "../client/providers/vercel/clientActions.js";
 import type * as client_viewer from "../client/viewer.js";
+import type * as functions from "../functions.js";
 import type * as http from "../http.js";
 import type * as importsActions from "../importsActions.js";
 import type * as importsInternal from "../importsInternal.js";
@@ -61,6 +62,7 @@ declare const fullApi: ApiFromModules<{
   "client/providers/github/clientActions": typeof client_providers_github_clientActions;
   "client/providers/vercel/clientActions": typeof client_providers_vercel_clientActions;
   "client/viewer": typeof client_viewer;
+  functions: typeof functions;
   http: typeof http;
   importsActions: typeof importsActions;
   importsInternal: typeof importsInternal;

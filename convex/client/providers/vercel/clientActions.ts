@@ -2,33 +2,30 @@
 
 import { v } from "convex/values";
 import { internal } from "../../../_generated/api";
-import { action } from "../../../_generated/server";
-import { requireCurrentUserId } from "../../../lib/auth";
+import { userAction } from "../../../functions";
 import { teamValidator } from "../../../lib/providers/vercel/data";
 import { fetchVercelTeamsForToken } from "../../../lib/providers/vercel/platform";
 
-export const verifyVercelToken = action({
+export const verifyVercelToken = userAction({
   args: { token: v.string() },
   returns: v.object({
     teams: v.array(teamValidator),
   }),
   handler: async (ctx, args) => {
-    await requireCurrentUserId(ctx);
     const teams = await fetchVercelTeamsForToken(args.token, ctx);
     return { teams };
   },
 });
 
-export const saveVercelToken = action({
+export const saveVercelToken = userAction({
   args: {
     token: v.string(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await requireCurrentUserId(ctx);
     const teams = await fetchVercelTeamsForToken(args.token, ctx);
     await ctx.runMutation(internal.lib.providers.vercel.data.upsertVercelToken, {
-      userId,
+      userId: ctx.userId,
       token: args.token,
       teams,
     });
@@ -36,21 +33,20 @@ export const saveVercelToken = action({
   },
 });
 
-export const refreshVercelTeams = action({
+export const refreshVercelTeams = userAction({
   args: {},
   returns: v.object({
     teams: v.array(teamValidator),
   }),
   handler: async (ctx) => {
-    const userId = await requireCurrentUserId(ctx);
     const existing = await ctx.runQuery(internal.lib.providers.vercel.data.requireVercelTokenForUser, {
-      userId,
+      userId: ctx.userId,
       allowInvalid: true,
     });
 
     const teams = await fetchVercelTeamsForToken(existing.token, ctx);
     await ctx.runMutation(internal.lib.providers.vercel.data.upsertVercelToken, {
-      userId,
+      userId: ctx.userId,
       token: existing.token,
       teams,
     });
