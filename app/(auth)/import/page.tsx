@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -57,8 +58,10 @@ export default function ImportPage() {
   return (
     <div className="space-y-6">
       <section className="border border-border bg-card p-6">
-        <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Import</p>
-        <h1 className="mt-2 text-3xl font-semibold">Import linked projects</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-3xl font-semibold">Import linked projects</h1>
+          <Badge variant="secondary">Beta</Badge>
+        </div>
         <p className="mt-3 text-sm text-muted-foreground">
           Search Vercel first, then keep only the projects that are already wired to a GitHub repo and a resolvable
           Convex project.
@@ -80,9 +83,6 @@ export default function ImportPage() {
           >
             {isSearching || isScheduling ? "Searching..." : "Search for existing projects"}
           </Button>
-          <p className="text-sm text-muted-foreground">
-            Importable projects are listed first. Blocked rows stay visible below at lower opacity.
-          </p>
         </div>
         {existingProjects.message ? (
           <div
