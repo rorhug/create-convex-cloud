@@ -15,6 +15,8 @@ import type { StepService, StepStatus } from "../workflows/stepTypes";
 import { appStatusValidator } from "../lib/appStatus";
 import { stepServiceValidator } from "../workflows/stepTypes";
 
+type InternalApp = ReturnType<typeof mapInternalApp>;
+
 export const listApps = userQuery({
   args: {},
   returns: v.array(appSummaryValidator),
@@ -84,8 +86,8 @@ export const deleteApp = userAction({
     deleteVercelProject: v.boolean(),
   },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    const app = await ctx.runQuery(internal.client.apps.internalGetApp, {
+  handler: async (ctx, args): Promise<null> => {
+    const app: InternalApp | null = await ctx.runQuery(internal.client.apps.internalGetApp, {
       id: args.id,
     });
     if (!app) {
@@ -136,10 +138,13 @@ export const retryFailedCreateStep = userAction({
     if (app.status !== "error") {
       throw new Error("Retry is only available when app creation has failed.");
     }
-    const steps = await ctx.runQuery(internal.client.apps.getAppStepsInternal, {
+    const steps: Array<{ step: StepService; status: StepStatus }> = await ctx.runQuery(
+      internal.client.apps.getAppStepsInternal,
+      {
       appId: args.appId,
-    });
-    const row = steps.find((s) => s.step === args.step);
+      },
+    );
+    const row = steps.find((s: { step: StepService; status: StepStatus }) => s.step === args.step);
     if (!row || row.status !== "error") {
       throw new Error("This step is not in a failed state.");
     }
@@ -153,6 +158,30 @@ export const retryFailedCreateStep = userAction({
       fromStep: args.step,
     });
     return null;
+  },
+});
+
+export const refreshDeploymentMetadata = userAction({
+  args: {
+    appId: v.id("apps"),
+  },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args): Promise<string | null> => {
+    const app: InternalApp | null = await ctx.runQuery(internal.client.apps.internalGetApp, {
+      id: args.appId,
+    });
+    if (!app || app.ownerId !== ctx.userId) {
+      throw new Error("App not found");
+    }
+
+    const deploymentUrl: string | null = await ctx.runAction(
+      internal.workflows.refreshDeploymentMetadata.refreshDeploymentMetadata,
+      {
+      appId: args.appId,
+      userId: ctx.userId,
+      },
+    );
+    return deploymentUrl;
   },
 });
 

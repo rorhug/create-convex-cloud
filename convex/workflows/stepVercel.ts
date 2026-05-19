@@ -53,7 +53,7 @@ export const stepCreateVercelProject = internalAction({
       userId: app.ownerId,
     });
     const selectedGithubInstallation = githubConnection?.githubInstallations.find(
-      (i) => i.id === app.githubInstallationId,
+      (i: { id: string; accountId: number; accountType: string }) => i.id === app.githubInstallationId,
     );
     const githubInstallationForMessage =
       selectedGithubInstallation !== undefined
@@ -209,6 +209,7 @@ export const stepWaitForDeployment = internalAction({
     vercelToken: v.string(),
     teamId: v.string(),
     projectId: v.id("vercelProjects"),
+    projectName: v.string(),
   },
   returns: v.object({ status: v.string() }),
   handler: async (ctx, args): Promise<{ status: string }> => {
@@ -230,7 +231,7 @@ export const stepWaitForDeployment = internalAction({
         const state = data.readyState;
 
         if (state === "READY") {
-          const deploymentUrl = getVercelDeploymentUrl(data);
+          const deploymentUrl = getVercelDeploymentUrl(data, args.projectName);
           if (deploymentUrl) {
             await setStep(ctx, args.appId, "vercel", "ready", deploymentUrl);
             await ctx.runMutation(internal.lib.providers.vercel.data.updateVercelProject, {

@@ -382,8 +382,15 @@ export async function getVercelDeployment(
   );
 }
 
-export function getVercelDeploymentUrl(deployment: VercelDeploymentResponse): string | undefined {
-  const deploymentAlias = deployment.alias?.[0];
+export function getVercelDeploymentUrl(
+  deployment: VercelDeploymentResponse,
+  preferredProjectName?: string,
+): string | undefined {
+  const preferredAlias = preferredProjectName ? `${preferredProjectName}.vercel.app` : undefined;
+  const deploymentAlias =
+    preferredAlias && deployment.alias?.includes(preferredAlias)
+      ? preferredAlias
+      : deployment.alias?.[0];
   return deploymentAlias ? `https://${deploymentAlias}` : undefined;
 }
 
@@ -392,6 +399,7 @@ export async function fetchLatestProductionDeploymentUrlForProject(
   projectId: string,
   teamId: string,
   ctx?: TokenInvalidationCtx,
+  preferredProjectName?: string,
 ): Promise<string | undefined> {
   const page = await vercelFetch<VercelDeploymentListResponse>(ctx, token, "/v6/deployments", {
     params: {
@@ -408,7 +416,7 @@ export async function fetchLatestProductionDeploymentUrlForProject(
   }
 
   const deployment = await getVercelDeployment(ctx, token, latestDeployment.uid, teamId);
-  return getVercelDeploymentUrl(deployment);
+  return getVercelDeploymentUrl(deployment, preferredProjectName);
 }
 
 export async function deleteVercelProject(ctx: TokenInvalidationCtx, token: string, projectId: string, teamId: string) {

@@ -154,7 +154,9 @@ export const getVercelProjectByAppId = internalQuery({
   args: { appId: v.id("apps") },
   returns: v.union(
     v.object({
+      _id: v.id("vercelProjects"),
       projectId: v.string(),
+      projectName: v.string(),
       teamId: v.string(),
     }),
     v.null(),
@@ -165,7 +167,12 @@ export const getVercelProjectByAppId = internalQuery({
       .withIndex("by_app", (q) => q.eq("appId", args.appId))
       .first();
     if (!project) return null;
-    return { projectId: project.projectId, teamId: project.teamId };
+    return {
+      _id: project._id,
+      projectId: project.projectId,
+      projectName: project.projectName,
+      teamId: project.teamId,
+    };
   },
 });
 

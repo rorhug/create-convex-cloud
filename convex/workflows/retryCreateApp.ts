@@ -48,6 +48,7 @@ export const resumePipelineFromStep = internalAction({
             vercelToken: vercelResult.vercelToken,
             teamId: vercelResult.teamId,
             projectId: vercelResult.projectId,
+            projectName: vercelResult.projectName,
           });
         }
       } else if (args.fromStep === "convex") {
@@ -77,6 +78,7 @@ export const resumePipelineFromStep = internalAction({
             vercelToken: vercelResult.vercelToken,
             teamId: vercelResult.teamId,
             projectId: vercelResult.projectId,
+            projectName: vercelResult.projectName,
           });
         }
       } else {
@@ -108,6 +110,7 @@ export const resumePipelineFromStep = internalAction({
             vercelToken: vercelResult.vercelToken,
             teamId: vercelResult.teamId,
             projectId: vercelResult.projectId,
+            projectName: vercelResult.projectName,
           });
         }
       }

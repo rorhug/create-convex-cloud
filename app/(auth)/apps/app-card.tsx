@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAction, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { ArrowSquareOutIcon, CaretRightIcon } from "@phosphor-icons/react";
+import { ArrowClockwiseIcon, ArrowSquareOutIcon, CaretRightIcon } from "@phosphor-icons/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { AppStatus } from "@/convex/lib/appStatus";
@@ -80,6 +80,9 @@ export function AppList({
 }
 
 function AppCard({ app, onDelete }: { app: AppSummary; onDelete: (app: { id: Id<"apps">; name: string }) => void }) {
+  const refreshDeploymentMetadata = useAction(api.client.apps.refreshDeploymentMetadata);
+  const [refreshing, setRefreshing] = useState(false);
+
   return (
     <Item variant="outline" className="p-6 items-start">
       <ItemContent>
@@ -93,6 +96,23 @@ function AppCard({ app, onDelete }: { app: AppSummary; onDelete: (app: { id: Id<
         </ItemDescription>
       </ItemContent>
       <ItemActions>
+        <Button
+          type="button"
+          variant="outline"
+          size="xs"
+          disabled={app.status === "deleting" || refreshing}
+          onClick={async () => {
+            setRefreshing(true);
+            try {
+              await refreshDeploymentMetadata({ appId: app._id });
+            } finally {
+              setRefreshing(false);
+            }
+          }}
+        >
+          {refreshing ? <Spinner className="size-3" /> : <ArrowClockwiseIcon className="size-3" />}
+          Refresh
+        </Button>
         <Button
           variant="secondary"
           size="xs"

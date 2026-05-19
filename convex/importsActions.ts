@@ -181,6 +181,7 @@ export const searchExistingProjects = internalAction({
               project.id,
               team.id,
               ctx,
+              project.name,
             );
           } catch (error) {
             console.error("[searchExistingProjects] Failed to load latest Vercel deployment URL", {

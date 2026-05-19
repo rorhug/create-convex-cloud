@@ -152,6 +152,7 @@ export const createApp = workflow.define({
             vercelToken: vercelResult.vercelToken,
             teamId: vercelResult.teamId,
             projectId: vercelResult.projectId,
+            projectName: vercelResult.projectName,
           },
           { name: "waitForDeployment" },
         );
