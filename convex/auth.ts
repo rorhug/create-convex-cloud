@@ -1,4 +1,5 @@
 import { convexAuth } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import ConvexPlatform, { type ConvexPlatformProfile } from "./authProviders/convexPlatform";
@@ -10,7 +11,6 @@ import {
 } from "./lib/providers/github/data";
 import { upsertConvexToken } from "./lib/providers/convex/data";
 import { extractTeamSlugFromToken } from "./lib/providers/convex/platform";
-import { fetchGithubInstallationsForAccessToken } from "./lib/providers/github/platform";
 
 type CreateOrUpdateUserArgs = {
   existingUserId: Id<"users"> | null;
@@ -61,18 +61,14 @@ async function createOrUpdateGithubUser(ctx: MutationCtx, args: CreateOrUpdateUs
   }
 
   const tokenFields = githubTokenFieldsFromProfile(profile);
-  let installations = undefined;
-  try {
-    installations = await fetchGithubInstallationsForAccessToken(tokenFields.accessToken);
-  } catch (error) {
-    const existingToken = await getGithubTokenDocForUser(ctx, userId);
-    installations = existingToken?.installations ?? [];
-    console.error("Failed to refresh GitHub installations during sign-in:", error);
-  }
+  const existingToken = await getGithubTokenDocForUser(ctx, userId);
 
   await upsertGithubTokenForGithubUser(ctx, {
     ...tokenFields,
-    installations,
+    installations: existingToken?.installations ?? [],
+  });
+  await ctx.scheduler.runAfter(0, internal.workflows.githubAccessTokenAction.refreshGithubInstallations, {
+    userId,
   });
   return userId;
 }
