@@ -25,6 +25,9 @@ export default function GitHubProvider() {
     allowDangerousEmailAccountLinking: false,
     clientId: process.env.AUTH_GITHUB_ID!,
     clientSecret: process.env.AUTH_GITHUB_SECRET!,
+    // GitHub returns `iss=https://github.com/login/oauth` on the callback (RFC 9207).
+    // Convex Auth otherwise uses a dummy issuer, and oauth4webapi rejects the response.
+    issuer: "https://github.com/login/oauth",
     profile(profile, tokens): GithubProfileWithTokens {
       const accessToken = tokens.access_token;
       const refreshToken = tokens.refresh_token;
