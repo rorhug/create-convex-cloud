@@ -30,6 +30,7 @@ const lastAppSelectionsValidator = v.union(
   v.object({
     githubInstallationId: v.string(),
     vercelTeamId: v.string(),
+    convexTeamId: v.union(v.string(), v.null()),
     githubRepoVisibility: v.union(v.literal("public"), v.literal("private")),
   }),
   v.null(),
@@ -45,6 +46,7 @@ export const getLastAppSelections = userQuery({
     return {
       githubInstallationId: latest.githubInstallationId,
       vercelTeamId: latest.vercelTeamId,
+      convexTeamId: latest.convexTeamId ?? null,
       githubRepoVisibility: (latest.githubRepoPrivate ? "private" : "public") as "public" | "private",
     };
   },
@@ -55,21 +57,28 @@ export const createApp = userMutation({
     name: v.string(),
     vercelTeamId: v.string(),
     githubInstallationId: v.string(),
+    convexTeamId: v.string(),
     githubRepoVisibility: v.union(v.literal("public"), v.literal("private")),
   },
   returns: v.id("apps"),
   handler: async (ctx, args) => {
     assertValidAppName(args.name);
 
-    const { githubInstallationId, vercelTeamId } = await validateCreateAppSelections(ctx, ctx.userId, {
-      githubInstallationId: args.githubInstallationId,
-      vercelTeamId: args.vercelTeamId,
-    });
+    const { githubInstallationId, vercelTeamId, convexTeamId } = await validateCreateAppSelections(
+      ctx,
+      ctx.userId,
+      {
+        githubInstallationId: args.githubInstallationId,
+        vercelTeamId: args.vercelTeamId,
+        convexTeamId: args.convexTeamId,
+      },
+    );
 
     const appId = await createAppForUser(ctx, ctx.userId, args.name, {
       vercelTeamId,
       githubInstallationId,
       githubRepoPrivate: args.githubRepoVisibility === "private",
+      convexTeamId,
     });
 
     await ctx.scheduler.runAfter(0, internal.workflows.createApp.runCreateAppWorkflow, { appId });

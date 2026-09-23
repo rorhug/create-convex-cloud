@@ -41,10 +41,16 @@ export type AppsVercelTeam = {
   slug: string;
 };
 
+export type AppsConvexTeam = {
+  teamId: string;
+  teamSlug: string;
+};
+
 export type CreateAppFormValues = {
   name: string;
   githubInstallationId: string;
   vercelTeamId: string;
+  convexTeamId: string;
   githubRepoVisibility: "public" | "private";
 };
 
@@ -62,6 +68,7 @@ const formSchema = z.object({
     }),
   githubInstallationId: z.string().min(1, "Select a GitHub installation"),
   vercelTeamId: z.string().min(1, "Select a Vercel team"),
+  convexTeamId: z.string().min(1, "Select a Convex team"),
   githubRepoVisibility: z.enum(["public", "private"], {
     message: "Select a GitHub repository visibility",
   }),
@@ -73,6 +80,7 @@ export type CreateAppFormDefaults = {
   name: string;
   githubInstallationId: string;
   vercelTeamId: string;
+  convexTeamId: string;
   githubRepoVisibility: "" | "public" | "private";
 };
 
@@ -80,11 +88,13 @@ export function CreateAppForm({
   defaultValues,
   githubInstallations,
   vercelTeams,
+  convexTeams,
   onSubmit,
 }: {
   defaultValues: CreateAppFormDefaults;
   githubInstallations: AppsGithubInstallation[];
   vercelTeams: AppsVercelTeam[];
+  convexTeams: AppsConvexTeam[];
   onSubmit: (values: CreateAppFormValues) => Promise<void>;
 }) {
   const router = useRouter();
@@ -117,6 +127,7 @@ export function CreateAppForm({
         name,
         githubInstallationId: values.githubInstallationId,
         vercelTeamId: values.vercelTeamId.trim(),
+        convexTeamId: values.convexTeamId.trim(),
         githubRepoVisibility: values.githubRepoVisibility,
       });
       // Keep the last-selected installation / team / visibility, but clear the name.
@@ -132,6 +143,7 @@ export function CreateAppForm({
   const isSubmitting = form.formState.isSubmitting;
   const hasGithubInstallations = githubInstallations.length > 0;
   const hasVercelTeams = vercelTeams.length > 0;
+  const hasConvexTeams = convexTeams.length > 0;
 
   return (
     <section className="border border-border bg-card p-6">
@@ -156,7 +168,7 @@ export function CreateAppForm({
             )}
           />
 
-          <div className="flex flex-col gap-4 md:flex-row">
+          <div className="grid gap-4 md:grid-cols-2">
             <Controller
               name="githubInstallationId"
               control={form.control}
@@ -299,6 +311,47 @@ export function CreateAppForm({
                 </Field>
               )}
             />
+
+            <Controller
+              name="convexTeamId"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid} className="min-w-0 flex-1">
+                  <FieldLabel htmlFor="convex-team">Convex team</FieldLabel>
+                  <Select
+                    name={field.name}
+                    value={field.value}
+                    onValueChange={(value) => {
+                      if (value === GO_TO_SETUP_VALUE) {
+                        router.push("/setup");
+                        return;
+                      }
+                      field.onChange(value);
+                    }}
+                  >
+                    <SelectTrigger id="convex-team" aria-invalid={fieldState.invalid} className="w-full">
+                      <SelectValue placeholder={hasConvexTeams ? "Select a team…" : "No teams available"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectLabel>Convex teams</SelectLabel>
+                        {convexTeams.map((team) => (
+                          <SelectItem key={team.teamId} value={team.teamId}>
+                            {team.teamSlug || team.teamId}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectSeparator />
+                      <SelectGroup>
+                        <SelectLabel>Convex Access</SelectLabel>
+                        <SelectItem value={GO_TO_SETUP_VALUE}>Go to setup</SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}
+                </Field>
+              )}
+            />
           </div>
 
           {!hasGithubInstallations ? (
@@ -318,10 +371,20 @@ export function CreateAppForm({
             </FieldDescription>
           ) : null}
 
+          {!hasConvexTeams ? (
+            <FieldDescription className="border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm">
+              No Convex teams on file.{" "}
+              <Link href="/setup" className="underline hover:text-foreground">
+                Link a Convex team
+              </Link>{" "}
+              before creating an app.
+            </FieldDescription>
+          ) : null}
+
           <Button
             type="submit"
             className="w-full"
-            disabled={isSubmitting || !hasGithubInstallations || !hasVercelTeams}
+            disabled={isSubmitting || !hasGithubInstallations || !hasVercelTeams || !hasConvexTeams}
           >
             {isSubmitting ? "Creating..." : "Create app"}
           </Button>

@@ -103,10 +103,10 @@ export const runDeleteAppWorkflow = internalAction({
           { appId: args.appId },
         );
         if (convexProject) {
-          const convexToken = await ctx.runQuery(
-            internal.lib.providers.convex.data.getConvexTokenForUser,
-            { userId: args.userId },
-          );
+          const convexToken = await ctx.runQuery(internal.lib.providers.convex.data.getConvexTokenForTeam, {
+            userId: args.userId,
+            teamId: convexProject.teamId,
+          });
           if (convexToken) {
             try {
               const projectId = Number(convexProject.projectId);

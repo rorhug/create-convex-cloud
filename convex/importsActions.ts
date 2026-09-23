@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 import { normalizeGithubRepoFullName } from "./lib/imports";
-import { resolveConvexProjectFromDeployKey } from "./lib/providers/convex/platform";
+import { resolveConvexProjectUsingTeamTokens } from "./lib/providers/convex/platform";
 import { fetchGithubRepositoriesForUserInstallation } from "./lib/providers/github/platform";
 import {
   type VercelEnvironmentVariable,
@@ -152,13 +152,14 @@ export const searchExistingProjects = internalAction({
         ctx,
       );
 
-      const convexToken = await ctx.runQuery(internal.lib.providers.convex.data.getConvexTokenForUser, {
+      const convexTokens = await ctx.runQuery(internal.lib.providers.convex.data.listConvexTokensForUser, {
         userId: args.userId,
       });
-      if (!convexToken) {
+      const validConvexTokens = convexTokens.filter((token) => token.tokenStatus === "valid");
+      if (convexTokens.length === 0) {
         throw new Error("Connect Convex on the setup page before importing apps.");
       }
-      if (convexToken.tokenStatus !== "valid") {
+      if (validConvexTokens.length === 0) {
         throw new Error("The saved Convex token needs attention on the setup page.");
       }
 
@@ -228,13 +229,13 @@ export const searchExistingProjects = internalAction({
 
             if (row.prodDeployKey) {
               try {
-                const resolvedConvexProject = await resolveConvexProjectFromDeployKey(
-                  convexToken.token,
+                const resolvedConvexProject = await resolveConvexProjectUsingTeamTokens(
+                  validConvexTokens,
                   row.prodDeployKey,
                   ctx,
                 );
                 row.convexProjectId = resolvedConvexProject.projectId;
-                row.convexTeamId = convexToken.teamId;
+                row.convexTeamId = resolvedConvexProject.teamId;
                 row.convexTeamSlug = resolvedConvexProject.teamSlug;
                 row.convexProjectSlug = resolvedConvexProject.projectSlug;
                 row.convexProdDeploymentName = resolvedConvexProject.prodDeploymentName;

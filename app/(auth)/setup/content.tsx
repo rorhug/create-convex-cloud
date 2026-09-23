@@ -153,10 +153,9 @@ export function Content({ viewer }: { viewer: SetupViewerState }) {
       />
 
       <ConvexSetupStep
-        complete={viewer.convex?.isValid === true}
+        complete={viewer.convex?.teams.some((team) => team.isValid) === true}
         convex={viewer.convex}
         busy={busy}
-        issue={viewer.convex?.issue ?? null}
         onRefresh={() => {
           void handleRefreshConvexToken();
         }}
