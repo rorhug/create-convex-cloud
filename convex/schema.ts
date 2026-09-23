@@ -67,6 +67,8 @@ export default defineSchema({
     githubInstallationId: v.string(),
     /** GitHub repo visibility at creation time (`false` = public). */
     githubRepoPrivate: v.boolean(),
+    /** Convex team that owns the project created for this app. */
+    convexTeamId: v.optional(v.string()),
     /** GitHub repo setup strategy. */
     githubRepoCreationMethod: v.union(v.literal("clone"), v.literal("template")),
     status: appStatusValidator,

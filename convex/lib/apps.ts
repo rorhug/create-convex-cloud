@@ -5,7 +5,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { appStatusValidator } from "./appStatus";
 import { getGithubTokenDocForUser } from "./providers/github/data";
-import { findConvexAuthAccountForUser } from "./providers/convex/data";
+import { getConvexTokenDocForTeam } from "./providers/convex/data";
 import { githubAccessTokenNeedsRefresh } from "./providers/github/platform";
 import { requireVercelTokenDocForUser } from "./providers/vercel/data";
 
@@ -25,6 +25,7 @@ export const internalAppValidator = v.object({
   vercelTeamId: v.string(),
   githubInstallationId: v.string(),
   githubRepoPrivate: v.boolean(),
+  convexTeamId: v.optional(v.string()),
   githubRepoCreationMethod: v.union(v.literal("clone"), v.literal("template")),
   workflowKind: v.optional(v.union(v.literal("create"), v.literal("delete"))),
 });
@@ -35,6 +36,7 @@ export async function validateCreateAppSelections(
   args: {
     vercelTeamId: string;
     githubInstallationId: string;
+    convexTeamId: string;
   },
 ) {
   const vercelToken = await requireVercelTokenDocForUser(ctx, userId);
@@ -49,19 +51,17 @@ export async function validateCreateAppSelections(
     );
   }
 
-  const convexAccount = await findConvexAuthAccountForUser(ctx, userId);
-  const convexToken = convexAccount
-    ? await ctx.db
-        .query("convexTokens")
-        .withIndex("by_provider_account", (q) => q.eq("providerAccountId", convexAccount.providerAccountId))
-        .first()
-    : null;
+  const convexTeamId = args.convexTeamId.trim();
+  if (!convexTeamId) {
+    throw new Error("Select a Convex team");
+  }
+  const convexToken = await getConvexTokenDocForTeam(ctx, userId, convexTeamId);
   if (!convexToken) {
-    throw new Error("Connect your Convex account before creating apps");
+    throw new Error("That Convex team is not connected. Link it on the setup page.");
   }
   if (convexToken.tokenStatus === "invalid") {
     throw new Error(
-      "The saved Convex token is no longer valid. Reconnect Convex on the setup page.",
+      "The saved Convex token for that team is no longer valid. Reconnect Convex on the setup page.",
     );
   }
 
@@ -100,6 +100,7 @@ export async function validateCreateAppSelections(
   return {
     githubInstallationId,
     vercelTeamId,
+    convexTeamId,
   };
 }
 
@@ -122,6 +123,7 @@ export function mapInternalApp(app: Doc<"apps">) {
     vercelTeamId: app.vercelTeamId,
     githubInstallationId: app.githubInstallationId,
     githubRepoPrivate: app.githubRepoPrivate ?? false,
+    convexTeamId: app.convexTeamId,
     githubRepoCreationMethod: app.githubRepoCreationMethod,
     workflowKind: app.workflowKind,
   };

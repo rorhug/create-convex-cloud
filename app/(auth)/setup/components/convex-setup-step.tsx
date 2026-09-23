@@ -4,44 +4,48 @@ import { Button } from "@/components/ui/button";
 import { Banner } from "./banner";
 import { ProviderLogoName } from "./provider-logo";
 import { StepCard } from "./step-card";
-import type { SetupBusyState } from "./types";
+import type { SetupBusyState, SetupConvexTeam } from "./types";
 
 export function ConvexSetupStep({
   complete,
   convex,
   busy,
-  issue,
   onRefresh,
   onLink,
 }: {
   complete: boolean;
   convex: {
-    teamId: string;
-    teamSlug: string;
-    tokenPreview: string;
+    teams: SetupConvexTeam[];
   } | null;
   busy: SetupBusyState;
-  issue: string | null;
   onRefresh: () => void;
   onLink: () => void;
 }) {
+  const teams = convex?.teams ?? [];
+
   return (
     <StepCard step="3" provider={ProviderLogoName.Convex} complete={complete}>
-      {convex ? (
+      {teams.length > 0 ? (
         <div className="space-y-4 text-sm text-muted-foreground">
-          {issue ? <Banner tone="error">{issue}</Banner> : null}
-          <p>
-            Team: <span className="font-medium text-foreground">{convex.teamSlug || convex.teamId}</span>
-          </p>
-          <p>
-            Token preview: <span className="font-medium text-foreground">{convex.tokenPreview}</span>
-          </p>
+          <ul className="space-y-3">
+            {teams.map((team) => (
+              <li key={team.teamId} className="space-y-1">
+                <p>
+                  Team: <span className="font-medium text-foreground">{team.teamSlug || team.teamId}</span>
+                </p>
+                <p>
+                  Token preview: <span className="font-medium text-foreground">{team.tokenPreview}</span>
+                </p>
+                {team.issue ? <Banner tone="error">{team.issue}</Banner> : null}
+              </li>
+            ))}
+          </ul>
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" className="text-foreground" disabled={busy !== null} onClick={onRefresh}>
               {busy === "convex-refresh" ? "Refreshing..." : "Refresh Convex"}
             </Button>
             <Button variant="outline" className="text-foreground" disabled={busy !== null} onClick={onLink}>
-              {busy === "convex" ? "Redirecting..." : "Reconnect Convex"}
+              {busy === "convex" ? "Redirecting..." : "Link another Convex team"}
             </Button>
           </div>
         </div>

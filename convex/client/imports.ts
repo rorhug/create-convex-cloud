@@ -131,6 +131,7 @@ export const importExistingProject = userMutation({
       vercelTeamId: project.vercelTeamId,
       githubInstallationId: project.githubInstallationId,
       githubRepoPrivate: project.githubRepoPrivate,
+      convexTeamId: project.convexTeamId,
       githubRepoCreationMethod: "clone",
       status: "ready",
       createdAt: Date.now(),

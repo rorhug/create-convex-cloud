@@ -19,6 +19,14 @@ export type SetupVercelTeam = {
   slug: string;
 };
 
+export type SetupConvexTeam = {
+  teamId: string;
+  teamSlug: string;
+  tokenPreview: string;
+  isValid: boolean;
+  issue: string | null;
+};
+
 export type SetupBusyState = "github-refresh" | "vercel-refresh" | "vercel-save" | "convex-refresh" | "convex" | null;
 
 export type SetupViewerState = {
@@ -41,11 +49,7 @@ export type SetupViewerState = {
     issue: string | null;
   } | null;
   convex: {
-    teamId: string;
-    teamSlug: string;
-    tokenPreview: string;
-    isValid: boolean;
-    issue: string | null;
+    teams: SetupConvexTeam[];
   } | null;
   onboarding: {
     hasGitHubConnection: boolean;

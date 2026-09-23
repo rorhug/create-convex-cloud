@@ -1,13 +1,48 @@
 "use node";
 
 import { internal } from "../_generated/api";
-import { internalAction } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
+import { internalAction, type ActionCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { setStep } from "./stepUtils";
 import { createManagementClient } from "@convex-dev/platform";
 import {
   unwrapConvexPlatformResult,
 } from "../lib/providers/convex/platform";
+
+async function resolveConvexTokenForApp(
+  ctx: ActionCtx,
+  app: { ownerId: Id<"users">; convexTeamId?: string },
+): Promise<{ token: string; teamId: string; teamSlug: string }> {
+  if (app.convexTeamId) {
+    const token = await ctx.runQuery(internal.lib.providers.convex.data.getConvexTokenForTeam, {
+      userId: app.ownerId,
+      teamId: app.convexTeamId,
+    });
+    if (!token) {
+      throw new Error("Convex token not found for the selected team");
+    }
+    if (token.tokenStatus !== "valid") {
+      throw new Error(
+        "The saved Convex token for that team is no longer valid. Reconnect Convex on the setup page.",
+      );
+    }
+    return token;
+  }
+
+  const tokens = await ctx.runQuery(internal.lib.providers.convex.data.listConvexTokensForUser, {
+    userId: app.ownerId,
+  });
+  const validTokens = tokens.filter((token) => token.tokenStatus === "valid");
+  if (validTokens.length > 1) {
+    throw new Error("Multiple Convex teams are connected. Create the app again and select a team.");
+  }
+  const token = validTokens[0];
+  if (!token) {
+    throw new Error("Convex token not found for user");
+  }
+  return token;
+}
 
 export const stepCreateConvexProject = internalAction({
   args: { appId: v.id("apps") },
@@ -31,12 +66,13 @@ export const stepCreateConvexProject = internalAction({
     });
     if (!app) throw new Error("App not found");
 
-    const convexToken = await ctx.runQuery(internal.lib.providers.convex.data.getConvexTokenForUser, {
-      userId: app.ownerId,
-    });
-    if (!convexToken) {
-      await setStep(ctx, args.appId, "convex", "error", "Convex token not found");
-      throw new Error("Convex token not found for user");
+    let convexToken: { token: string; teamId: string; teamSlug: string };
+    try {
+      convexToken = await resolveConvexTokenForApp(ctx, app);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Convex token not found";
+      await setStep(ctx, args.appId, "convex", "error", msg);
+      throw error;
     }
 
     try {

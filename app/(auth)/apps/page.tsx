@@ -10,6 +10,7 @@ import { Spinner } from "@/components/ui/spinner";
 import {
   CreateAppForm,
   type AppsGithubInstallation,
+  type AppsConvexTeam,
   type AppsVercelTeam,
   type CreateAppFormDefaults,
 } from "./create-app-form";
@@ -40,6 +41,12 @@ function AppsManager() {
   const createApp = useMutation(api.client.apps.createApp);
   const githubInstallations: AppsGithubInstallation[] = viewer?.github.installations ?? [];
   const vercelTeams: AppsVercelTeam[] = viewer?.vercel?.teams ?? [];
+  const convexTeams: AppsConvexTeam[] = (viewer?.convex?.teams ?? [])
+    .filter((team) => team.isValid)
+    .map((team) => ({
+      teamId: team.teamId,
+      teamSlug: team.teamSlug,
+    }));
   const canAccessApps = viewer?.onboarding.canAccessApps ?? false;
   const requiredActions = viewer?.onboarding.requiredActions ?? [];
 
@@ -61,14 +68,21 @@ function AppsManager() {
             </div>
           ) : (
             <CreateAppForm
-              defaultValues={buildDefaultValues(lastAppSelections, githubInstallations, vercelTeams)}
+              defaultValues={buildDefaultValues(
+                lastAppSelections,
+                githubInstallations,
+                vercelTeams,
+                convexTeams,
+              )}
               githubInstallations={githubInstallations}
               vercelTeams={vercelTeams}
+              convexTeams={convexTeams}
               onSubmit={async (values) => {
                 await createApp({
                   name: values.name,
                   githubInstallationId: values.githubInstallationId,
                   vercelTeamId: values.vercelTeamId,
+                  convexTeamId: values.convexTeamId,
                   githubRepoVisibility: values.githubRepoVisibility,
                 });
               }}
@@ -107,17 +121,21 @@ function buildDefaultValues(
     | {
         githubInstallationId: string;
         vercelTeamId: string;
+        convexTeamId: string | null;
         githubRepoVisibility: "public" | "private";
       }
     | null,
   githubInstallations: AppsGithubInstallation[],
   vercelTeams: AppsVercelTeam[],
+  convexTeams: AppsConvexTeam[],
 ): CreateAppFormDefaults {
+  const onlyConvexTeamId = convexTeams.length === 1 ? convexTeams[0].teamId : "";
   if (!lastAppSelections) {
     return {
       name: "",
       githubInstallationId: "",
       vercelTeamId: "",
+      convexTeamId: onlyConvexTeamId,
       githubRepoVisibility: "",
     };
   }
@@ -130,10 +148,14 @@ function buildDefaultValues(
   const vercelTeamId = vercelTeams.some((t) => t.id === lastAppSelections.vercelTeamId)
     ? lastAppSelections.vercelTeamId
     : "";
+  const convexTeamId = convexTeams.some((team) => team.teamId === lastAppSelections.convexTeamId)
+    ? (lastAppSelections.convexTeamId ?? "")
+    : onlyConvexTeamId;
   return {
     name: "",
     githubInstallationId,
     vercelTeamId,
+    convexTeamId,
     githubRepoVisibility: lastAppSelections.githubRepoVisibility,
   };
 }

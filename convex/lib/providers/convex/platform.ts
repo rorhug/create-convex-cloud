@@ -163,6 +163,40 @@ function parseConvexDeployKey(deployKey: string): ParsedConvexDeployKey | null {
   return null;
 }
 
+export async function resolveConvexProjectUsingTeamTokens(
+  tokens: Array<{ token: string; teamId: string; teamSlug: string }>,
+  deployKey: string,
+  ctx?: TokenInvalidationCtx,
+): Promise<ResolvedConvexProject & { teamId: string }> {
+  if (tokens.length === 0) {
+    throw new Error("No Convex team token is available");
+  }
+
+  const parsed = parseConvexDeployKey(deployKey);
+  const matching =
+    parsed?.kind === "project" ? tokens.filter((token) => token.teamSlug === parsed.teamSlug) : [];
+  const candidates = matching.length > 0 ? matching : tokens;
+  let lastError: unknown = null;
+
+  for (const candidate of candidates) {
+    try {
+      const resolved = await resolveConvexProjectFromDeployKey(
+        candidate.token,
+        deployKey,
+        candidates.length === 1 ? ctx : undefined,
+      );
+      return { ...resolved, teamId: candidate.teamId };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError instanceof Error) {
+    throw lastError;
+  }
+  throw new Error("Could not resolve Convex project from deploy key");
+}
+
 export async function resolveConvexProjectFromDeployKey(
   token: string,
   deployKey: string,

@@ -33,11 +33,15 @@ const viewerStateValidator = v.object({
   ),
   convex: v.union(
     v.object({
-      teamId: v.string(),
-      teamSlug: v.string(),
-      tokenPreview: v.string(),
-      isValid: v.boolean(),
-      issue: v.union(v.string(), v.null()),
+      teams: v.array(
+        v.object({
+          teamId: v.string(),
+          teamSlug: v.string(),
+          tokenPreview: v.string(),
+          isValid: v.boolean(),
+          issue: v.union(v.string(), v.null()),
+        }),
+      ),
     }),
     v.null(),
   ),

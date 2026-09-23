@@ -2,7 +2,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { assertValidAppName } from "./appName";
 import { getGithubTokenDocForUser } from "./providers/github/data";
-import { findConvexAuthAccountForUser } from "./providers/convex/data";
+import { listConvexTokenDocsForUser } from "./providers/convex/data";
 import { getGithubAppInstallUrl } from "./providers/github/platform";
 import { getVercelTokenDocForUser, getVercelTokenIssue } from "./providers/vercel/data";
 
@@ -19,18 +19,24 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
   const hasVercelConnection = vercelToken !== null;
   const vercelIssue = getVercelTokenIssue(vercelToken);
 
-  const convexAccount = await findConvexAuthAccountForUser(ctx, user._id);
-  const convexToken = convexAccount
-    ? await ctx.db
-        .query("convexTokens")
-        .withIndex("by_provider_account", (q) => q.eq("providerAccountId", convexAccount.providerAccountId))
-        .first()
-    : null;
-  const hasConvexToken = convexToken !== null;
-  const convexIssue =
-    convexToken?.tokenStatus === "invalid"
-      ? "The saved Convex token is no longer valid. Reconnect Convex on the setup page."
-      : null;
+  const convexTokens = await listConvexTokenDocsForUser(ctx, user._id);
+  const convexTeams = convexTokens
+    .map((token) => {
+      const issue =
+        token.tokenStatus === "invalid"
+          ? "The saved Convex token is no longer valid. Reconnect Convex on the setup page."
+          : null;
+      return {
+        teamId: token.teamId,
+        teamSlug: token.teamSlug,
+        tokenPreview: maskSecret(token.token),
+        isValid: issue === null,
+        issue,
+      };
+    })
+    .sort((a, b) => a.teamSlug.localeCompare(b.teamSlug) || a.teamId.localeCompare(b.teamId));
+  const hasConvexToken = convexTeams.length > 0;
+  const hasValidConvexToken = convexTeams.some((team) => team.isValid);
 
   const requiredActions: string[] = [];
   if (!hasGitHubConnection) {
@@ -47,8 +53,10 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
   }
   if (!hasConvexToken) {
     requiredActions.push("Connect a Convex team on the setup page.");
-  } else if (convexIssue) {
-    requiredActions.push(convexIssue);
+  } else if (!hasValidConvexToken) {
+    requiredActions.push(
+      "The saved Convex token is no longer valid. Reconnect Convex on the setup page.",
+    );
   }
 
   return {
@@ -74,11 +82,7 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
       : null,
     convex: hasConvexToken
       ? {
-          teamId: convexToken.teamId,
-          teamSlug: convexToken.teamSlug,
-          tokenPreview: maskSecret(convexToken.token),
-          isValid: convexIssue === null,
-          issue: convexIssue,
+          teams: convexTeams,
         }
       : null,
     onboarding: {
@@ -89,10 +93,9 @@ export async function getViewerState(ctx: QueryCtx, user: Doc<"users">) {
       canAccessApps:
         hasGitHubConnection &&
         hasVercelConnection &&
-        hasConvexToken &&
+        hasValidConvexToken &&
         githubIssue === null &&
-        vercelIssue === null &&
-        convexIssue === null,
+        vercelIssue === null,
     },
   };
 }
@@ -105,6 +108,7 @@ export async function createAppForUser(
     vercelTeamId: string;
     githubInstallationId: string;
     githubRepoPrivate: boolean;
+    convexTeamId: string;
   },
 ) {
   assertValidAppName(name);
@@ -115,6 +119,7 @@ export async function createAppForUser(
     vercelTeamId: options.vercelTeamId,
     githubInstallationId: options.githubInstallationId,
     githubRepoPrivate: options.githubRepoPrivate,
+    convexTeamId: options.convexTeamId,
     githubRepoCreationMethod: "template",
     status: "creating",
     workflowKind: "create",
